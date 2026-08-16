@@ -1,0 +1,135 @@
+import { ViewerHistory } from './viewer-history.js';
+
+// Weights sum to 1.0 and control how much each factor matters when
+// ranking candidates. Tune these to change matching behavior.
+const WEIGHT_VIEWER_COUNT = 0.5;
+const WEIGHT_DURATION = 0.2;
+const WEIGHT_AVERAGE_VIEWERS = 0.3;
+
+function liveDurationMs(stream) {
+  return Date.now() - new Date(stream.started_at).getTime();
+}
+
+function percentDiff(a, b) {
+  const base = Math.max(a, 1); // avoid divide-by-zero for 0-viewer streams
+  return (Math.abs(a - b) / base) * 100;
+}
+
+function computeScore({ viewerDiffPercent, durationDiffMs }) {
+  const viewerScore = Math.max(0, 100 - viewerDiffPercent);
+
+  const durationDiffHours = durationDiffMs / 1000 / 60 / 60;
+  // Being live for a wildly different amount of time matters less than
+  // viewer count; cap the penalty at 6 hours of difference.
+  const durationScore = Math.max(0, 100 - (durationDiffHours / 6) * 100);
+
+  // The average-viewership factor is baked into viewerDiffPercent (we
+  // compare estimated averages, not live snapshots), reused here as a
+  // distinct weighted term to reflect its independent importance.
+  const averageScore = viewerScore;
+
+  return (
+    viewerScore * WEIGHT_VIEWER_COUNT +
+    durationScore * WEIGHT_DURATION +
+    averageScore * WEIGHT_AVERAGE_VIEWERS
+  );
+}
+
+/**
+ * Hard filters (candidates outside these are excluded entirely, not just
+ * scored lower):
+ * - minViewers / maxViewers: current live viewer count bounds.
+ * - allowedBroadcasterTypes: Set/array of 'partner' | 'affiliate' | 'none'
+ *   to include. Candidates need a `broadcaster_type` field set by the
+ *   caller (Twitch's /streams endpoint doesn't include it — see
+ *   TwitchApi.getBroadcasterTypes).
+ * - requireSharedTeam: only keep candidates with a non-empty
+ *   `shared_team_names` array, set by the caller (see
+ *   TwitchApi.getTeamMembershipsForUsers). Exported separately so callers
+ *   can narrow the candidate list *before* doing the (uncached, one-call-
+ *   per-channel) team lookup, rather than fetching teams for everyone.
+ */
+export function applyHardFilters(
+  candidates,
+  { minViewers = null, maxViewers = null, allowedBroadcasterTypes = null, requireSharedTeam = false } = {}
+) {
+  const typeFilter = allowedBroadcasterTypes ? new Set(allowedBroadcasterTypes) : null;
+
+  return candidates.filter((s) => {
+    if (minViewers != null && s.viewer_count < minViewers) return false;
+    if (maxViewers != null && s.viewer_count > maxViewers) return false;
+    if (typeFilter && !typeFilter.has(s.broadcaster_type ?? 'none')) return false;
+    if (requireSharedTeam && !(s.shared_team_names?.length > 0)) return false;
+    return true;
+  });
+}
+
+/**
+ * Scores and ranks candidate streams as raid targets for myStream,
+ * matching on: same game/category (already filtered by caller), viewer
+ * count closeness, stream-duration closeness, and estimated average
+ * viewership.
+ *
+ * See applyHardFilters for the filter options accepted here — they're
+ * applied again internally so callers can pass raw candidates directly
+ * if they don't need to pre-filter for a team lookup.
+ */
+export function findRaidMatches(
+  myStream,
+  candidates,
+  {
+    viewerTolerancePercent = 60,
+    minViewers = null,
+    maxViewers = null,
+    allowedBroadcasterTypes = null,
+    requireSharedTeam = false,
+  } = {}
+) {
+  const filtered = applyHardFilters(candidates, {
+    minViewers,
+    maxViewers,
+    allowedBroadcasterTypes,
+    requireSharedTeam,
+  });
+
+  // Record fresh samples for everyone we just looked at, so the local
+  // average-viewership estimate keeps improving over time.
+  const samples = {};
+  for (const s of filtered) samples[s.user_id] = s.viewer_count;
+  ViewerHistory.recordSamples(samples);
+
+  const myAvgRecord = ViewerHistory.getAverage(myStream.user_id);
+  const myEstimatedAverage = myAvgRecord?.average ?? myStream.viewer_count;
+
+  const results = [];
+
+  for (const candidate of filtered) {
+    if (candidate.user_id === myStream.user_id) continue;
+
+    const avgRecord = ViewerHistory.getAverage(candidate.user_id);
+    const estimatedAverage = avgRecord?.average ?? candidate.viewer_count;
+    const averageIsHistorical = (avgRecord?.sampleCount ?? 0) >= 3;
+
+    const viewerDiffPercent = percentDiff(myEstimatedAverage, estimatedAverage);
+
+    // Skip channels wildly outside the requested tolerance band - raiding
+    // a streamer 10x your size (or 1/10th) usually isn't a meaningful match.
+    if (viewerDiffPercent > viewerTolerancePercent) continue;
+
+    const durationDiffMs = Math.abs(liveDurationMs(myStream) - liveDurationMs(candidate));
+
+    const matchScore = computeScore({ viewerDiffPercent, durationDiffMs });
+
+    results.push({
+      stream: candidate,
+      estimatedAverageViewers: estimatedAverage,
+      averageIsHistorical,
+      matchScore,
+      viewerCountDiffPercent: viewerDiffPercent,
+      streamDurationDiffMs: durationDiffMs,
+    });
+  }
+
+  results.sort((a, b) => b.matchScore - a.matchScore);
+  return results;
+}

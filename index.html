@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wormhole</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- LOGIN VIEW -->
+  <main id="login-view" class="login-view">
+    <div class="login-card">
+      <div class="login-card__mark">
+        <span class="login-card__mark-dot"></span>
+      </div>
+      <h1 class="login-card__title">Wormhole</h1>
+      <p class="login-card__subtitle">
+        Sign off with a raid that actually fits -- matched by game,
+        viewer count, and how long you've both been live.
+      </p>
+      <button id="login-btn" class="btn btn--primary btn--block">Log in with Twitch</button>
+      <p id="login-error" class="login-card__error"></p>
+    </div>
+  </main>
+
+  <!-- APP VIEW -->
+  <div id="app-view" class="app-view hidden">
+    <header class="topbar">
+      <div class="topbar__user">
+        <img id="user-avatar" class="topbar__avatar" alt="" />
+        <span id="user-name" class="topbar__name"></span>
+      </div>
+      <button id="logout-btn" class="btn btn--ghost btn--small">Log out</button>
+    </header>
+
+    <main class="main">
+      <section id="stream-panel" class="panel stream-panel"></section>
+
+      <section class="panel filters-panel">
+        <h2 class="filters-panel__title">Filters</h2>
+
+        <div class="filter-row filter-row--stack">
+          <div class="filter-row__top">
+            <span class="filter-row__label">Viewer count</span>
+            <span class="filter-row__value">
+              <span id="viewer-range-min-label" class="mono-value">0</span>
+              <span class="range-inputs__dash">–</span>
+              <span id="viewer-range-max-label" class="mono-value">No limit</span>
+            </span>
+          </div>
+          <div class="dual-range" id="viewer-range">
+            <div class="dual-range__track"></div>
+            <div class="dual-range__fill" id="viewer-range-fill"></div>
+            <input type="range" id="viewer-range-min" class="dual-range__input" min="0" max="1000" step="5" value="0" />
+            <input type="range" id="viewer-range-max" class="dual-range__input" min="0" max="1000" step="5" value="1000" />
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <span class="filter-row__label">Channel status</span>
+          <div class="toggle-group" id="status-filters">
+            <label class="toggle">
+              <input type="checkbox" value="partner" checked />
+              <span class="toggle__box"></span>
+              <span class="toggle__text">Partner</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" value="affiliate" checked />
+              <span class="toggle__box"></span>
+              <span class="toggle__text">Affiliate</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" value="none" checked />
+              <span class="toggle__box"></span>
+              <span class="toggle__text">Non-affiliate</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="filter-row">
+          <span class="filter-row__label">Team</span>
+          <label class="toggle">
+            <input type="checkbox" id="same-team-filter" />
+            <span class="toggle__box"></span>
+            <span class="toggle__text">Only my team</span>
+          </label>
+        </div>
+        <p id="team-hint" class="filter-row__hint"></p>
+
+        <div class="filter-row filter-row--stack">
+          <div class="filter-row__top">
+            <span class="filter-row__label">Categories</span>
+            <span class="filter-row__hint-inline">searches Twitch's category database (built on IGDB)</span>
+          </div>
+          <div class="category-search">
+            <input
+              id="category-search-input"
+              type="text"
+              class="text-input"
+              placeholder="Add another game or category…"
+              autocomplete="off"
+            />
+            <ul id="category-suggestions" class="category-suggestions hidden"></ul>
+          </div>
+          <div id="selected-categories" class="chip-row"></div>
+        </div>
+      </section>
+
+      <section class="control-row">
+        <label class="tolerance-label" for="tolerance-slider">
+          Match tolerance
+          <span id="tolerance-value" class="tolerance-value">60%</span>
+        </label>
+        <input
+          id="tolerance-slider"
+          type="range"
+          min="10"
+          max="150"
+          step="10"
+          value="60"
+          class="slider"
+        />
+        <button id="find-btn" class="btn btn--primary" disabled>Find someone to raid</button>
+      </section>
+
+      <section id="results-panel" class="panel results-panel hidden">
+        <p id="results-status" class="results-status hidden"></p>
+        <ul id="results-list" class="results-list"></ul>
+      </section>
+    </main>
+  </div>
+
+  <!-- RAID CONFIRM DIALOG -->
+  <dialog id="raid-dialog" class="dialog">
+    <p id="raid-dialog-text" class="dialog__text"></p>
+    <div class="dialog__actions">
+      <button id="raid-cancel-btn" class="btn btn--ghost">Cancel</button>
+      <button id="raid-confirm-btn" class="btn btn--primary">Raid!</button>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

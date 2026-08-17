@@ -321,6 +321,33 @@ export class TwitchApi {
     return streams.slice(0, maxResults);
   }
 
+  /** Fetches currently-live streams across all categories. */
+  async getLiveStreams(
+    { maxResults = 100, language, stopBelowViewers = null } = {}
+  ) {
+    const streams = [];
+    let cursor = null;
+
+    while (streams.length < maxResults) {
+      const query = { first: 100 };
+      if (language) query.language = language;
+      if (cursor) query.after = cursor;
+
+      const json = await this._get('/streams', query);
+      streams.push(...(json.data ?? []));
+      const lastViewerCount = json.data?.at(-1)?.viewer_count;
+      if (
+        stopBelowViewers != null &&
+        Number.isFinite(lastViewerCount) &&
+        lastViewerCount < stopBelowViewers
+      ) break;
+      cursor = json.pagination?.cursor ?? null;
+      if (!cursor || !json.data?.length) break;
+    }
+
+    return streams.slice(0, maxResults);
+  }
+
   /** Fetches live streams matching any of up to 100 category IDs. */
   async getLiveStreamsByGames(
     gameIds,

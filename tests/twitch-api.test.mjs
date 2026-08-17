@@ -239,6 +239,26 @@ test('genre streams send multiple category IDs in one request', async () => {
   assert.equal(requestedUrl.searchParams.get('first'), '100');
 });
 
+test('tags-only discovery requests streams without a game category', async () => {
+  let requestedUrl;
+  globalThis.fetch = async (url) => {
+    requestedUrl = new URL(url);
+    return {
+      ok: true,
+      async json() {
+        return { data: [{ user_id: 'any-game', viewer_count: 14 }], pagination: {} };
+      },
+    };
+  };
+
+  const api = new TwitchApi('test-token');
+  const streams = await api.getLiveStreams({ maxResults: 100 });
+  assert.equal(streams[0].user_id, 'any-game');
+  assert.equal(requestedUrl.pathname, '/helix/streams');
+  assert.equal(requestedUrl.searchParams.has('game_id'), false);
+  assert.equal(requestedUrl.searchParams.get('first'), '100');
+});
+
 test('genre resolution falls back to category search for Twitch name variations', async () => {
   const paths = [];
   globalThis.fetch = async (url) => {

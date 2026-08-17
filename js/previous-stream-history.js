@@ -57,9 +57,23 @@ export const PreviousStreamHistory = {
     this._save(streams);
   },
 
-  saveReference({ streamId, userId, title, gameId, gameName, startedAt, viewerBaseline }) {
+  saveReference({
+    streamId,
+    userId,
+    title,
+    gameId,
+    gameName,
+    startedAt,
+    viewerBaseline,
+    categoryCleared = false,
+  }) {
     if (!StorageConsent.allowsLocalHistory()) return;
-    if (!streamId || !userId || !gameId || !Number.isFinite(viewerBaseline)) return;
+    if (
+      !streamId ||
+      !userId ||
+      (!categoryCleared && !gameId) ||
+      !Number.isFinite(viewerBaseline)
+    ) return;
     const streams = this._load();
     const existingIndex = streams.findIndex((item) => item.streamId === streamId);
     const existing = existingIndex >= 0 ? streams.splice(existingIndex, 1)[0] : null;
@@ -68,9 +82,13 @@ export const PreviousStreamHistory = {
       streamId,
       userId,
       title: title || existing?.title || '',
-      gameId,
-      gameName: gameName || existing?.gameName || '',
-      categorySource: existing?.categorySource === 'observed' ? 'observed' : 'manual',
+      gameId: categoryCleared ? null : gameId,
+      gameName: categoryCleared ? '' : gameName || existing?.gameName || '',
+      categorySource: categoryCleared
+        ? 'cleared'
+        : existing?.categorySource === 'observed'
+          ? 'observed'
+          : 'manual',
       startedAt: startedAt || existing?.startedAt || null,
       lastSeenAt: new Date().toISOString(),
       manualViewerBaseline: viewerBaseline,

@@ -137,6 +137,7 @@ export function findRaidMatches(
     requireSharedTeam = false,
     requiredTags = null,
     compareTags = true,
+    categoryMatchApplied = true,
   } = {}
 ) {
   const filtered = applyHardFilters(candidates, {
@@ -208,6 +209,7 @@ export function findRaidMatches(
       meaningfulSharedTags: tagComparison.meaningfulSharedTags,
       tagSimilarityPercent: tagComparison.similarityPercent,
       tagComparisonApplied,
+      categoryMatchApplied,
     });
   }
 

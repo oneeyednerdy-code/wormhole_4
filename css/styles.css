@@ -592,6 +592,11 @@ body.light-theme .btn--primary:hover:not(:disabled) {
   text-align: left;
 }
 
+.offline-reference__clear-category {
+  width: 100%;
+  margin: 8px 0 10px;
+}
+
 .offline-reference__viewer-input {
   max-width: 220px;
   margin: 0 auto 12px;
@@ -905,6 +910,12 @@ body.light-theme .btn--primary:hover:not(:disabled) {
   background: var(--panel-raised);
   border-color: var(--panel-line);
   color: var(--text-dim);
+}
+
+.category-chip--all {
+  border-style: dashed;
+  border-color: var(--violet);
+  color: var(--violet-bright);
 }
 
 .category-chip--genre {

@@ -29,6 +29,7 @@ const state = {
   recentVods: [],
   selectedPreviousVodId: null,
   offlineCategorySelection: null,
+  offlineCategoryCleared: false,
   usingPreviousStream: false,
   myTeams: [], // Twitch Teams the logged-in user belongs to
   matches: [],
@@ -293,6 +294,7 @@ function renderStreamPanel() {
     const selectedVod = getSelectedPreviousVod();
     const defaults = getPreviousStreamDefaults(selectedVod);
     state.offlineCategorySelection = defaults.category;
+    state.offlineCategoryCleared = defaults.categoryCleared;
     const vodOptions = state.recentVods
       .slice(0, 5)
       .map((vod) => `<option value="${escapeHtml(vod.id)}"${vod.id === state.selectedPreviousVodId ? ' selected' : ''}>${escapeHtml(formatPreviousVodLabel(vod))}</option>`)
@@ -320,6 +322,7 @@ function renderStreamPanel() {
             />
             <ul id="offline-category-suggestions" class="category-suggestions hidden"></ul>
           </div>
+          <button class="btn btn--ghost btn--small offline-reference__clear-category" id="clear-offline-category-btn" type="button">Clear category · compare tags across Twitch</button>
           <p id="offline-category-hint" class="offline-card__hint">${escapeHtml(defaults.categoryHint)}</p>
 
           <label class="offline-reference__field-label" for="offline-viewers-input">Average viewers for that stream</label>
@@ -351,8 +354,8 @@ function renderStreamPanel() {
         input.focus();
         return;
       }
-      if (!state.offlineCategorySelection?.id) {
-        showToast('Choose the category used for that stream.', true);
+      if (!state.offlineCategorySelection?.id && !state.offlineCategoryCleared) {
+        showToast('Choose a category, or clear it to compare tags across Twitch.', true);
         document.getElementById('offline-category-input').focus();
         return;
       }
@@ -362,10 +365,11 @@ function renderStreamPanel() {
           streamId: selectedVod.stream_id,
           userId: state.user.id,
           title: selectedVod.title,
-          gameId: state.offlineCategorySelection.id,
-          gameName: state.offlineCategorySelection.name,
+          gameId: state.offlineCategorySelection?.id,
+          gameName: state.offlineCategorySelection?.name,
           startedAt: selectedVod.created_at,
           viewerBaseline: viewerCount,
+          categoryCleared: state.offlineCategoryCleared,
         });
       }
       state.myStream = buildPreviousStreamReference(
@@ -392,7 +396,7 @@ function renderStreamPanel() {
       <span class="tally__label">${historical ? 'PREVIOUS STREAM' : 'ON AIR'}</span>
     </div>
     <h2 class="stream-title">${escapeHtml(s.title)}</h2>
-    <p class="stream-game">${escapeHtml(s.game_name)}</p>
+    <p class="stream-game">${escapeHtml(s.game_name || 'All categories · tags-first search')}</p>
     <div class="stat-row">
       <span class="stat-chip"><span class="stat-chip__mono">${fmtNumber(s.viewer_count)}</span> ${historical ? 'viewer baseline' : 'viewers'}</span>
       <span class="stat-chip"><span class="stat-chip__mono">${fmtDuration(Date.now() - new Date(s.started_at).getTime())}</span> ${historical ? 'previous duration' : 'live'}</span>
@@ -436,7 +440,10 @@ function getPreviousStreamDefaults(vod) {
   const saved = vod?.stream_id ? PreviousStreamHistory.getByStreamId(vod.stream_id) : null;
   const generalAverage = ViewerHistory.getAverage(state.user.id);
   const isLatestVod = !vod || vod.id === state.recentVods[0]?.id;
-  const category = saved?.gameId
+  const categoryCleared = saved?.categorySource === 'cleared';
+  const category = categoryCleared
+    ? null
+    : saved?.gameId
     ? { id: saved.gameId, name: saved.gameName, source: 'saved' }
     : isLatestVod && state.channelInfo?.game_id
       ? { id: state.channelInfo.game_id, name: state.channelInfo.game_name, source: 'last-played' }
@@ -444,7 +451,10 @@ function getPreviousStreamDefaults(vod) {
 
   return {
     category,
-    categoryHint: saved?.gameId
+    categoryCleared,
+    categoryHint: categoryCleared
+      ? 'Category filtering is off for this stream. Results will be compared across Twitch using tags and your other filters.'
+      : saved?.gameId
       ? saved.categorySource === 'observed'
         ? 'Category restored from this stream’s locally observed Wormhole data.'
         : 'Category restored from your saved correction for this VOD.'
@@ -472,11 +482,13 @@ function setupOfflineCategorySearch() {
   const input = document.getElementById('offline-category-input');
   const suggestions = document.getElementById('offline-category-suggestions');
   const hint = document.getElementById('offline-category-hint');
+  const clearButton = document.getElementById('clear-offline-category-btn');
   if (!input || !suggestions) return;
 
   const hideSuggestions = () => suggestions.classList.add('hidden');
   const chooseCategory = (category) => {
     state.offlineCategorySelection = category;
+    state.offlineCategoryCleared = false;
     input.value = category.name;
     hint.textContent = `Using ${category.name} for this previous stream.`;
     hideSuggestions();
@@ -485,6 +497,7 @@ function setupOfflineCategorySearch() {
   input.addEventListener('input', () => {
     clearTimeout(offlineCategorySearchDebounce);
     state.offlineCategorySelection = null;
+    state.offlineCategoryCleared = false;
     hint.textContent = 'Select a Twitch category from the suggestions.';
     const query = input.value.trim();
     if (!query) {
@@ -523,6 +536,14 @@ function setupOfflineCategorySearch() {
       }
     }, 300);
   });
+  clearButton?.addEventListener('click', () => {
+    clearTimeout(offlineCategorySearchDebounce);
+    state.offlineCategorySelection = null;
+    state.offlineCategoryCleared = true;
+    input.value = '';
+    hint.textContent = 'Category filtering is off. Wormhole will compare tags across live Twitch channels.';
+    hideSuggestions();
+  });
   input.addEventListener('blur', () => setTimeout(hideSuggestions, 150));
 }
 
@@ -538,8 +559,8 @@ function buildPreviousStreamReference(viewerCount, vod, category) {
     user_id: state.user.id,
     user_login: state.user.login,
     user_name: state.user.display_name,
-    game_id: category.id,
-    game_name: category.name,
+    game_id: category?.id ?? '',
+    game_name: category?.name ?? '',
     title: vod?.title || saved?.title || state.channelInfo?.title || 'Previous stream',
     viewer_count: viewerCount,
     started_at: new Date(Date.now() - durationMs).toISOString(),
@@ -668,12 +689,15 @@ function renderActiveFilters() {
 
   el.activeFilterCount.textContent = `${filters.length} active filter${filters.length === 1 ? '' : 's'}`;
   el.clearAllFilters.hidden = filters.length === 0;
+  const emptyFilterMessage = state.myStream?.game_id
+    ? 'No extra restrictions — your current category is always included.'
+    : 'No category restriction — searching across Twitch with your tag and audience settings.';
   el.activeFilterChips.innerHTML = filters.length
     ? filters.map((filter) => `
         <button class="active-filter-chip" type="button" data-clear-filter="${escapeHtml(filter.key)}" aria-label="Remove ${escapeHtml(filter.label)} filter">
           ${escapeHtml(filter.label)} <span aria-hidden="true">×</span>
         </button>`).join('')
-    : '<span class="active-filters__empty">No extra restrictions — your current category is always included.</span>';
+    : `<span class="active-filters__empty">${escapeHtml(emptyFilterMessage)}</span>`;
 
   el.activeFilterChips.querySelectorAll('[data-clear-filter]').forEach((button) => {
     button.addEventListener('click', () => clearFilter(button.dataset.clearFilter));
@@ -927,9 +951,11 @@ function removeCategory(id) {
 }
 
 function renderSelectedCategories() {
-  const primary = state.myStream
+  const primary = state.myStream?.game_id
     ? `<span class="category-chip category-chip--locked" title="Your current category is always included">${escapeHtml(state.myStream.game_name)}</span>`
-    : '';
+    : state.myStream
+      ? '<span class="category-chip category-chip--all" title="No primary category filter">All categories · tags-first</span>'
+      : '';
 
   const extra = state.extraCategories
     .map(
@@ -1000,7 +1026,10 @@ async function runSearch() {
   el.resultsPanel.classList.remove('hidden');
   el.resultsPagination.classList.add('hidden');
   el.resultsList.innerHTML = loadingCardsHtml();
-  showSearchStatus('Scanning your selected categories…');
+  const hasPrimaryCategory = Boolean(state.myStream.game_id);
+  showSearchStatus(hasPrimaryCategory || state.extraCategories.length
+    ? 'Scanning your selected categories…'
+    : 'Scanning live channels across Twitch for tag matches…');
 
   try {
     const individualGameIds = [
@@ -1008,7 +1037,7 @@ async function runSearch() {
       ...state.extraCategories
         .filter((category) => category.source !== 'genre')
         .map((category) => category.id),
-    ];
+    ].filter(Boolean);
     const genreGameIds = state.extraCategories
       .filter((category) => category.source === 'genre')
       .map((category) => category.id);
@@ -1023,6 +1052,13 @@ async function runSearch() {
     );
     if (genreGameIds.length) {
       candidateRequests.push(state.api.getLiveStreamsByGames(genreGameIds, {
+        maxResults: showAllViewerCounts ? 500 : 1000,
+        stopBelowViewers: minimumMatchedViewers,
+      }));
+    }
+    const categoryMatchApplied = candidateRequests.length > 0;
+    if (!categoryMatchApplied) {
+      candidateRequests.push(state.api.getLiveStreams({
         maxResults: showAllViewerCounts ? 500 : 1000,
         stopBelowViewers: minimumMatchedViewers,
       }));
@@ -1108,6 +1144,7 @@ async function runSearch() {
       requireSharedTeam: wantsSameTeam,
       requiredTags: tags,
       compareTags: el.matchStreamTags.checked,
+      categoryMatchApplied,
     });
     state.resultsPage = 1;
     renderResults();
@@ -1141,7 +1178,7 @@ function scoreLabel(score) {
 }
 
 function matchReasons(match) {
-  const reasons = ['Matching category'];
+  const reasons = match.categoryMatchApplied ? ['Matching category'] : [];
   if (match.meaningfulSharedTags?.length) {
     reasons.push(`${match.meaningfulSharedTags.length} shared Twitch tag${match.meaningfulSharedTags.length === 1 ? '' : 's'}`);
   }

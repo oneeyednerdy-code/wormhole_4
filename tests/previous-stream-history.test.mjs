@@ -87,3 +87,21 @@ test('remembers a corrected category and viewer baseline for a VOD', () => {
   assert.equal(saved.averageViewers, 37);
   assert.equal(saved.baselineSource, 'manual');
 });
+
+test('remembers when category matching was intentionally cleared', () => {
+  localStorage.clear();
+  PreviousStreamHistory.saveReference({
+    streamId: 'tags-only-vod',
+    userId: 'creator',
+    title: 'Tags everywhere',
+    startedAt: new Date().toISOString(),
+    viewerBaseline: 42,
+    categoryCleared: true,
+  });
+
+  const saved = PreviousStreamHistory.getByStreamId('tags-only-vod');
+  assert.equal(saved.gameId, null);
+  assert.equal(saved.gameName, '');
+  assert.equal(saved.categorySource, 'cleared');
+  assert.equal(saved.averageViewers, 42);
+});

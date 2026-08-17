@@ -146,7 +146,9 @@ an OAuth Redirect URL on your Twitch app (step 1).
 - Pulls your current live stream (game, viewer count, start time) via the
   Twitch Helix API.
 - When offline, offers up to five recent VODs and combines them with locally
-  captured stream-specific category/viewer data or editable fallbacks.
+  captured stream-specific category/viewer data or editable fallbacks. The
+  category can be explicitly cleared to search across Twitch using tags and
+  the remaining audience/community filters instead.
 - Paginates through live streams for each selected category until it reaches
   channels below your selected ±50%, ±75%, or ±100% range (up to 1,000
   candidates per category). When **All** is selected, it retrieves up to 500

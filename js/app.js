@@ -143,13 +143,6 @@ function startRaidListener() {
 }
 
 async function init() {
-  // Remove data left by the retired "Recently raided" feature.
-  try {
-    localStorage.removeItem('wormhole_raid_history_v1');
-  } catch {
-    // Storage may be unavailable in hardened/private browser contexts.
-  }
-
   let capturedToken;
   try {
     capturedToken = TwitchAuth.captureRedirectToken();

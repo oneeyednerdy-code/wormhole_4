@@ -268,14 +268,28 @@ Twitch's public API only exposes a channel's **current, live** viewer count
 — it doesn't expose historical averages (that lives behind third-party
 analytics sites, not the official API). To approximate a real average
 instead of a single snapshot, this app keeps a small local history of
-viewer-count samples for every channel it's seen, stored in your browser's
-`localStorage`, and averages those samples once it has at least a few. Samples
+viewer-count samples for every channel it's seen when you choose **Allow local
+history** in the first-visit storage panel. Those samples stay in your browser's
+`localStorage`, and the app averages them once it has at least a few. Samples
 are recorded no more than once every five minutes per channel, so repeated
 filter changes do not distort the estimate.
 Until a channel's been seen a few times, its "average" falls back to its
 current live viewer count, and result cards mark that with **"(est.)"**.
 The more you use the app, the better these estimates get. This history is
 local to your browser — it isn't sent anywhere.
+
+### Privacy and storage choices
+
+On first visit, Wormhole offers two clear choices: **Essential only** or
+**Allow local history**. Essential storage covers the Twitch login flow, the
+saved storage choice, and explicitly selected accessibility preferences.
+Optional history covers viewer samples, channel/category snapshots, and up to
+five previous-stream references. Until permission is given, those optional
+records are neither read nor written.
+
+The footer's **Privacy settings** control reopens the panel at any time. It can
+also delete all optional local history. `privacy.html` contains the concise
+storage policy.
 
 ---
 
@@ -292,6 +306,7 @@ usual raid countdown in your dashboard/chat.
 
 ```
 index.html          # Page shell, both views (login + app)
+privacy.html        # Storage and privacy policy
 css/styles.css       # All styling
 js/
   config.js          # Client ID, scopes, redirect URI
@@ -299,6 +314,8 @@ js/
   twitch-api.js       # Twitch API calls (users, streams, raids)
   viewer-history.js   # Local rolling viewer-count history
   previous-stream-history.js # Last five locally observed stream sessions
+  storage-consent.js  # Optional-history permission and deletion
+  storage-consent-ui.js # First-visit panel and privacy controls
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
   app.js              # Wires everything together, renders the UI

@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 class MemoryStorage {
   constructor() {
     this.data = new Map();
+    this.data.set('wormhole_storage_choice_v1', 'history');
   }
   getItem(key) {
     return this.data.has(key) ? this.data.get(key) : null;
@@ -16,6 +17,7 @@ class MemoryStorage {
   }
   clear() {
     this.data.clear();
+    this.data.set('wormhole_storage_choice_v1', 'history');
   }
 }
 

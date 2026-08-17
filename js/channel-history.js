@@ -1,9 +1,12 @@
+import { StorageConsent } from './storage-consent.js';
+
 const STORAGE_KEY = 'wormhole_channel_history_v1';
 const MAX_CHANNELS = 300;
 const MAX_SAMPLES_PER_CHANNEL = 20;
 const MIN_SAMPLE_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
 function loadAll() {
+  if (!StorageConsent.allowsLocalHistory()) return {};
   try {
     const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
@@ -13,6 +16,7 @@ function loadAll() {
 }
 
 function saveAll(all) {
+  if (!StorageConsent.allowsLocalHistory()) return;
   const entries = Object.entries(all)
     .sort((a, b) => new Date(b[1]?.lastSeenAt ?? 0) - new Date(a[1]?.lastSeenAt ?? 0))
     .slice(0, MAX_CHANNELS);
@@ -22,6 +26,7 @@ function saveAll(all) {
 /** Local snapshots fill gaps that Twitch's API does not expose historically. */
 export const ChannelHistory = {
   record(stream, followerCount, sampledAt = new Date()) {
+    if (!StorageConsent.allowsLocalHistory()) return;
     if (!stream?.user_id) return;
     const all = loadAll();
     const entry = all[stream.user_id] ?? { samples: [] };

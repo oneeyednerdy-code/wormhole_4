@@ -1,3 +1,5 @@
+import { StorageConsent } from './storage-consent.js';
+
 const STORAGE_KEY = 'wormhole_viewer_history_v2';
 const MAX_SAMPLES_PER_CHANNEL = 50;
 const MIN_SAMPLE_INTERVAL_MS = 5 * 60 * 1000;
@@ -13,6 +15,7 @@ const MIN_SAMPLE_INTERVAL_MS = 5 * 60 * 1000;
  */
 export const ViewerHistory = {
   _loadAll() {
+    if (!StorageConsent.allowsLocalHistory()) return {};
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : {};
@@ -23,11 +26,13 @@ export const ViewerHistory = {
   },
 
   _saveAll(data) {
+    if (!StorageConsent.allowsLocalHistory()) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   },
 
   /** Records samples no more than once every five minutes per channel. */
   recordSamples(viewerCountsByUserId) {
+    if (!StorageConsent.allowsLocalHistory()) return;
     const all = this._loadAll();
     const now = Date.now();
     for (const [userId, value] of Object.entries(viewerCountsByUserId)) {

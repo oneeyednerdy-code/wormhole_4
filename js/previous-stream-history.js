@@ -1,3 +1,5 @@
+import { StorageConsent } from './storage-consent.js';
+
 const STORAGE_KEY = 'wormhole_previous_streams_v1';
 const MAX_STREAMS = 5;
 const MAX_SAMPLES_PER_STREAM = 50;
@@ -6,6 +8,7 @@ const MIN_SAMPLE_INTERVAL_MS = 5 * 60 * 1000;
 /** Locally remembers stream-specific category and viewer samples. */
 export const PreviousStreamHistory = {
   _load() {
+    if (!StorageConsent.allowsLocalHistory()) return [];
     try {
       const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
       return Array.isArray(parsed) ? parsed : [];
@@ -15,10 +18,12 @@ export const PreviousStreamHistory = {
   },
 
   _save(streams) {
+    if (!StorageConsent.allowsLocalHistory()) return;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(streams.slice(0, MAX_STREAMS)));
   },
 
   record(stream) {
+    if (!StorageConsent.allowsLocalHistory()) return;
     if (!stream?.id || !stream?.user_id || !stream?.game_id) return;
     const now = Date.now();
     const streams = this._load();
@@ -53,6 +58,7 @@ export const PreviousStreamHistory = {
   },
 
   saveReference({ streamId, userId, title, gameId, gameName, startedAt, viewerBaseline }) {
+    if (!StorageConsent.allowsLocalHistory()) return;
     if (!streamId || !userId || !gameId || !Number.isFinite(viewerBaseline)) return;
     const streams = this._load();
     const existingIndex = streams.findIndex((item) => item.streamId === streamId);

@@ -301,6 +301,22 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <section id="storage-choice-panel" class="storage-choice" role="dialog" aria-labelledby="storage-choice-title" aria-describedby="storage-choice-description" hidden>
+    <button id="storage-choice-close" class="storage-choice__close" type="button" aria-label="Close privacy settings">×</button>
+    <div class="storage-choice__copy">
+      <p class="section-eyebrow">Privacy &amp; storage</p>
+      <h2 id="storage-choice-title" tabindex="-1">Choose what Wormhole remembers</h2>
+      <p id="storage-choice-description">Essential browser storage keeps Twitch login and accessibility settings working. Optional local history improves averages and offline matching. Wormhole does not use advertising trackers.</p>
+      <p id="storage-choice-status" class="storage-choice__status" aria-live="polite"></p>
+      <p><a href="privacy.html">Read the storage policy</a></p>
+    </div>
+    <div class="storage-choice__actions">
+      <button id="storage-essential-btn" class="btn btn--ghost" type="button">Essential only</button>
+      <button id="storage-history-btn" class="btn btn--primary" type="button">Allow local history</button>
+      <button id="delete-local-history-btn" class="btn btn--ghost" type="button" hidden>Delete local history</button>
+    </div>
+  </section>
+
   <footer class="site-footer">
     <a href="https://ko-fi.com/S6S5BZT4I" target="_blank" rel="noopener noreferrer" class="site-footer__kofi">
       <img
@@ -312,8 +328,14 @@
     <p class="site-footer__credit">
       Project by <a href="https://www.beacons.ai/oneeyednerdy" target="_blank" rel="noopener noreferrer">OneEyedNerdy</a>
     </p>
+    <p class="site-footer__privacy">
+      <button type="button" data-open-storage-settings>Privacy settings</button>
+      <span aria-hidden="true">·</span>
+      <a href="privacy.html">Storage policy</a>
+    </p>
   </footer>
 
+  <script type="module" src="js/storage-consent-ui.js"></script>
   <script type="module" src="js/ui-controls.js"></script>
   <script type="module" src="js/app.js"></script>
 </body>

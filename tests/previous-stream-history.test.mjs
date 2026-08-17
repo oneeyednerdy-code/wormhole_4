@@ -31,6 +31,7 @@ function stream(id, viewers = 20) {
     game_name: `Game ${id}`,
     started_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
     viewer_count: viewers,
+    tags: ['English', 'Cozy'],
   };
 }
 
@@ -42,6 +43,7 @@ test('stores stream-specific category and viewer data', () => {
   assert.equal(saved.gameName, 'Game abc');
   assert.equal(saved.averageViewers, 24);
   assert.equal(saved.sampleCount, 1);
+  assert.deepEqual(saved.tags, ['English', 'Cozy']);
 });
 
 test('retains only the five most recent stream sessions', () => {

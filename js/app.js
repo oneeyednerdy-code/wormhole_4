@@ -19,7 +19,7 @@ import {
   getGenreGameNames,
   getGenreLabelsForGame,
 } from './genre-presets.js';
-import { applyLanguageTag } from './language-tags.js';
+import { applyLanguageTag, isLanguageTag } from './language-tags.js';
 
 const state = {
   api: null,
@@ -69,6 +69,8 @@ const el = {
   teamHint: document.getElementById('team-hint'),
   tagsInput: document.getElementById('tags-input'),
   languageSelect: document.getElementById('language-select'),
+  matchStreamTags: document.getElementById('match-stream-tags'),
+  matchStreamTagsHint: document.getElementById('match-stream-tags-hint'),
   genreFilters: document.getElementById('genre-filters'),
   addGenresBtn: document.getElementById('add-genres-btn'),
   clearGenresBtn: document.getElementById('clear-genres-btn'),
@@ -267,6 +269,7 @@ async function refreshLiveStatus() {
 
 function renderStreamPanel() {
   const s = state.myStream;
+  renderTagMatchHint();
   if (!s) {
     const selectedVod = getSelectedPreviousVod();
     const defaults = getPreviousStreamDefaults(selectedVod);
@@ -521,7 +524,7 @@ function buildPreviousStreamReference(viewerCount, vod, category) {
     title: vod?.title || saved?.title || state.channelInfo?.title || 'Previous stream',
     viewer_count: viewerCount,
     started_at: new Date(Date.now() - durationMs).toISOString(),
-    tags: [],
+    tags: saved?.tags ?? [],
     isHistoricalReference: true,
   };
 }
@@ -561,6 +564,7 @@ el.statusFilters.addEventListener('change', onFilterChanged);
 el.sameTeamFilter.addEventListener('change', onFilterChanged);
 el.tagsInput.addEventListener('input', renderActiveFilters);
 el.tagsInput.addEventListener('change', rerunIfResultsVisible);
+el.matchStreamTags.addEventListener('change', onFilterChanged);
 el.languageSelect.addEventListener('change', () => {
   el.tagsInput.value = applyLanguageTag(el.tagsInput.value, el.languageSelect.value);
   onFilterChanged();
@@ -584,6 +588,25 @@ function getTagsQuery() {
     .filter(Boolean);
 }
 
+function getMeaningfulMyTags() {
+  return (state.myStream?.tags ?? []).filter((tag) => !isLanguageTag(tag));
+}
+
+function renderTagMatchHint() {
+  if (!state.myStream) {
+    el.matchStreamTagsHint.textContent = 'Go live or select a saved previous stream to compare its Twitch tags.';
+    return;
+  }
+  const tags = getMeaningfulMyTags();
+  if (!tags.length) {
+    el.matchStreamTagsHint.textContent = state.usingPreviousStream
+      ? 'No saved non-language tags are available for this previous stream.'
+      : 'Your live stream has no non-language tags to score yet; language is handled separately.';
+    return;
+  }
+  el.matchStreamTagsHint.textContent = `${state.usingPreviousStream ? 'Saved' : 'Live'} tags used for recommendations: ${tags.join(', ')}.`;
+}
+
 function getSelectedGenreIds() {
   return [...el.genreFilters.querySelectorAll('input[type="checkbox"]:checked')]
     .map((checkbox) => checkbox.value);
@@ -605,6 +628,9 @@ function renderActiveFilters() {
   });
   if (el.sameTeamFilter.checked && !el.sameTeamFilter.disabled) {
     filters.push({ key: 'same-team', label: 'Shared team' });
+  }
+  if (el.matchStreamTags.checked) {
+    filters.push({ key: 'my-tags', label: 'Match my tags' });
   }
   for (const tag of getTagsQuery()) {
     filters.push({ key: `tag:${tag}`, label: `#${tag}` });
@@ -642,6 +668,8 @@ function clearFilter(key) {
     renderViewerMatchHint();
   } else if (key === 'same-team') {
     el.sameTeamFilter.checked = false;
+  } else if (key === 'my-tags') {
+    el.matchStreamTags.checked = false;
   } else if (key.startsWith('status:')) {
     const value = key.slice('status:'.length);
     const checkbox = [...el.statusFilters.querySelectorAll('input')]
@@ -678,6 +706,7 @@ el.clearAllFilters.addEventListener('click', () => {
   if (allViewers) allViewers.checked = true;
   el.statusFilters.querySelectorAll('input').forEach((input) => { input.checked = true; });
   el.sameTeamFilter.checked = false;
+  el.matchStreamTags.checked = false;
   el.languageSelect.value = '';
   el.tagsInput.value = '';
   el.genreFilters.querySelectorAll('input').forEach((input) => { input.checked = false; });
@@ -1059,6 +1088,7 @@ async function runSearch() {
       allowedBroadcasterTypes: selectedStatuses,
       requireSharedTeam: wantsSameTeam,
       requiredTags: tags,
+      compareTags: el.matchStreamTags.checked,
     });
     state.resultsPage = 1;
     renderResults();
@@ -1093,11 +1123,22 @@ function scoreLabel(score) {
 
 function matchReasons(match) {
   const reasons = ['Matching category'];
+  if (match.meaningfulSharedTags?.length) {
+    reasons.push(`${match.meaningfulSharedTags.length} shared Twitch tag${match.meaningfulSharedTags.length === 1 ? '' : 's'}`);
+  }
   if (match.viewerCountDiffPercent <= 20) reasons.push('Similar live audience');
   else if (match.viewerCountDiffPercent <= 50) reasons.push('Compatible audience size');
   if (match.averageViewerCountDiffPercent <= 25) reasons.push('Similar average viewers');
   if (match.streamDurationDiffMs <= 90 * 60 * 1000) reasons.push('Similar stream duration');
   return reasons.slice(0, 3);
+}
+
+function sharedTagsHtml(match) {
+  if (!match.sharedTags?.length) return '';
+  return `<div class="shared-tags" aria-label="Shared Twitch tags">
+    <span class="shared-tags__label">Shared tags</span>
+    ${match.sharedTags.map((tag) => `<span class="shared-tag${isLanguageTag(tag) ? ' shared-tag--language' : ''}">${escapeHtml(tag)}</span>`).join('')}
+  </div>`;
 }
 
 function renderResults() {
@@ -1417,6 +1458,7 @@ function resultCardHtml(match, rank) {
       <p class="result-card__title">${escapeHtml(s.title)}</p>
       <p class="result-card__game">${escapeHtml(s.game_name)} · <span class="status-tag status-tag--${s.broadcaster_type ?? 'none'}">${statusLabel}</span>${s.is_followed ? ` · <span class="following-tag">${escapeHtml(followingText)}</span>` : ''}${s.shared_team_names?.length ? ` · <span class="team-tag">${escapeHtml(s.shared_team_names[0])}</span>` : ''}</p>
       ${contentLabelsHtml(s)}
+      ${sharedTagsHtml(match)}
       <div class="match-reasons" aria-label="Why this channel matches">${matchReasons(match).map((reason) => `<span><span aria-hidden="true">✓</span> ${escapeHtml(reason)}</span>`).join('')}</div>
       <div class="stat-row">
         <span class="stat-chip"><span class="stat-chip__mono">${fmtNumber(s.viewer_count)}</span> live</span>

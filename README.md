@@ -18,6 +18,10 @@ logs in with Twitch and finds you a good channel to raid, matched on:
 - **Language** — defaults to English and offers popular language choices;
   selecting one adds it to the existing Twitch-tags filter, while **Any
   language** removes language tags without deleting your other tag choices
+- **Automatic tag matching** — compares the logged-in stream's Twitch tags
+  with every candidate, shows shared tags on result cards, and uses meaningful
+  overlap in the recommendation score; language tags are shown but scored
+  separately so a shared language cannot overpower community/content matches
 - **Average viewership** — see note below on how this is estimated
 - **Stream duration** — how long the candidate has been live, vs. you
 
@@ -140,9 +144,12 @@ an OAuth Redirect URL on your Twitch app (step 1).
   channels below your selected ±50%, ±75%, or ±100% range (up to 1,000
   candidates per category). When **All** is selected, it retrieves up to 500
   per category.
-- Scores each by: viewer-count closeness (50%), estimated-average-viewers
-  closeness (30%), and stream-duration closeness (20%) — see
-  `js/raid-match.js` to tune these weights.
+- With automatic tag matching available, scores each by viewer-count closeness
+  (40%), estimated-average-viewers closeness (25%), stream-duration closeness
+  (20%), and meaningful Twitch-tag similarity (15%). If tag comparison is
+  disabled or the reference stream has only language tags, the original
+  viewer-count (50%), estimated-average (30%), and duration (20%) weights apply.
+  See `js/raid-match.js` to tune these weights.
 - By default, only channels from 50% to 150% of your current live viewer count
   qualify. The wider options expand that band to 25%–175% or 0%–200%.
   **All** removes the hard limit while retaining viewer similarity in ranking.
@@ -169,6 +176,10 @@ an OAuth Redirect URL on your Twitch app (step 1).
   - **Tags** — type any number of comma-separated tags (Twitch's free-text
     stream tags, e.g. "Speedrun", "Cozy", "English"); a candidate matches if
     it has *at least one* of the tags you typed, case-insensitively.
+  - **Match my stream tags** — enabled by default; compares the logged-in
+    stream's current tags to each candidate as a recommendation signal rather
+    than excluding channels. Shared tags appear on each card. Previously
+    observed tags are saved with stream history for offline matching.
   - **Categories** — search box to add other games/categories to the search,
     beyond your own current one. See the IGDB note below for why this uses
     Twitch's own search instead of calling IGDB directly.

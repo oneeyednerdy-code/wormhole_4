@@ -43,6 +43,7 @@ export const PreviousStreamHistory = {
       gameId: stream.game_id,
       gameName: stream.game_name || existing?.gameName || '',
       categorySource: 'observed',
+      tags: Array.isArray(stream.tags) ? stream.tags : existing?.tags ?? [],
       startedAt: stream.started_at || existing?.startedAt || null,
       lastSeenAt: new Date(now).toISOString(),
       manualViewerBaseline: existing?.manualViewerBaseline ?? null,

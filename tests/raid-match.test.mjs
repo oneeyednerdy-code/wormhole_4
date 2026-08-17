@@ -21,12 +21,12 @@ class MemoryStorage {
 
 globalThis.localStorage = new MemoryStorage();
 
-const { findRaidMatches } = await import('../js/raid-match.js');
+const { compareStreamTags, findRaidMatches } = await import('../js/raid-match.js');
 const { ViewerHistory } = await import('../js/viewer-history.js');
 
 const startedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
-function stream(id, viewers) {
+function stream(id, viewers, tags = []) {
   return {
     user_id: id,
     user_name: id,
@@ -34,9 +34,41 @@ function stream(id, viewers) {
     viewer_count: viewers,
     started_at: startedAt,
     broadcaster_type: 'none',
-    tags: [],
+    tags,
   };
 }
+
+test('compares logged-in and candidate tags case-insensitively', () => {
+  const comparison = compareStreamTags(
+    ['English', 'LGBTQIA+', 'Cozy'],
+    ['english', 'lgbtqia+', 'FirstPlaythrough']
+  );
+  assert.deepEqual(comparison.sharedTags, ['English', 'LGBTQIA+']);
+  assert.deepEqual(comparison.meaningfulSharedTags, ['LGBTQIA+']);
+  assert.equal(comparison.similarityPercent, 50);
+});
+
+test('language-only overlap is displayed but does not affect tag similarity', () => {
+  const comparison = compareStreamTags(['English'], ['english', 'Cozy']);
+  assert.deepEqual(comparison.sharedTags, ['English']);
+  assert.deepEqual(comparison.meaningfulSharedTags, []);
+  assert.equal(comparison.similarityPercent, null);
+});
+
+test('meaningful shared tags improve recommendations and can be disabled', () => {
+  localStorage.clear();
+  const mine = stream('mine', 100, ['English', 'LGBTQIA+']);
+  const matching = stream('tag-match', 100, ['english', 'lgbtqia+']);
+  const different = stream('no-tag-match', 100, ['english', 'Speedrun']);
+  const scored = findRaidMatches(mine, [different, matching]);
+  assert.equal(scored[0].stream.user_id, 'tag-match');
+  assert.equal(scored[0].tagComparisonApplied, true);
+  assert.deepEqual(scored[0].meaningfulSharedTags, ['LGBTQIA+']);
+
+  const disabled = findRaidMatches(mine, [different, matching], { compareTags: false });
+  assert.equal(disabled[0].matchScore, disabled[1].matchScore);
+  assert.equal(disabled.every((match) => !match.tagComparisonApplied), true);
+});
 
 test('the default viewer band includes exactly 50% through 150%', () => {
   localStorage.clear();

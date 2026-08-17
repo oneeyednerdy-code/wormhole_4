@@ -1,7 +1,9 @@
 import { ViewerHistory } from './viewer-history.js';
+import { isLanguageTag } from './language-tags.js';
 
-// Weights sum to 1.0 and control how much each factor matters when
-// ranking candidates. Tune these to change matching behavior.
+// Base weights are used when automatic tag comparison is disabled or the
+// logged-in stream has no meaningful non-language tags. When tags are
+// available, 15% shifts to tag similarity while all weights still sum to 1.
 const WEIGHT_VIEWER_COUNT = 0.5;
 const WEIGHT_DURATION = 0.2;
 const WEIGHT_AVERAGE_VIEWERS = 0.3;
@@ -25,10 +27,46 @@ function computeScore({ liveViewerDiffPercent, averageViewerDiffPercent, duratio
 
   const averageScore = Math.max(0, 100 - averageViewerDiffPercent);
 
+  return { viewerScore, durationScore, averageScore };
+}
+
+function normalizeTags(tags) {
+  const byKey = new Map();
+  for (const tag of tags ?? []) {
+    const clean = String(tag ?? '').trim();
+    if (clean && !byKey.has(clean.toLowerCase())) byKey.set(clean.toLowerCase(), clean);
+  }
+  return byKey;
+}
+
+export function compareStreamTags(myTags, candidateTags) {
+  const mine = normalizeTags(myTags);
+  const theirs = normalizeTags(candidateTags);
+  const sharedTags = [...mine].filter(([key]) => theirs.has(key)).map(([, tag]) => tag);
+  const meaningfulMine = [...mine.values()].filter((tag) => !isLanguageTag(tag));
+  const meaningfulSharedTags = sharedTags.filter((tag) => !isLanguageTag(tag));
+  return {
+    sharedTags,
+    meaningfulSharedTags,
+    similarityPercent: meaningfulMine.length
+      ? (meaningfulSharedTags.length / meaningfulMine.length) * 100
+      : null,
+  };
+}
+
+function combinedScore(scores, tagSimilarityPercent) {
+  if (!Number.isFinite(tagSimilarityPercent)) {
+    return (
+      scores.viewerScore * WEIGHT_VIEWER_COUNT +
+      scores.durationScore * WEIGHT_DURATION +
+      scores.averageScore * WEIGHT_AVERAGE_VIEWERS
+    );
+  }
   return (
-    viewerScore * WEIGHT_VIEWER_COUNT +
-    durationScore * WEIGHT_DURATION +
-    averageScore * WEIGHT_AVERAGE_VIEWERS
+    scores.viewerScore * 0.4 +
+    scores.durationScore * 0.2 +
+    scores.averageScore * 0.25 +
+    tagSimilarityPercent * 0.15
   );
 }
 
@@ -98,6 +136,7 @@ export function findRaidMatches(
     allowedBroadcasterTypes = null,
     requireSharedTeam = false,
     requiredTags = null,
+    compareTags = true,
   } = {}
 ) {
   const filtered = applyHardFilters(candidates, {
@@ -145,11 +184,17 @@ export function findRaidMatches(
 
     const durationDiffMs = Math.abs(liveDurationMs(myStream) - liveDurationMs(candidate));
 
-    const matchScore = computeScore({
+    const scoreComponents = computeScore({
       liveViewerDiffPercent,
       averageViewerDiffPercent,
       durationDiffMs,
     });
+    const tagComparison = compareStreamTags(myStream.tags, candidate.tags);
+    const tagComparisonApplied = compareTags && Number.isFinite(tagComparison.similarityPercent);
+    const matchScore = combinedScore(
+      scoreComponents,
+      tagComparisonApplied ? tagComparison.similarityPercent : null
+    );
 
     results.push({
       stream: candidate,
@@ -159,6 +204,10 @@ export function findRaidMatches(
       viewerCountDiffPercent: liveViewerDiffPercent,
       averageViewerCountDiffPercent: averageViewerDiffPercent,
       streamDurationDiffMs: durationDiffMs,
+      sharedTags: tagComparison.sharedTags,
+      meaningfulSharedTags: tagComparison.meaningfulSharedTags,
+      tagSimilarityPercent: tagComparison.similarityPercent,
+      tagComparisonApplied,
     });
   }
 

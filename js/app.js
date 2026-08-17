@@ -269,9 +269,21 @@ function renderStreamPanel() {
         document.getElementById('offline-category-input').focus();
         return;
       }
+      const selectedVod = getSelectedPreviousVod();
+      if (selectedVod?.stream_id) {
+        PreviousStreamHistory.saveReference({
+          streamId: selectedVod.stream_id,
+          userId: state.user.id,
+          title: selectedVod.title,
+          gameId: state.offlineCategorySelection.id,
+          gameName: state.offlineCategorySelection.name,
+          startedAt: selectedVod.created_at,
+          viewerBaseline: viewerCount,
+        });
+      }
       state.myStream = buildPreviousStreamReference(
         viewerCount,
-        getSelectedPreviousVod(),
+        selectedVod,
         state.offlineCategorySelection
       );
       state.usingPreviousStream = true;
@@ -340,26 +352,31 @@ function getSelectedPreviousVod() {
 function getPreviousStreamDefaults(vod) {
   const saved = vod?.stream_id ? PreviousStreamHistory.getByStreamId(vod.stream_id) : null;
   const generalAverage = ViewerHistory.getAverage(state.user.id);
+  const isLatestVod = !vod || vod.id === state.recentVods[0]?.id;
   const category = saved?.gameId
     ? { id: saved.gameId, name: saved.gameName, source: 'saved' }
-    : state.channelInfo?.game_id
+    : isLatestVod && state.channelInfo?.game_id
       ? { id: state.channelInfo.game_id, name: state.channelInfo.game_name, source: 'last-played' }
       : null;
 
   return {
     category,
     categoryHint: saved?.gameId
-      ? 'Category restored from this stream’s locally saved Wormhole data.'
+      ? saved.categorySource === 'observed'
+        ? 'Category restored from this stream’s locally observed Wormhole data.'
+        : 'Category restored from your saved correction for this VOD.'
       : category
         ? 'Twitch does not include a category on each VOD. Confirm or change the last-played category shown above.'
-        : 'Twitch did not provide a category for this VOD. Search and select one above.',
+        : 'Twitch does not provide the category for this older VOD. Search and select its category above.',
     viewerBaseline: saved?.averageViewers != null
       ? Math.round(saved.averageViewers)
       : generalAverage
         ? Math.round(generalAverage.average)
         : '',
     viewerHint: saved?.averageViewers != null
-      ? `Calculated from ${saved.sampleCount} sample${saved.sampleCount === 1 ? '' : 's'} saved for this stream.`
+      ? saved.baselineSource === 'manual'
+        ? 'Using the viewer baseline you previously saved for this VOD.'
+        : `Calculated from ${saved.sampleCount} sample${saved.sampleCount === 1 ? '' : 's'} saved for this stream.`
       : generalAverage
         ? `Using your broader Wormhole average from ${generalAverage.sampleCount} saved sample${generalAverage.sampleCount === 1 ? '' : 's'}; edit it if this stream differed.`
         : 'Twitch does not expose past concurrent viewers, so enter the stream’s average.',

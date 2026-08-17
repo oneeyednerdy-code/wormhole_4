@@ -31,6 +31,11 @@ concurrent live viewers. Offline results are discovery only; selecting **Find
 using selected stream** immediately runs the search, and you must be live
 before Wormhole enables the raid action.
 
+Twitch exposes only the channel's most recently played category, not the
+category attached to every older VOD. Wormhole therefore clears the category
+when an older VOD has no locally saved match, requires you to select the correct
+category, and remembers that correction for the next time you choose that VOD.
+
 Why plain HTML/JS instead of a framework: Twitch's OAuth flow is designed
 around a browser redirect (`response_type=token`), which a static site
 handles natively — no popups, no custom URL schemes, no build tooling.

@@ -42,9 +42,32 @@ export const PreviousStreamHistory = {
       title: stream.title || existing?.title || '',
       gameId: stream.game_id,
       gameName: stream.game_name || existing?.gameName || '',
+      categorySource: 'observed',
       startedAt: stream.started_at || existing?.startedAt || null,
       lastSeenAt: new Date(now).toISOString(),
+      manualViewerBaseline: existing?.manualViewerBaseline ?? null,
       samples,
+    });
+    this._save(streams);
+  },
+
+  saveReference({ streamId, userId, title, gameId, gameName, startedAt, viewerBaseline }) {
+    if (!streamId || !userId || !gameId || !Number.isFinite(viewerBaseline)) return;
+    const streams = this._load();
+    const existingIndex = streams.findIndex((item) => item.streamId === streamId);
+    const existing = existingIndex >= 0 ? streams.splice(existingIndex, 1)[0] : null;
+    streams.unshift({
+      ...existing,
+      streamId,
+      userId,
+      title: title || existing?.title || '',
+      gameId,
+      gameName: gameName || existing?.gameName || '',
+      categorySource: existing?.categorySource === 'observed' ? 'observed' : 'manual',
+      startedAt: startedAt || existing?.startedAt || null,
+      lastSeenAt: new Date().toISOString(),
+      manualViewerBaseline: viewerBaseline,
+      samples: existing?.samples ?? [],
     });
     this._save(streams);
   },
@@ -55,10 +78,17 @@ export const PreviousStreamHistory = {
     const validSamples = (stream.samples ?? []).filter((sample) =>
       Number.isFinite(sample?.viewerCount)
     );
-    const averageViewers = validSamples.length
+    const sampledAverage = validSamples.length
       ? validSamples.reduce((sum, sample) => sum + sample.viewerCount, 0) / validSamples.length
       : null;
-    return { ...stream, averageViewers, sampleCount: validSamples.length };
+    const hasManualBaseline = Number.isFinite(stream.manualViewerBaseline);
+    const averageViewers = hasManualBaseline ? stream.manualViewerBaseline : sampledAverage;
+    return {
+      ...stream,
+      averageViewers,
+      sampleCount: validSamples.length,
+      baselineSource: hasManualBaseline ? 'manual' : sampledAverage != null ? 'observed' : null,
+    };
   },
 
   getRecent(userId) {

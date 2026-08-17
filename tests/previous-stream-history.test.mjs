@@ -63,3 +63,23 @@ test('does not duplicate rapid samples from the same stream', () => {
   assert.equal(saved.sampleCount, 1);
   assert.equal(saved.averageViewers, 10);
 });
+
+test('remembers a corrected category and viewer baseline for a VOD', () => {
+  localStorage.clear();
+  PreviousStreamHistory.saveReference({
+    streamId: 'vod-stream-1',
+    userId: 'creator',
+    title: 'An older stream',
+    gameId: 'correct-game',
+    gameName: 'Correct Game',
+    startedAt: new Date().toISOString(),
+    viewerBaseline: 37,
+  });
+
+  const saved = PreviousStreamHistory.getByStreamId('vod-stream-1');
+  assert.equal(saved.gameId, 'correct-game');
+  assert.equal(saved.gameName, 'Correct Game');
+  assert.equal(saved.categorySource, 'manual');
+  assert.equal(saved.averageViewers, 37);
+  assert.equal(saved.baselineSource, 'manual');
+});

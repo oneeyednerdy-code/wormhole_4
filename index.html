@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
   <title>Wormhole</title>
+  <script src="js/appearance-boot.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
@@ -27,6 +28,7 @@
         viewer count, and how long you've both been live.
       </p>
       <button id="login-btn" class="btn btn--primary btn--block">Log in with Twitch</button>
+      <button class="btn btn--ghost btn--small login-card__theme" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
       <p id="login-error" class="login-card__error" role="alert"></p>
       <details class="login-card__setup">
         <summary>Login setup help</summary>
@@ -49,6 +51,7 @@
           <img id="user-avatar" class="topbar__avatar" alt="" />
           <span id="user-name" class="topbar__name"></span>
         </div>
+        <button id="theme-toggle" class="btn btn--ghost btn--small" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
         <button id="contrast-toggle" class="btn btn--ghost btn--small" type="button" aria-pressed="false">High contrast</button>
         <button id="logout-btn" class="btn btn--ghost btn--small">Log out</button>
       </div>

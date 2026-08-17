@@ -41,7 +41,7 @@ accessible focus states and higher-contrast system support. Match cards explain
 why each channel was recommended and keep deeper VOD, clip, schedule, account,
 and local-history information inside an expandable details area. Searches use
 skeleton cards and provide retry guidance when Twitch cannot return results.
-The filter-collapse and explicit high-contrast controls run in a small,
+The filter-collapse, persistent light/dark theme, and explicit high-contrast controls run in a small,
 independent UI module so they remain available even if Twitch authentication or
 another API feature fails to initialize. Responsive breakpoints cover desktop,
 tablet, and narrow mobile layouts, and a bundled SVG Wormhole mark appears in
@@ -318,6 +318,7 @@ js/
   previous-stream-history.js # Last five locally observed stream sessions
   storage-consent.js  # Optional-history permission and deletion
   storage-consent-ui.js # First-visit panel and privacy controls
+  appearance-boot.js   # Applies saved theme before first paint
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
   app.js              # Wires everything together, renders the UI

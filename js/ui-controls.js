@@ -1,4 +1,21 @@
 export const CONTRAST_PREFERENCE_KEY = 'wormhole_high_contrast';
+export const THEME_PREFERENCE_KEY = 'wormhole_light_mode';
+
+function getThemeButtons(documentRef) {
+  const buttons = documentRef.querySelectorAll?.('[data-theme-toggle]');
+  if (buttons?.length) return [...buttons];
+  const fallback = documentRef.getElementById('theme-toggle');
+  return fallback ? [fallback] : [];
+}
+
+export function applyTheme(documentRef, lightEnabled) {
+  documentRef.documentElement.toggleAttribute('data-light-theme', lightEnabled);
+  documentRef.body?.classList.toggle('light-theme', lightEnabled);
+  for (const button of getThemeButtons(documentRef)) {
+    button.setAttribute('aria-pressed', String(lightEnabled));
+    button.textContent = lightEnabled ? 'Dark mode' : 'Light mode';
+  }
+}
 
 export function applyContrast(documentRef, enabled) {
   const root = documentRef.documentElement;
@@ -27,14 +44,18 @@ export function applyFilterVisibility(documentRef, expanded) {
 export function initializeUiControls(documentRef = document, storage = localStorage) {
   const contrastButton = documentRef.getElementById('contrast-toggle');
   const filtersButton = documentRef.getElementById('filters-toggle');
-  if (!contrastButton || !filtersButton) return false;
+  const themeButtons = getThemeButtons(documentRef);
+  if (!contrastButton || !filtersButton || !themeButtons.length) return false;
 
   let contrastEnabled = false;
+  let lightEnabled = false;
   try {
     contrastEnabled = storage.getItem(CONTRAST_PREFERENCE_KEY) === 'true';
+    lightEnabled = storage.getItem(THEME_PREFERENCE_KEY) === 'true';
   } catch {
     // Storage may be unavailable in privacy modes; the control still works.
   }
+  applyTheme(documentRef, lightEnabled);
   applyContrast(documentRef, contrastEnabled);
   applyFilterVisibility(documentRef, true);
 
@@ -47,6 +68,16 @@ export function initializeUiControls(documentRef = document, storage = localStor
       // Keep the preference for this page load when storage is unavailable.
     }
   });
+
+  themeButtons.forEach((button) => button.addEventListener('click', () => {
+    lightEnabled = !documentRef.documentElement.hasAttribute('data-light-theme');
+    applyTheme(documentRef, lightEnabled);
+    try {
+      storage.setItem(THEME_PREFERENCE_KEY, String(lightEnabled));
+    } catch {
+      // Keep the theme for this page load when storage is unavailable.
+    }
+  }));
 
   filtersButton.addEventListener('click', () => {
     const expanded = filtersButton.getAttribute('aria-expanded') !== 'true';

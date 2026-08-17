@@ -2,8 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   CONTRAST_PREFERENCE_KEY,
+  THEME_PREFERENCE_KEY,
   applyContrast,
   applyFilterVisibility,
+  applyTheme,
   initializeUiControls,
 } from '../js/ui-controls.js';
 
@@ -30,6 +32,8 @@ function element() {
 function fixture() {
   const elements = {
     'contrast-toggle': element(),
+    'theme-toggle': element(),
+    'login-theme-toggle': element(),
     'filters-toggle': element(),
     'filters-panel': element(),
     'filters-content': element(),
@@ -44,6 +48,11 @@ function fixture() {
         hasAttribute(name) { return rootAttributes.has(name); },
       },
       getElementById(id) { return elements[id] ?? null; },
+      querySelectorAll(selector) {
+        return selector === '[data-theme-toggle]'
+          ? [elements['theme-toggle'], elements['login-theme-toggle']]
+          : [];
+      },
     },
   };
 }
@@ -66,9 +75,23 @@ test('high contrast updates the root, body, and button label', () => {
   assert.equal(elements['contrast-toggle'].textContent, 'Standard contrast');
 });
 
+test('light mode updates the page and every theme toggle', () => {
+  const { document, elements } = fixture();
+  applyTheme(document, true);
+  assert.equal(document.documentElement.hasAttribute('data-light-theme'), true);
+  assert.equal(document.body.classList.contains('light-theme'), true);
+  for (const button of [elements['theme-toggle'], elements['login-theme-toggle']]) {
+    assert.equal(button.getAttribute('aria-pressed'), 'true');
+    assert.equal(button.textContent, 'Dark mode');
+  }
+});
+
 test('independent controls initialize and respond to clicks', () => {
   const { document, elements } = fixture();
-  const stored = new Map([[CONTRAST_PREFERENCE_KEY, 'false']]);
+  const stored = new Map([
+    [CONTRAST_PREFERENCE_KEY, 'false'],
+    [THEME_PREFERENCE_KEY, 'false'],
+  ]);
   const storage = { getItem: (key) => stored.get(key), setItem: (key, value) => stored.set(key, value) };
   assert.equal(initializeUiControls(document, storage), true);
   elements['filters-toggle'].click();
@@ -76,4 +99,8 @@ test('independent controls initialize and respond to clicks', () => {
   elements['contrast-toggle'].click();
   assert.equal(document.documentElement.hasAttribute('data-high-contrast'), true);
   assert.equal(stored.get(CONTRAST_PREFERENCE_KEY), 'true');
+  elements['theme-toggle'].click();
+  assert.equal(document.documentElement.hasAttribute('data-light-theme'), true);
+  assert.equal(stored.get(THEME_PREFERENCE_KEY), 'true');
+  assert.equal(elements['login-theme-toggle'].textContent, 'Dark mode');
 });

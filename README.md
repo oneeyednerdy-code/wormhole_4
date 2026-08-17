@@ -82,8 +82,10 @@ handles natively — no popups, no custom URL schemes, no build tooling.
 
    You can register multiple redirect URLs on the same app, so add both your
    local and production URLs.
-4. Client type: **Public** (this uses the OAuth *implicit* grant flow, so no
-   client secret is needed or stored anywhere).
+4. Client type: **Confidential**. Twitch currently limits Public clients to
+   Device Code Flow, so Public will not work with this browser redirect. The
+   implicit flow still uses only the public Client ID: do **not** put the
+   generated client secret in Wormhole or any frontend file.
 5. Save, then copy the **Client ID**.
 
 Open `js/config.js` and paste it in:

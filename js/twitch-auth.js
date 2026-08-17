@@ -4,13 +4,59 @@ const TOKEN_KEY = 'wormhole_access_token';
 const LEGACY_TOKEN_KEY = 'raid_finder_token';
 const OAUTH_STATE_KEY = 'wormhole_oauth_state';
 
+function browserStorage(name) {
+  try {
+    return globalThis[name] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function safelyGet(storage, key) {
+  try {
+    return storage?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function safelySet(storage, key, value) {
+  try {
+    storage?.setItem(key, value);
+    return Boolean(storage);
+  } catch {
+    return false;
+  }
+}
+
+function safelyRemove(storage, key) {
+  try {
+    storage?.removeItem(key);
+  } catch {
+    // A blocked storage area should not prevent login cleanup.
+  }
+}
+
+function readOAuthState() {
+  return safelyGet(browserStorage('sessionStorage'), OAUTH_STATE_KEY)
+    || safelyGet(browserStorage('localStorage'), OAUTH_STATE_KEY);
+}
+
+function clearOAuthState() {
+  safelyRemove(browserStorage('sessionStorage'), OAUTH_STATE_KEY);
+  safelyRemove(browserStorage('localStorage'), OAUTH_STATE_KEY);
+}
+
 function cleanRedirectUrl() {
   window.history.replaceState({}, document.title, TWITCH_CONFIG.redirectUri);
 }
 
 function createOAuthState() {
+  if (!globalThis.crypto?.getRandomValues) {
+    throw new Error('Twitch login requires a secure HTTPS connection or localhost.');
+  }
   const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
+  globalThis.crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
@@ -23,11 +69,14 @@ export const TwitchAuth = {
   /** Sends the browser to Twitch's authorize page. */
   redirectToLogin() {
     const state = createOAuthState();
-    sessionStorage.setItem(OAUTH_STATE_KEY, state);
+    const savedInSession = safelySet(browserStorage('sessionStorage'), OAUTH_STATE_KEY, state);
     // Also persist the short-lived verifier across browsing contexts. Some
     // hosts/browsers return from Twitch in a fresh tab where sessionStorage
     // is empty, while localStorage remains scoped to the same app origin.
-    localStorage.setItem(OAUTH_STATE_KEY, state);
+    const savedLocally = safelySet(browserStorage('localStorage'), OAUTH_STATE_KEY, state);
+    if (!savedInSession && !savedLocally) {
+      throw new Error('Twitch login needs browser storage. Allow site storage for Wormhole and try again.');
+    }
     const url = new URL(TWITCH_CONFIG.authorizeUrl);
     url.searchParams.set('client_id', TWITCH_CONFIG.clientId);
     url.searchParams.set('redirect_uri', TWITCH_CONFIG.redirectUri);
@@ -47,11 +96,9 @@ export const TwitchAuth = {
     const fragment = new URLSearchParams(window.location.hash.slice(1));
     const callback = query.has('error') ? query : fragment;
     if (callback.has('error')) {
-      const expectedState =
-        sessionStorage.getItem(OAUTH_STATE_KEY) || localStorage.getItem(OAUTH_STATE_KEY);
+      const expectedState = readOAuthState();
       const returnedState = callback.get('state');
-      sessionStorage.removeItem(OAUTH_STATE_KEY);
-      localStorage.removeItem(OAUTH_STATE_KEY);
+      clearOAuthState();
       const message = expectedState && returnedState === expectedState
         ? callback.get('error_description') || 'Twitch login was cancelled.'
         : 'Twitch login could not be verified. Please try again.';
@@ -62,29 +109,27 @@ export const TwitchAuth = {
     const token = fragment.get('access_token');
     if (!token) return null;
 
-    const expectedState =
-      sessionStorage.getItem(OAUTH_STATE_KEY) || localStorage.getItem(OAUTH_STATE_KEY);
+    const expectedState = readOAuthState();
     const returnedState = fragment.get('state');
-    sessionStorage.removeItem(OAUTH_STATE_KEY);
-    localStorage.removeItem(OAUTH_STATE_KEY);
+    clearOAuthState();
     if (!expectedState || !returnedState || returnedState !== expectedState) {
       cleanRedirectUrl();
       throw new Error('Twitch login could not be verified. Please try again.');
     }
 
-    sessionStorage.setItem(TOKEN_KEY, token);
+    safelySet(browserStorage('sessionStorage'), TOKEN_KEY, token);
     // Strip the token out of the visible URL/history.
     cleanRedirectUrl();
     return token;
   },
 
   getSavedToken() {
-    const current = sessionStorage.getItem(TOKEN_KEY);
+    const current = safelyGet(browserStorage('sessionStorage'), TOKEN_KEY);
     if (current) return current;
-    const legacy = localStorage.getItem(LEGACY_TOKEN_KEY);
+    const legacy = safelyGet(browserStorage('localStorage'), LEGACY_TOKEN_KEY);
     if (legacy) {
-      sessionStorage.setItem(TOKEN_KEY, legacy);
-      localStorage.removeItem(LEGACY_TOKEN_KEY);
+      safelySet(browserStorage('sessionStorage'), TOKEN_KEY, legacy);
+      safelyRemove(browserStorage('localStorage'), LEGACY_TOKEN_KEY);
     }
     return legacy;
   },
@@ -114,7 +159,8 @@ export const TwitchAuth = {
   },
 
   async logout() {
-    const token = sessionStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+    const token = safelyGet(browserStorage('sessionStorage'), TOKEN_KEY)
+      || safelyGet(browserStorage('localStorage'), LEGACY_TOKEN_KEY);
     if (token) {
       try {
         const url = new URL(TWITCH_CONFIG.revokeUrl);
@@ -125,9 +171,8 @@ export const TwitchAuth = {
         // Best-effort revoke; ignore network errors on logout.
       }
     }
-    sessionStorage.removeItem(TOKEN_KEY);
-    sessionStorage.removeItem(OAUTH_STATE_KEY);
-    localStorage.removeItem(OAUTH_STATE_KEY);
-    localStorage.removeItem(LEGACY_TOKEN_KEY);
+    safelyRemove(browserStorage('sessionStorage'), TOKEN_KEY);
+    clearOAuthState();
+    safelyRemove(browserStorage('localStorage'), LEGACY_TOKEN_KEY);
   },
 };

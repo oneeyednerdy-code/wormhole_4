@@ -162,8 +162,9 @@ el.loginBtn.addEventListener('click', () => {
     TwitchAuth.redirectToLogin();
   } catch (error) {
     console.error(error);
-    el.loginError.textContent =
-      'Could not start Twitch login. Check that browser storage is enabled and try again.';
+    el.loginError.textContent = error instanceof Error
+      ? error.message
+      : 'Could not start Twitch login. Check that browser storage is enabled and try again.';
   }
 });
 
@@ -216,7 +217,13 @@ function startRaidListener() {
 }
 
 async function init() {
-  el.oauthRedirectUri.textContent = TWITCH_CONFIG.redirectUri;
+  try {
+    el.oauthRedirectUri.textContent = TWITCH_CONFIG.redirectUri;
+  } catch (error) {
+    el.loginError.textContent = error instanceof Error ? error.message : 'This address cannot be used for Twitch login.';
+    showView('login');
+    return;
+  }
   let capturedToken;
   try {
     capturedToken = TwitchAuth.captureRedirectToken();

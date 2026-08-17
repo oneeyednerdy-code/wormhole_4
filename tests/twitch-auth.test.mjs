@@ -38,6 +38,13 @@ test('normalizes index.html to a stable OAuth callback directory', () => {
   assert.equal(getOAuthRedirectUri({ origin: 'https://example.com', pathname: '/wormhole/index.html' }), 'https://example.com/wormhole/');
 });
 
+test('rejects direct file access with a useful hosting message', () => {
+  assert.throws(
+    () => getOAuthRedirectUri({ origin: 'null', pathname: '/index.html' }),
+    /served from HTTPS or localhost/
+  );
+});
+
 test('login creates a valid Twitch authorization URL and durable verifier', () => {
   sessionStorage.removeItem('wormhole_oauth_state');
   localStorage.removeItem('wormhole_oauth_state');
@@ -60,6 +67,19 @@ test('OAuth state survives a return in a fresh browsing context', () => {
   assert.equal(TwitchAuth.captureRedirectToken(), 'test-token');
   assert.equal(sessionStorage.getItem('wormhole_access_token'), 'test-token');
   assert.equal(localStorage.getItem('wormhole_oauth_state'), null);
+});
+
+test('login can continue when localStorage is blocked but sessionStorage works', () => {
+  const workingLocalStorage = globalThis.localStorage;
+  globalThis.localStorage = {
+    getItem() { throw new Error('blocked'); },
+    setItem() { throw new Error('blocked'); },
+    removeItem() { throw new Error('blocked'); },
+  };
+  sessionStorage.removeItem('wormhole_oauth_state');
+  assert.doesNotThrow(() => TwitchAuth.redirectToLogin());
+  assert.ok(sessionStorage.getItem('wormhole_oauth_state'));
+  globalThis.localStorage = workingLocalStorage;
 });
 
 test('OAuth callbacks with the wrong state remain rejected', () => {

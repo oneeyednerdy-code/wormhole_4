@@ -7,6 +7,9 @@
 //   is the right choice for a client-only static site: no server, no client
 //   secret to protect.
 export function getOAuthRedirectUri(location = window.location) {
+  if (!location?.origin || location.origin === 'null' || !/^https?:\/\//i.test(location.origin)) {
+    throw new Error('Twitch login requires Wormhole to be served from HTTPS or localhost; it cannot run from a file opened directly on your computer.');
+  }
   const path = location.pathname || '/';
   const directoryPath = path.endsWith('/')
     ? path

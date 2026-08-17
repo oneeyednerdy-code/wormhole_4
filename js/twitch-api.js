@@ -236,36 +236,6 @@ export class TwitchApi {
   }
 
   /**
-   * Looks up current live-stream data for a specific set of user IDs
-   * (e.g. "are any of the people who've raided me currently live?").
-   * Unlike /teams/channel, /streams *does* support querying by many IDs
-   * at once — up to 100 user_id params per request — so this batches
-   * rather than firing one request per user.
-   */
-  async getStreamsByUserIds(userIds) {
-    const streams = [];
-    const uniqueIds = [...new Set(userIds)];
-
-    for (let i = 0; i < uniqueIds.length; i += 100) {
-      const batch = uniqueIds.slice(i, i + 100);
-      const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/streams');
-      batch.forEach((id) => url.searchParams.append('user_id', id));
-      url.searchParams.set('first', '100');
-      const res = await fetch(url, { headers: this.headers });
-      if (!res.ok) {
-        throw new TwitchApiError(
-          `GET /streams failed (${res.status}): ${await res.text()}`,
-          res.status
-        );
-      }
-      const json = await res.json();
-      streams.push(...(json.data ?? []));
-    }
-
-    return streams;
-  }
-
-  /**
    * Creates an EventSub subscription over an already-open WebSocket
    * session (see raid-listener.js). channel.raid needs no special scope
    * beyond a valid user token when using the WebSocket transport.

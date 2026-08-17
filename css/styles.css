@@ -1151,29 +1151,3 @@ input:focus-visible {
 .site-footer__credit a:hover {
   text-decoration: underline;
 }
-
-/* ---------- Live status indicator (raid listener) ---------- */
-
-.raid-listener-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.7rem;
-  color: var(--text-dim);
-}
-
-.raid-listener-status__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #666876;
-}
-
-.raid-listener-status--connected .raid-listener-status__dot {
-  background: var(--green);
-  box-shadow: 0 0 6px 1px rgba(53, 208, 127, 0.6);
-}
-
-.raid-listener-status--error .raid-listener-status__dot {
-  background: var(--danger);
-}

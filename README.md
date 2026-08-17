@@ -11,7 +11,6 @@ logs in with Twitch and finds you a good channel to raid, matched on:
   always-included non-affiliate pool
 - **Team** — optionally only show channels sharing one of your Twitch Teams
 - **Following** — optionally include live channels you follow, any category
-- **Reciprocity** — optionally include channels that have recently raided you
 - **Tags** — optionally require candidates to have at least one of the tags
   you type in (e.g. "speedrun", "cozy", "english")
 - **Average viewership** — see note below on how this is estimated
@@ -27,7 +26,8 @@ newest published past-broadcast title/date/duration. Wormhole uses its locally
 sampled viewer average when available, or asks you to enter the previous
 average. Twitch's VOD `view_count` is deliberately not used because it counts
 total VOD plays, not concurrent live viewers. Offline results are discovery
-only; you must be live before Wormhole enables the raid action.
+only; selecting **Find using previous stream** immediately runs the search, and
+you must be live before Wormhole enables the raid action.
 
 Why plain HTML/JS instead of a framework: Twitch's OAuth flow is designed
 around a browser redirect (`response_type=token`), which a static site
@@ -139,10 +139,6 @@ an OAuth Redirect URL on your Twitch app (step 1).
     this feature was added, your saved token won't have that scope yet —
     log out and back in to re-grant it (the app will show a toast telling
     you this if the underlying request fails for that reason).
-  - **Reciprocity ("Recently raided into you")** — adds channels that have
-    raided you back into the pool. See the note below on why this only
-    reflects raids that happened while the app was open — there's no way
-    to backfill it from before that.
   - **Tags** — type any number of comma-separated tags (Twitch's free-text
     stream tags, e.g. "Speedrun", "Cozy", "English"); a candidate matches if
     it has *at least one* of the tags you typed, case-insensitively.
@@ -218,13 +214,14 @@ js/
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   viewer-history.js   # Local rolling viewer-count history
-  raid-history.js     # Locally recorded incoming raids
-  raid-listener.js    # Resilient EventSub WebSocket listener
+  raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
   app.js              # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
+  twitch-auth.test.mjs # Twitch login security and redirect tests
 ```
 
-No dependencies, no `package.json`, no build step — the only external
-resources loaded are Google Fonts (Space Grotesk, Inter, IBM Plex Mono).
+There are no runtime dependencies and no build step. `package.json` only
+provides the local test command. The only external page resources are Google
+Fonts (Space Grotesk, Inter, IBM Plex Mono).

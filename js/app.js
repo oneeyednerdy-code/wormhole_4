@@ -2,7 +2,6 @@ import { TWITCH_CONFIG } from './config.js';
 import { TwitchAuth } from './twitch-auth.js';
 import { TwitchApi } from './twitch-api.js';
 import { applyHardFilters, findRaidMatches } from './raid-match.js';
-import { RaidHistory } from './raid-history.js';
 import { RaidListener } from './raid-listener.js';
 import { ViewerHistory } from './viewer-history.js';
 
@@ -18,7 +17,6 @@ const state = {
   extraCategories: [], // additional {id, name} categories to include, beyond myStream's own game
   expandedWatchId: null, // user_id of the result card currently showing a live embed, if any
   raidListener: null,
-  raidListenerStatus: 'disconnected',
 };
 
 const el = {
@@ -38,8 +36,6 @@ const el = {
   teamHint: document.getElementById('team-hint'),
   followingFilter: document.getElementById('following-filter'),
   followingHint: document.getElementById('following-hint'),
-  recentRaidersFilter: document.getElementById('recent-raiders-filter'),
-  recentRaidersHint: document.getElementById('recent-raiders-hint'),
   tagsInput: document.getElementById('tags-input'),
   categorySearchInput: document.getElementById('category-search-input'),
   categorySuggestions: document.getElementById('category-suggestions'),
@@ -132,7 +128,6 @@ async function loadCurrentUser() {
   renderViewerMatchHint();
   renderTeamHint();
   renderFollowingHint();
-  renderRecentRaidersHint();
   startRaidListener();
   showView('app');
 }
@@ -140,22 +135,21 @@ async function loadCurrentUser() {
 function startRaidListener() {
   state.raidListener?.stop();
   state.raidListener = new RaidListener(state.api, state.user.id, {
-    onRaid: (event) => {
-      showToast(`${event.from_broadcaster_user_name} just raided you with ${event.viewers} viewers!`);
-      renderRecentRaidersHint();
-    },
     onRaidSent: (event) => {
       showToast(`Raid completed to ${event.to_broadcaster_user_name}!`);
-    },
-    onStatusChange: (status) => {
-      state.raidListenerStatus = status;
-      renderRecentRaidersHint();
     },
   });
   state.raidListener.start();
 }
 
 async function init() {
+  // Remove data left by the retired "Recently raided" feature.
+  try {
+    localStorage.removeItem('wormhole_raid_history_v1');
+  } catch {
+    // Storage may be unavailable in hardened/private browser contexts.
+  }
+
   let capturedToken;
   try {
     capturedToken = TwitchAuth.captureRedirectToken();
@@ -261,6 +255,7 @@ function renderStreamPanel() {
       state.usingPreviousStream = true;
       renderStreamPanel();
       showToast('Using your previous stream as the match baseline.');
+      runSearch();
     });
     el.findBtn.disabled = true;
     renderViewerMatchHint();
@@ -346,31 +341,6 @@ function renderFollowingHint() {
     'Adds live channels you follow into the search, regardless of category.';
 }
 
-const RAID_LISTENER_STATUS_TEXT = {
-  disconnected: 'not connected',
-  connecting: 'connecting…',
-  connected: 'listening live',
-  error: 'connection issue',
-};
-
-function renderRecentRaidersHint() {
-  const count = RaidHistory.uniqueBroadcasterIds(state.user?.id).length;
-  const statusClass = `raid-listener-status--${state.raidListenerStatus}`;
-  const statusText = RAID_LISTENER_STATUS_TEXT[state.raidListenerStatus] ?? state.raidListenerStatus;
-  const statusBadge = `<span class="raid-listener-status ${statusClass}"><span class="raid-listener-status__dot"></span>${statusText}</span>`;
-
-  if (count === 0) {
-    el.recentRaidersHint.innerHTML =
-      `No raids recorded yet — Wormhole can only see raids that happen while it's open (Twitch has no history API for this), so this fills in as you keep it open during and after your streams. ${statusBadge}`;
-    el.recentRaidersFilter.disabled = true;
-    el.recentRaidersFilter.checked = false;
-  } else {
-    el.recentRaidersHint.innerHTML =
-      `${count} recent raider${count === 1 ? '' : 's'} recorded. ${statusBadge}`;
-    el.recentRaidersFilter.disabled = false;
-  }
-}
-
 // ---- Raid match search -------------------------------------------------
 
 el.findBtn.addEventListener('click', () => runSearch());
@@ -388,7 +358,6 @@ el.showAllViewersFilter.addEventListener('change', () => {
 el.statusFilters.addEventListener('change', rerunIfResultsVisible);
 el.sameTeamFilter.addEventListener('change', rerunIfResultsVisible);
 el.followingFilter.addEventListener('change', rerunIfResultsVisible);
-el.recentRaidersFilter.addEventListener('change', rerunIfResultsVisible);
 el.tagsInput.addEventListener('change', rerunIfResultsVisible);
 
 // Partner/Affiliate are additive toggles on top of the always-included
@@ -536,7 +505,6 @@ async function runSearch() {
   const selectedStatuses = getSelectedStatuses();
   const wantsSameTeam = el.sameTeamFilter.checked && !el.sameTeamFilter.disabled;
   const wantsFollowing = el.followingFilter.checked;
-  const wantsRecentRaiders = el.recentRaidersFilter.checked && !el.recentRaidersFilter.disabled;
   const showAllViewerCounts = el.showAllViewersFilter.checked;
   const tags = getTagsQuery();
 
@@ -585,15 +553,6 @@ async function runSearch() {
           'Could not load followed channels — you may need to log out and back in to grant the new permission.',
           true
         );
-      }
-    }
-
-    if (wantsRecentRaiders) {
-      const raiderIds = RaidHistory.uniqueBroadcasterIds(state.user.id);
-      if (raiderIds.length) {
-        el.resultsStatus.textContent = 'Checking who raided you…';
-        const raiderStreams = await state.api.getStreamsByUserIds(raiderIds);
-        addCandidates(raiderStreams);
       }
     }
 

@@ -1,15 +1,12 @@
-import { RaidHistory } from './raid-history.js';
-
 const EVENTSUB_WS_URL = 'wss://eventsub.wss.twitch.tv/ws';
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const SEEN_MESSAGE_LIMIT = 200;
 
-/** Maintains incoming and outgoing channel.raid EventSub subscriptions. */
+/** Maintains an outgoing channel.raid subscription to confirm completed raids. */
 export class RaidListener {
-  constructor(api, broadcasterId, { onRaid, onRaidSent, onStatusChange } = {}) {
+  constructor(api, broadcasterId, { onRaidSent, onStatusChange } = {}) {
     this.api = api;
     this.broadcasterId = broadcasterId;
-    this.onRaid = onRaid ?? (() => {});
     this.onRaidSent = onRaidSent ?? (() => {});
     this.onStatusChange = onStatusChange ?? (() => {});
     this.socket = null;
@@ -116,20 +113,12 @@ export class RaidListener {
       try {
         if (!isTwitchReconnect) {
           const sessionId = message.payload.session.id;
-          await Promise.all([
-            this.api.createEventSubWebSocketSubscription(
-              'channel.raid',
-              '1',
-              { to_broadcaster_user_id: this.broadcasterId },
-              sessionId
-            ),
-            this.api.createEventSubWebSocketSubscription(
-              'channel.raid',
-              '1',
-              { from_broadcaster_user_id: this.broadcasterId },
-              sessionId
-            ),
-          ]);
+          await this.api.createEventSubWebSocketSubscription(
+            'channel.raid',
+            '1',
+            { from_broadcaster_user_id: this.broadcasterId },
+            sessionId
+          );
         }
         this._setStatus('connected');
         if (oldSocket) {
@@ -164,17 +153,6 @@ export class RaidListener {
     }
 
     const event = message.payload.event;
-    if (event.to_broadcaster_user_id === this.broadcasterId) {
-      RaidHistory.record({
-        broadcasterId: event.from_broadcaster_user_id,
-        login: event.from_broadcaster_user_login,
-        displayName: event.from_broadcaster_user_name,
-        viewerCount: event.viewers,
-        raidedAt: new Date().toISOString(),
-        toBroadcasterId: event.to_broadcaster_user_id,
-      });
-      this.onRaid(event);
-    }
     if (event.from_broadcaster_user_id === this.broadcasterId) this.onRaidSent(event);
   }
 }

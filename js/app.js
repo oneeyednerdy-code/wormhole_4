@@ -20,6 +20,7 @@ import {
   getGenreLabelsForGame,
 } from './genre-presets.js';
 import { applyLanguageTag, isLanguageTag } from './language-tags.js';
+import { prepareTagDisplay } from './tag-display.js';
 
 const state = {
   api: null,
@@ -1189,11 +1190,14 @@ function matchReasons(match) {
   return reasons.slice(0, 3);
 }
 
-function sharedTagsHtml(match) {
-  if (!match.sharedTags?.length) return '';
-  return `<div class="shared-tags" aria-label="Shared Twitch tags">
-    <span class="shared-tags__label">Shared tags</span>
-    ${match.sharedTags.map((tag) => `<span class="shared-tag${isLanguageTag(tag) ? ' shared-tag--language' : ''}">${escapeHtml(tag)}</span>`).join('')}
+function streamTagsHtml(match) {
+  const tags = prepareTagDisplay(match.stream.tags, match.sharedTags);
+  if (!tags.length) {
+    return '<div class="stream-tags" aria-label="Channel tags"><span class="stream-tags__label">Tags</span><span class="stream-tags__empty">None listed</span></div>';
+  }
+  return `<div class="stream-tags" aria-label="Channel tags; checkmarks indicate tags shared with your stream">
+    <span class="stream-tags__label">Tags</span>
+    ${tags.map((tag) => `<span class="stream-tag${tag.language ? ' stream-tag--language' : ''}${tag.shared ? ' stream-tag--shared' : ''}"${tag.shared ? ` aria-label="${escapeHtml(tag.label)}, shared with your stream" title="Shared with your stream"` : ''}>${tag.shared ? '<span aria-hidden="true">✓</span> ' : ''}${escapeHtml(tag.label)}</span>`).join('')}
   </div>`;
 }
 
@@ -1514,7 +1518,7 @@ function resultCardHtml(match, rank) {
       <p class="result-card__title">${escapeHtml(s.title)}</p>
       <p class="result-card__game">${escapeHtml(s.game_name)} · <span class="status-tag status-tag--${s.broadcaster_type ?? 'none'}">${statusLabel}</span>${s.is_followed ? ` · <span class="following-tag">${escapeHtml(followingText)}</span>` : ''}${s.shared_team_names?.length ? ` · <span class="team-tag">${escapeHtml(s.shared_team_names[0])}</span>` : ''}</p>
       ${contentLabelsHtml(s)}
-      ${sharedTagsHtml(match)}
+      ${streamTagsHtml(match)}
       <div class="match-reasons" aria-label="Why this channel matches">${matchReasons(match).map((reason) => `<span><span aria-hidden="true">✓</span> ${escapeHtml(reason)}</span>`).join('')}</div>
       <div class="stat-row">
         <span class="stat-chip"><span class="stat-chip__mono">${fmtNumber(s.viewer_count)}</span> live</span>

@@ -1525,7 +1525,7 @@ body.light-theme .btn--primary:hover:not(:disabled) {
   font-weight: 700;
 }
 
-.shared-tags {
+.stream-tags {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -1533,25 +1533,32 @@ body.light-theme .btn--primary:hover:not(:disabled) {
   margin: -3px 0 10px;
 }
 
-.shared-tags__label {
+.stream-tags__label,
+.stream-tags__empty {
   color: var(--text-dim);
   font-size: 0.7rem;
 }
 
-.shared-tag {
+.stream-tag {
   padding: 3px 7px;
-  border: 1px solid rgba(139, 92, 246, 0.42);
+  border: 1px solid var(--panel-line);
   border-radius: 999px;
-  color: var(--violet-bright);
-  background: rgba(139, 92, 246, 0.1);
+  color: var(--text-dim);
+  background: var(--panel-raised);
   font-size: 0.67rem;
   font-weight: 700;
 }
 
-.shared-tag--language {
+.stream-tag--language {
   border-color: var(--panel-line);
   color: var(--text-dim);
   background: rgba(255, 255, 255, 0.025);
+}
+
+.stream-tag--shared {
+  border-color: rgba(139, 92, 246, 0.65);
+  color: var(--violet-bright);
+  background: rgba(139, 92, 246, 0.14);
 }
 
 .result-card__actions {

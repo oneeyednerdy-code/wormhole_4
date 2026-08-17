@@ -159,6 +159,8 @@ an OAuth Redirect URL on your Twitch app (step 1).
   disabled or the reference stream has only language tags, the original
   viewer-count (50%), estimated-average (30%), and duration (20%) weights apply.
   See `js/raid-match.js` to tune these weights.
+- Every match card shows the channel's Twitch tags. Tags shared with the
+  selected live or previous stream are marked with a check and highlighted.
 - By default, only channels from 50% to 150% of your current live viewer count
   qualify. The wider options expand that band to 25%–175% or 0%–200%.
   **All** removes the hard limit while retaining viewer similarity in ranking.

@@ -47,6 +47,69 @@ handles natively — no popups, no custom URL schemes, no build tooling.
 
 ---
 
+## 1. Register a Twitch application
+
+1. Go to https://dev.twitch.tv/console/apps → **Register Your Application**.
+2. Name it anything (e.g. "Wormhole").
+3. **OAuth Redirect URLs**: add the exact URL you'll serve this site from —
+   for example:
+   - `http://localhost:8000/` for local testing
+   - `https://yourname.github.io/wormhole/` for GitHub Pages
+   - `https://wormhole.netlify.app/` for Netlify
+
+   You can register multiple redirect URLs on the same app, so add both your
+   local and production URLs.
+4. Client type: **Public** (this uses the OAuth *implicit* grant flow, so no
+   client secret is needed or stored anywhere).
+5. Save, then copy the **Client ID**.
+
+Open `js/config.js` and paste it in:
+
+```js
+clientId: 'YOUR_TWITCH_CLIENT_ID',
+```
+
+The redirect URI itself doesn't need editing — it's computed automatically
+from wherever the page is being served (`window.location.origin +
+window.location.pathname`), as long as it matches something you registered
+in step 3.
+
+---
+
+## 2. Run it locally
+
+Because this uses ES modules (`<script type="module">`), it needs to be
+served over `http://`, not opened directly as a `file://` path (browsers
+block module imports from the filesystem). Any static server works:
+
+```bash
+cd wormhole
+python3 -m http.server 8000
+# then open http://localhost:8000/
+```
+
+or `npx serve .`, or the VS Code "Live Server" extension — anything that
+serves static files.
+
+---
+
+## 3. Deploy it
+
+Any static host works, since there's no server-side code:
+
+- **GitHub Pages**: push this folder to a repo, enable Pages on it.
+- **Netlify / Vercel**: drag-and-drop the folder, or connect the repo.
+- **Any web host**: it's just static files — upload as-is.
+
+Whatever URL it ends up live at, make sure that exact URL is registered as
+an OAuth Redirect URL on your Twitch app (step 1).
+
+---
+
+> **Note:** "Helix" is the name Twitch itself gives its public API (it's
+> baked into the real endpoint, `api.twitch.tv/helix`) — it isn't part of
+> this app's branding and can't be renamed without breaking every request.
+> Everywhere else in this project, "Wormhole" is the product name.
 
 ## How matching works
 

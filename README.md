@@ -147,12 +147,24 @@ an OAuth Redirect URL on your Twitch app (step 1).
     beyond your own current one. See the IGDB note below for why this uses
     Twitch's own search instead of calling IGDB directly.
 - Each result card marks channels you already follow with a **Following**
-  badge. This annotation uses Twitch's `/channels/followed` endpoint and the
-  `user:read:follows` scope; it does not add channels or filter results. If
-  you logged in before that permission was added, log out and back in once.
+  badge and, when available, the month and year you followed them. This uses
+  Twitch's `/channels/followed` endpoint and the `user:read:follows` scope; it
+  does not add channels or filter results. If you logged in before that
+  permission was added, log out and back in once.
 - Each visible result card loads the channel's public follower total from
   Twitch's `/channels/followers` endpoint. Totals are cached while the app is
   open, and only the current results page is loaded to limit API requests.
+- Result cards show Twitch's mature flag and content-classification labels so
+  creators can spot potential community-safety mismatches before raiding.
+- **Recent activity** loads on demand for one result at a time and includes:
+  the latest three public VODs, total broadcasts found in the last 30 days,
+  popular clips with in-card previews, account creation date, and the next
+  published schedule segment. VOD views are labelled clearly as replay views,
+  not historical concurrent viewers.
+- Wormhole stores a small local snapshot when a result is viewed. Returning to
+  the same channel later can show observed category history and follower-count
+  change. Twitch does not provide those time series, so this history begins on
+  the device and browser where Wormhole is used and is capped to 300 channels.
 - Each result card shows a click-to-play live preview using Twitch's own
   embedded player (`player.twitch.tv`). A dedicated **Preview stream** button
   appears beside the raid button, so you can actually watch a few

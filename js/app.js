@@ -6,6 +6,7 @@ import { RaidListener } from './raid-listener.js';
 import { ViewerHistory } from './viewer-history.js';
 import { PreviousStreamHistory } from './previous-stream-history.js';
 import { paginate } from './pagination.js';
+import { ChannelHistory } from './channel-history.js';
 
 const state = {
   api: null,
@@ -20,6 +21,7 @@ const state = {
   matches: [],
   extraCategories: [], // additional {id, name} categories to include, beyond myStream's own game
   expandedWatchId: null, // user_id of the result card currently showing a live embed, if any
+  expandedActivityId: null,
   raidListener: null,
   followStatusWarningShown: false,
   resultsPage: 1,
@@ -66,6 +68,15 @@ const STATUS_LABELS = {
   none: 'Non-affiliate',
 };
 
+const CONTENT_LABELS = {
+  DrugsIntoxication: 'Drugs / intoxication',
+  Gambling: 'Gambling',
+  MatureGame: 'Mature-rated game',
+  ProfanityVulgarity: 'Profanity',
+  SexualThemes: 'Sexual themes',
+  ViolentGraphic: 'Graphic violence',
+};
+
 function fmtNumber(n) {
   return new Intl.NumberFormat().format(Math.round(n));
 }
@@ -75,6 +86,13 @@ function fmtDuration(ms) {
   const h = Math.floor(totalMinutes / 60);
   const m = totalMinutes % 60;
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+function fmtDate(value, options = { dateStyle: 'medium' }) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? 'Unknown'
+    : new Intl.DateTimeFormat(undefined, options).format(date);
 }
 
 function showToast(message, isError = false) {
@@ -700,7 +718,10 @@ async function runSearch() {
     try {
       const followedIds = await state.api.getFollowedBroadcasterIds(state.user.id);
       if (generation !== searchGeneration) return;
-      for (const s of candidates) s.is_followed = followedIds.has(s.user_id);
+      for (const s of candidates) {
+        s.is_followed = followedIds.has(s.user_id);
+        s.followed_at = s.is_followed ? state.api.getFollowedAt(s.user_id) : null;
+      }
     } catch (e) {
       console.error(e);
       for (const s of candidates) s.is_followed = false;
@@ -815,6 +836,19 @@ function renderResults() {
       renderResults();
     });
   });
+
+  el.resultsList.querySelectorAll('[data-activity-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.activityId;
+      state.expandedActivityId = state.expandedActivityId === id ? null : id;
+      renderResults();
+    });
+  });
+
+  const expandedMatch = page.items.find(
+    (match) => match.stream.user_id === state.expandedActivityId
+  );
+  if (expandedMatch) loadRecentActivity(expandedMatch.stream, renderGeneration);
 }
 
 async function loadFollowerCountsForVisiblePage(matches, renderGeneration) {
@@ -829,18 +863,24 @@ async function loadFollowerCountsForVisiblePage(matches, renderGeneration) {
       ? `${fmtNumber(count)} followers`
       : 'Followers unavailable';
   });
+
+  for (const match of matches) {
+    ChannelHistory.record(match.stream, counts.get(match.stream.user_id));
+  }
 }
 
 el.resultsPageSize.addEventListener('change', () => {
   state.resultsPageSize = Number(el.resultsPageSize.value);
   state.resultsPage = 1;
   state.expandedWatchId = null;
+  state.expandedActivityId = null;
   renderResults();
 });
 
 el.resultsPrevPage.addEventListener('click', () => {
   state.resultsPage -= 1;
   state.expandedWatchId = null;
+  state.expandedActivityId = null;
   renderResults();
   el.resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
@@ -848,9 +888,113 @@ el.resultsPrevPage.addEventListener('click', () => {
 el.resultsNextPage.addEventListener('click', () => {
   state.resultsPage += 1;
   state.expandedWatchId = null;
+  state.expandedActivityId = null;
   renderResults();
   el.resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
+
+async function loadRecentActivity(stream, renderGeneration) {
+  const panel = el.resultsList.querySelector(
+    `[data-activity-panel="${stream.user_id}"]`
+  );
+  if (!panel) return;
+
+  const [videosResult, clipsResult, scheduleResult, profileResult] = await Promise.allSettled([
+    state.api.getBroadcastHistory(stream.user_id, { days: 30, maxResults: 100 }),
+    state.api.getRecentClips(stream.user_id, { days: 30, maxResults: 3 }),
+    state.api.getNextScheduledStream(stream.user_id),
+    state.api.getBroadcasterProfile(stream.user_id),
+  ]);
+  if (
+    renderGeneration !== resultsRenderGeneration ||
+    state.expandedActivityId !== stream.user_id
+  ) return;
+
+  const videos = videosResult.status === 'fulfilled' ? videosResult.value : [];
+  const clips = clipsResult.status === 'fulfilled' ? clipsResult.value : [];
+  const schedule = scheduleResult.status === 'fulfilled' ? scheduleResult.value : null;
+  const profile = profileResult.status === 'fulfilled' ? profileResult.value : null;
+  const history = ChannelHistory.getSummary(stream.user_id);
+
+  panel.innerHTML = recentActivityHtml({ stream, videos, clips, schedule, profile, history });
+  panel.querySelectorAll('[data-clip-id]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const clipId = button.dataset.clipId;
+      const player = panel.querySelector(`[data-clip-player="${clipId}"]`);
+      if (!player) return;
+      const src = `https://clips.twitch.tv/embed?clip=${encodeURIComponent(
+        clipId
+      )}&parent=${encodeURIComponent(window.location.hostname)}&autoplay=false&muted=true`;
+      player.innerHTML = `
+        <iframe
+          src="${src}"
+          allowfullscreen
+          scrolling="no"
+          frameborder="0"
+          title="Clip preview"
+        ></iframe>`;
+      button.disabled = true;
+      button.textContent = 'Clip loaded';
+    });
+  });
+}
+
+function recentActivityHtml({ stream, videos, clips, schedule, profile, history }) {
+  const recentVods = videos.slice(0, 3);
+  const accountAge = profile?.created_at ? fmtDate(profile.created_at) : 'Unavailable';
+  const nextStream = schedule?.start_time
+    ? `${fmtDate(schedule.start_time, { dateStyle: 'medium', timeStyle: 'short' })}${schedule.title ? ` — ${escapeHtml(schedule.title)}` : ''}`
+    : 'No upcoming stream published';
+  const categories = history?.categories?.slice(0, 4) ?? [];
+  const followerGrowth = history?.sampleCount > 1 && Number.isFinite(history.followerDelta)
+    ? `${history.followerDelta >= 0 ? '+' : ''}${fmtNumber(history.followerDelta)} since ${fmtDate(history.followerStartAt)}`
+    : 'Collecting snapshots for future comparisons';
+
+  const vodsHtml = recentVods.length
+    ? `<ul class="activity-list">${recentVods.map((video) => `
+        <li>
+          <a href="${escapeHtml(video.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(video.title || 'Untitled broadcast')}</a>
+          <span>${fmtDate(video.created_at)} · ${escapeHtml(video.duration || 'duration unknown')} · ${fmtNumber(video.view_count || 0)} VOD views</span>
+        </li>`).join('')}</ul>`
+    : '<p class="activity-empty">No public past broadcasts found in the last 30 days.</p>';
+
+  const clipsHtml = clips.length
+    ? `<div class="clip-grid">${clips.map((clip) => `
+        <article class="clip-card">
+          <img src="${escapeHtml(clip.thumbnail_url || '')}" alt="" loading="lazy" />
+          <p>${escapeHtml(clip.title || 'Untitled clip')}</p>
+          <span>${fmtNumber(clip.view_count || 0)} views · ${fmtDate(clip.created_at)}</span>
+          <button class="btn btn--ghost" type="button" data-clip-id="${escapeHtml(clip.id)}">Preview clip</button>
+          <a href="${escapeHtml(clip.url)}" target="_blank" rel="noopener noreferrer">Open clip ↗</a>
+          <div class="clip-player" data-clip-player="${escapeHtml(clip.id)}"></div>
+        </article>`).join('')}</div>`
+    : '<p class="activity-empty">No clips found from the last 30 days.</p>';
+
+  return `
+    <div class="activity-overview">
+      <div><strong>${videos.length}</strong><span>streams in 30 days</span></div>
+      <div><strong>${escapeHtml(accountAge)}</strong><span>account created</span></div>
+      <div><strong>${escapeHtml(followerGrowth)}</strong><span>local follower growth</span></div>
+    </div>
+    <p class="activity-schedule"><strong>Next scheduled:</strong> ${nextStream}</p>
+    <p class="activity-history"><strong>Observed categories:</strong> ${categories.length ? categories.map(escapeHtml).join(', ') : `First snapshot recorded for ${escapeHtml(stream.game_name)}`}</p>
+    <h4>Recent broadcasts</h4>
+    ${vodsHtml}
+    <h4>Popular clips from the last 30 days</h4>
+    ${clipsHtml}
+    <p class="activity-note">VOD views are total replay views, not average live viewers. Local history improves as Wormhole sees this channel again.</p>`;
+}
+
+function contentLabelsHtml(stream) {
+  const labels = (stream.content_classification_labels ?? [])
+    .map((label) => CONTENT_LABELS[label] ?? label)
+    .filter(Boolean);
+  if (stream.is_mature && !labels.includes('Mature')) labels.unshift('Mature');
+  if (!labels.length) return '';
+  return `<div class="content-labels" aria-label="Content warnings">${labels
+    .map((label) => `<span class="content-label">${escapeHtml(label)}</span>`)
+    .join('')}</div>`;
+}
 
 function watchMediaHtml(stream) {
   const isPlaying = state.expandedWatchId === stream.user_id;
@@ -897,6 +1041,11 @@ function resultCardHtml(match, rank) {
   const previewButton = state.expandedWatchId === s.user_id
     ? `<button class="btn btn--ghost" type="button" data-watch-id="${escapeHtml(s.user_id)}">Close preview</button>`
     : `<button class="btn btn--ghost" type="button" data-watch-id="${escapeHtml(s.user_id)}">Preview stream</button>`;
+  const activityExpanded = state.expandedActivityId === s.user_id;
+  const activityButton = `<button class="btn btn--ghost result-card__activity-button" type="button" data-activity-id="${escapeHtml(s.user_id)}" aria-expanded="${activityExpanded}">${activityExpanded ? 'Close recent activity' : 'Recent activity'}</button>`;
+  const followingText = s.followed_at
+    ? `Following since ${fmtDate(s.followed_at, { month: 'short', year: 'numeric' })}`
+    : 'Following';
 
   return `
     <li class="result-card">
@@ -911,7 +1060,8 @@ function resultCardHtml(match, rank) {
       </div>
       ${watchMediaHtml(s)}
       <p class="result-card__title">${escapeHtml(s.title)}</p>
-      <p class="result-card__game">${escapeHtml(s.game_name)} · <span class="status-tag status-tag--${s.broadcaster_type ?? 'none'}">${statusLabel}</span>${s.is_followed ? ' · <span class="following-tag">Following</span>' : ''}${s.shared_team_names?.length ? ` · <span class="team-tag">${escapeHtml(s.shared_team_names[0])}</span>` : ''}</p>
+      <p class="result-card__game">${escapeHtml(s.game_name)} · <span class="status-tag status-tag--${s.broadcaster_type ?? 'none'}">${statusLabel}</span>${s.is_followed ? ` · <span class="following-tag">${escapeHtml(followingText)}</span>` : ''}${s.shared_team_names?.length ? ` · <span class="team-tag">${escapeHtml(s.shared_team_names[0])}</span>` : ''}</p>
+      ${contentLabelsHtml(s)}
       <div class="stat-row">
         <span class="stat-chip"><span class="stat-chip__mono">${fmtNumber(s.viewer_count)}</span> live</span>
         <span class="stat-chip"><span class="stat-chip__mono">~${fmtNumber(match.estimatedAverageViewers)}</span> avg${match.averageIsHistorical ? '' : ' (est.)'}</span>
@@ -921,6 +1071,8 @@ function resultCardHtml(match, rank) {
       <div class="result-card__actions">
         <a class="watch-link" href="https://twitch.tv/${escapeHtml(s.user_login)}" target="_blank" rel="noopener noreferrer">Open on Twitch ↗</a>
       </div>
+      ${activityButton}
+      ${activityExpanded ? `<section class="recent-activity" data-activity-panel="${escapeHtml(s.user_id)}" aria-label="Recent activity for ${escapeHtml(s.user_name)}"><p class="activity-empty">Loading recent activity…</p></section>` : ''}
       <div class="result-card__buttons">
         ${previewButton}
         ${raidButton}

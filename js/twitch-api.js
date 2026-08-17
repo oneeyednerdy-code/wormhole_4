@@ -14,7 +14,12 @@ export class TwitchApi {
     this.broadcasterTypeCache = new Map();
     this.teamCache = new Map();
     this.followedBroadcasterIdsCache = new Map();
+    this.followedAtCache = new Map();
     this.followerCountCache = new Map();
+    this.userProfileCache = new Map();
+    this.broadcastHistoryCache = new Map();
+    this.clipHistoryCache = new Map();
+    this.scheduleCache = new Map();
   }
 
   get headers() {
@@ -101,6 +106,7 @@ export class TwitchApi {
         const type = user.broadcaster_type || 'none';
         types.set(user.id, type);
         this.broadcasterTypeCache.set(user.id, type);
+        this.userProfileCache.set(user.id, user);
       }
       for (const id of batch) {
         if (!types.has(id)) {
@@ -111,6 +117,18 @@ export class TwitchApi {
     }
 
     return types;
+  }
+
+  /** Returns cached profile metadata, including account creation date. */
+  async getBroadcasterProfile(userId) {
+    if (this.userProfileCache.has(userId)) return this.userProfileCache.get(userId);
+    const json = await this._get('/users', { id: userId });
+    const profile = json.data?.[0] ?? null;
+    if (profile) {
+      this.userProfileCache.set(userId, profile);
+      this.broadcasterTypeCache.set(userId, profile.broadcaster_type || 'none');
+    }
+    return profile;
   }
 
   /**
@@ -232,7 +250,10 @@ export class TwitchApi {
 
         const json = await this._get('/channels/followed', query);
         for (const follow of json.data ?? []) {
-          if (follow.broadcaster_id) ids.add(follow.broadcaster_id);
+          if (follow.broadcaster_id) {
+            ids.add(follow.broadcaster_id);
+            this.followedAtCache.set(follow.broadcaster_id, follow.followed_at ?? null);
+          }
         }
 
         cursor = json.pagination?.cursor ?? null;
@@ -248,6 +269,10 @@ export class TwitchApi {
       this.followedBroadcasterIdsCache.delete(userId);
       throw error;
     }
+  }
+
+  getFollowedAt(broadcasterId) {
+    return this.followedAtCache.get(broadcasterId) ?? null;
   }
 
   /**
@@ -298,6 +323,60 @@ export class TwitchApi {
       Array.from({ length: Math.min(concurrency, queue.length) }, () => worker())
     );
     return results;
+  }
+
+  /** Public past broadcasts from the last N days, newest first. */
+  async getBroadcastHistory(userId, { days = 30, maxResults = 100 } = {}) {
+    const key = `${userId}:${days}:${maxResults}`;
+    if (this.broadcastHistoryCache.has(key)) return this.broadcastHistoryCache.get(key);
+
+    const request = this._get('/videos', {
+      user_id: userId,
+      type: 'archive',
+      sort: 'time',
+      first: Math.min(Math.max(maxResults, 1), 100),
+    }).then((json) => {
+      const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+      return (json.data ?? []).filter(
+        (video) => new Date(video.created_at).getTime() >= cutoff
+      );
+    });
+
+    this.broadcastHistoryCache.set(key, request);
+    return request;
+  }
+
+  /** Most-viewed clips created during the last N days. */
+  async getRecentClips(userId, { days = 30, maxResults = 3 } = {}) {
+    const key = `${userId}:${days}:${maxResults}`;
+    if (this.clipHistoryCache.has(key)) return this.clipHistoryCache.get(key);
+    const endedAt = new Date();
+    const startedAt = new Date(endedAt.getTime() - days * 24 * 60 * 60 * 1000);
+    const request = this._get('/clips', {
+      broadcaster_id: userId,
+      started_at: startedAt.toISOString(),
+      ended_at: endedAt.toISOString(),
+      first: Math.min(Math.max(maxResults, 1), 100),
+    }).then((json) => json.data ?? []);
+    this.clipHistoryCache.set(key, request);
+    return request;
+  }
+
+  /** The broadcaster's next scheduled stream, or null if none is published. */
+  async getNextScheduledStream(userId) {
+    if (this.scheduleCache.has(userId)) return this.scheduleCache.get(userId);
+    const request = this._get('/schedule', {
+      broadcaster_id: userId,
+      start_time: new Date().toISOString(),
+      first: 1,
+    })
+      .then((json) => json.data?.segments?.[0] ?? null)
+      .catch((error) => {
+        if (error instanceof TwitchApiError && error.status === 404) return null;
+        throw error;
+      });
+    this.scheduleCache.set(userId, request);
+    return request;
   }
 
   /**

@@ -7,6 +7,45 @@ globalThis.window = {
 
 const { TwitchApi } = await import('../js/twitch-api.js');
 
+test('starts a raid and returns Twitch\'s countdown timestamp', async () => {
+  let requestedUrl;
+  let requestedMethod;
+  globalThis.fetch = async (url, options) => {
+    requestedUrl = new URL(url);
+    requestedMethod = options.method;
+    return {
+      ok: true,
+      async json() {
+        return { data: [{ created_at: '2026-08-17T12:00:00Z', is_mature: false }] };
+      },
+    };
+  };
+
+  const api = new TwitchApi('test-token');
+  const raid = await api.startRaid('from-1', 'to-2');
+  assert.equal(requestedMethod, 'POST');
+  assert.equal(requestedUrl.pathname, '/helix/raids');
+  assert.equal(requestedUrl.searchParams.get('from_broadcaster_id'), 'from-1');
+  assert.equal(requestedUrl.searchParams.get('to_broadcaster_id'), 'to-2');
+  assert.equal(raid.created_at, '2026-08-17T12:00:00Z');
+});
+
+test('cancels the logged-in broadcaster\'s pending raid', async () => {
+  let requestedUrl;
+  let requestedMethod;
+  globalThis.fetch = async (url, options) => {
+    requestedUrl = new URL(url);
+    requestedMethod = options.method;
+    return { ok: true, status: 204 };
+  };
+
+  const api = new TwitchApi('test-token');
+  await api.cancelRaid('from-1');
+  assert.equal(requestedMethod, 'DELETE');
+  assert.equal(requestedUrl.pathname, '/helix/raids');
+  assert.equal(requestedUrl.searchParams.get('broadcaster_id'), 'from-1');
+});
+
 test('followed broadcaster IDs paginate and are cached for the session', async () => {
   const requestedUrls = [];
   globalThis.fetch = async (url) => {

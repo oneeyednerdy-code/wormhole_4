@@ -193,6 +193,24 @@
     </div>
   </dialog>
 
+  <!-- ACTIVE RAID COUNTDOWN -->
+  <dialog id="raid-progress-dialog" class="dialog raid-progress-dialog">
+    <p class="raid-progress__eyebrow">Raid in progress</p>
+    <h2 id="raid-progress-title" class="raid-progress__title">Preparing raid…</h2>
+    <p id="raid-progress-text" class="dialog__text" aria-live="polite"></p>
+    <div class="raid-progress__timer" aria-hidden="true">
+      <span id="raid-countdown-value">90</span>
+      <small>seconds</small>
+    </div>
+    <div class="raid-progress__track" aria-hidden="true">
+      <div id="raid-progress-bar" class="raid-progress__bar"></div>
+    </div>
+    <p class="raid-progress__note">When Twitch completes the raid, Wormhole will take you to the raided channel.</p>
+    <div class="dialog__actions">
+      <button id="raid-progress-cancel-btn" class="btn btn--ghost" type="button">Cancel raid</button>
+    </div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <footer class="site-footer">

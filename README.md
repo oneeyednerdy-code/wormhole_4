@@ -23,7 +23,10 @@ Results render as a grid of cards, each with a click-to-play live preview
 a selector for 12 through 100 cards per page. They can be sorted by recommended
 match, followed channels first, viewers high-to-low or low-to-high, longest
 live (the best available "ending soon" proxy), or most recently started. It
-can also **start the raid** for you directly, via the Twitch API.
+can also **start the raid** for you directly, via the Twitch API. After a raid
+starts, Wormhole displays Twitch's 90-second countdown with a cancel option.
+When Twitch confirms completion (or the countdown finishes), the same tab
+navigates to the raided channel.
 
 If you are offline, Wormhole offers up to five recent past-broadcast VODs to
 choose from. Twitch supplies each VOD's title, date, duration, and thumbnail.

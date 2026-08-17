@@ -163,6 +163,8 @@ export class TwitchApi {
       }
       throw e;
     }
+    const json = await res.json();
+    return json.data?.[0] ?? null;
   }
 
   /**
@@ -572,6 +574,8 @@ export class TwitchApi {
         res.status
       );
     }
+    const json = await res.json();
+    return json.data?.[0] ?? null;
   }
 
   /** Cancels a pending raid initiated by the logged-in broadcaster. */

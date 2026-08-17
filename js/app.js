@@ -7,6 +7,11 @@ import { ViewerHistory } from './viewer-history.js';
 import { PreviousStreamHistory } from './previous-stream-history.js';
 import { paginate } from './pagination.js';
 import { sortRaidMatches } from './result-sort.js';
+import {
+  createRaidCountdown,
+  getRaidCountdownSnapshot,
+  twitchChannelUrl,
+} from './raid-countdown.js';
 import { ChannelHistory } from './channel-history.js';
 import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js';
 import {
@@ -33,6 +38,9 @@ const state = {
   resultsPage: 1,
   resultsPageSize: 12,
   resultsSort: 'recommended',
+  activeRaid: null,
+  raidCountdownTimer: null,
+  raidRedirectTimer: null,
 };
 
 const el = {
@@ -71,6 +79,12 @@ const el = {
   raidDialogText: document.getElementById('raid-dialog-text'),
   raidConfirmBtn: document.getElementById('raid-confirm-btn'),
   raidCancelBtn: document.getElementById('raid-cancel-btn'),
+  raidProgressDialog: document.getElementById('raid-progress-dialog'),
+  raidProgressTitle: document.getElementById('raid-progress-title'),
+  raidProgressText: document.getElementById('raid-progress-text'),
+  raidCountdownValue: document.getElementById('raid-countdown-value'),
+  raidProgressBar: document.getElementById('raid-progress-bar'),
+  raidProgressCancelBtn: document.getElementById('raid-progress-cancel-btn'),
   toast: document.getElementById('toast'),
 };
 
@@ -139,6 +153,7 @@ el.loginBtn.addEventListener('click', () => {
 
 el.logoutBtn.addEventListener('click', async () => {
   searchGeneration += 1;
+  clearActiveRaid();
   await TwitchAuth.logout();
   state.raidListener?.stop();
   state.raidListener = null;
@@ -177,7 +192,7 @@ function startRaidListener() {
   state.raidListener?.stop();
   state.raidListener = new RaidListener(state.api, state.user.id, {
     onRaidSent: (event) => {
-      showToast(`Raid completed to ${event.to_broadcaster_user_name}!`);
+      handleRaidCompleted(event);
     },
   });
   state.raidListener.start();
@@ -1237,6 +1252,79 @@ function resultCardHtml(match, rank) {
 
 let pendingRaid = null;
 
+function clearRaidTimers() {
+  clearInterval(state.raidCountdownTimer);
+  clearTimeout(state.raidRedirectTimer);
+  state.raidCountdownTimer = null;
+  state.raidRedirectTimer = null;
+}
+
+function clearActiveRaid({ closeDialog = true } = {}) {
+  clearRaidTimers();
+  state.activeRaid = null;
+  if (closeDialog && el.raidProgressDialog.open) el.raidProgressDialog.close();
+}
+
+function goToRaidedChannel() {
+  const activeRaid = state.activeRaid;
+  if (!activeRaid) return;
+  const destination = twitchChannelUrl(activeRaid.userLogin);
+  clearActiveRaid();
+  window.location.assign(destination);
+}
+
+function showRaidCompleted(name = state.activeRaid?.userName) {
+  if (!state.activeRaid) return;
+  clearRaidTimers();
+  el.raidProgressTitle.textContent = 'Raid complete!';
+  el.raidProgressText.textContent = `Taking you to ${name || 'the raided channel'}…`;
+  el.raidCountdownValue.textContent = '0';
+  el.raidProgressBar.style.width = '100%';
+  el.raidProgressCancelBtn.disabled = true;
+  state.raidRedirectTimer = setTimeout(goToRaidedChannel, 900);
+}
+
+function renderRaidCountdown() {
+  if (!state.activeRaid) return;
+  const snapshot = getRaidCountdownSnapshot(state.activeRaid);
+  el.raidCountdownValue.textContent = String(snapshot.remainingSeconds);
+  el.raidProgressBar.style.width = `${snapshot.progressPercent}%`;
+
+  if (snapshot.complete) showRaidCompleted(state.activeRaid.userName);
+}
+
+function beginRaidCountdown(target, createdAt) {
+  clearActiveRaid();
+  state.activeRaid = createRaidCountdown({
+    userId: target.stream.user_id,
+    userName: target.stream.user_name,
+    userLogin: target.stream.user_login,
+    createdAt,
+  });
+  el.raidProgressTitle.textContent = `Raiding ${target.stream.user_name}`;
+  el.raidProgressText.textContent = 'Twitch is preparing your viewers. You can cancel before the timer reaches zero.';
+  el.raidProgressCancelBtn.disabled = false;
+  renderRaidCountdown();
+  if (!el.raidProgressDialog.open) el.raidProgressDialog.showModal();
+  state.raidCountdownTimer = setInterval(renderRaidCountdown, 250);
+}
+
+function handleRaidCompleted(event) {
+  if (!state.activeRaid) {
+    showToast(`Raid completed to ${event.to_broadcaster_user_name}!`);
+    return;
+  }
+  if (
+    event.to_broadcaster_user_id &&
+    event.to_broadcaster_user_id !== state.activeRaid.userId
+  ) return;
+
+  if (event.to_broadcaster_user_login) {
+    state.activeRaid.userLogin = event.to_broadcaster_user_login;
+  }
+  showRaidCompleted(event.to_broadcaster_user_name);
+}
+
 function openRaidDialog(match) {
   pendingRaid = match;
   el.raidDialogText.textContent = `Raid ${match.stream.user_name} with your viewers right now?`;
@@ -1253,8 +1341,8 @@ el.raidConfirmBtn.addEventListener('click', async () => {
   const target = pendingRaid;
   el.raidDialog.close();
   try {
-    await state.api.startRaid(state.user.id, target.stream.user_id);
-    showToast(`Raid countdown started for ${target.stream.user_name}.`);
+    const raid = await state.api.startRaid(state.user.id, target.stream.user_id);
+    beginRaidCountdown(target, raid?.created_at);
   } catch (e) {
     console.error(e);
     const messages = {
@@ -1267,6 +1355,29 @@ el.raidConfirmBtn.addEventListener('click', async () => {
     showToast(messages[e.status] ?? 'Could not start the raid. Please try again.', true);
   }
   pendingRaid = null;
+});
+
+el.raidProgressDialog.addEventListener('cancel', (event) => {
+  // Escape must not hide an active raid while Twitch's countdown continues.
+  event.preventDefault();
+});
+
+el.raidProgressCancelBtn.addEventListener('click', async () => {
+  if (!state.activeRaid) return;
+  el.raidProgressCancelBtn.disabled = true;
+  el.raidProgressText.textContent = 'Canceling the raid…';
+  try {
+    await state.api.cancelRaid(state.user.id);
+    clearActiveRaid();
+    showToast('Raid canceled.');
+  } catch (error) {
+    console.error(error);
+    el.raidProgressCancelBtn.disabled = false;
+    el.raidProgressText.textContent =
+      error.status === 404
+        ? 'The raid is no longer pending. Waiting for Twitch to confirm completion…'
+        : 'Twitch could not cancel the raid. Try again before the countdown ends.';
+  }
 });
 
 // ---- Utils ---------------------------------------------------------

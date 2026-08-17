@@ -1295,6 +1295,69 @@ button {
   gap: 10px;
 }
 
+.raid-progress-dialog {
+  text-align: center;
+  width: min(420px, 90vw);
+}
+
+.raid-progress__eyebrow {
+  margin: 0 0 8px;
+  color: var(--violet-bright);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.raid-progress__title {
+  margin: 0 0 10px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.3rem;
+}
+
+.raid-progress__timer {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  margin: 18px 0 12px;
+}
+
+.raid-progress__timer span {
+  color: var(--violet-bright);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 3.2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.raid-progress__timer small,
+.raid-progress__note {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.raid-progress__track {
+  height: 8px;
+  overflow: hidden;
+  background: var(--panel-raised);
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+}
+
+.raid-progress__bar {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--violet-deep), var(--violet-bright));
+  transition: width 0.25s linear;
+}
+
+.raid-progress__note {
+  margin: 14px 0 20px;
+  line-height: 1.45;
+}
+
 /* ---------- Toast ---------- */
 
 .toast {

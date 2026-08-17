@@ -113,30 +113,6 @@ const CONTENT_LABELS = {
   ViolentGraphic: 'Graphic violence',
 };
 
-const CONTRAST_PREFERENCE_KEY = 'wormhole_high_contrast';
-
-function setHighContrast(enabled) {
-  document.body.classList.toggle('high-contrast', enabled);
-  el.contrastToggle.setAttribute('aria-pressed', String(enabled));
-  el.contrastToggle.textContent = enabled ? 'Standard contrast' : 'High contrast';
-}
-
-try {
-  setHighContrast(localStorage.getItem(CONTRAST_PREFERENCE_KEY) === 'true');
-} catch {
-  setHighContrast(false);
-}
-
-el.contrastToggle.addEventListener('click', () => {
-  const enabled = !document.body.classList.contains('high-contrast');
-  setHighContrast(enabled);
-  try {
-    localStorage.setItem(CONTRAST_PREFERENCE_KEY, String(enabled));
-  } catch {
-    // The preference still works for this page load if storage is unavailable.
-  }
-});
-
 function fmtNumber(n) {
   return new Intl.NumberFormat().format(Math.round(n));
 }
@@ -560,12 +536,6 @@ function renderTeamHint() {
 // ---- Raid match search -------------------------------------------------
 
 el.findBtn.addEventListener('click', () => runSearch());
-
-el.filtersToggle.addEventListener('click', () => {
-  const collapsed = el.filtersPanel.classList.toggle('filters-panel--collapsed');
-  el.filtersToggle.setAttribute('aria-expanded', String(!collapsed));
-  el.filtersToggle.textContent = collapsed ? 'Show filters' : 'Hide filters';
-});
 
 // Re-run the search automatically when a filter changes, but only if
 // results are already showing — no point searching before the first click.

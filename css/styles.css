@@ -46,6 +46,7 @@
   --glow: 0 0 40px -8px rgba(139, 92, 246, 0.35);
 }
 
+html[data-high-contrast],
 body.high-contrast {
   --panel: #0b0712;
   --panel-raised: #181020;
@@ -57,6 +58,11 @@ body.high-contrast {
   --violet-deep: #8e63f8;
 }
 
+html[data-high-contrast] .panel,
+html[data-high-contrast] .result-card,
+html[data-high-contrast] .results-pagination,
+html[data-high-contrast] .text-input,
+html[data-high-contrast] .results-pagination__select,
 body.high-contrast .panel,
 body.high-contrast .result-card,
 body.high-contrast .results-pagination,
@@ -237,6 +243,12 @@ button {
   box-shadow: 0 0 18px 3px rgba(167, 139, 250, 0.7);
 }
 
+.login-card__mark img {
+  width: 48px;
+  height: 48px;
+  display: block;
+}
+
 .login-card__title {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 1.6rem;
@@ -296,12 +308,11 @@ button {
   text-decoration: none;
 }
 
-.topbar__brand-mark {
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--violet);
-  border-radius: 50%;
-  box-shadow: 0 0 16px rgba(139, 92, 246, 0.55), inset 0 0 10px rgba(139, 92, 246, 0.3);
+.topbar__brand-logo {
+  width: 32px;
+  height: 32px;
+  display: block;
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.5));
 }
 
 .topbar__account {
@@ -546,6 +557,10 @@ button {
 
 .filters-panel--collapsed .filters-panel__content {
   display: none;
+}
+
+.filters-panel__content[hidden] {
+  display: none !important;
 }
 
 .filter-row {
@@ -1757,6 +1772,34 @@ a:focus-visible {
   }
 }
 
+@media (max-width: 820px) {
+  .main {
+    padding-inline: 16px;
+  }
+
+  .results-pagination {
+    align-items: stretch;
+  }
+
+  .results-pagination__summary {
+    flex: 1 1 100%;
+    order: -1;
+    text-align: left;
+  }
+
+  .results-pagination__buttons {
+    margin-left: auto;
+  }
+
+  .control-row {
+    align-items: stretch;
+  }
+
+  .active-filters {
+    flex-basis: 100%;
+  }
+}
+
 /* ---------- Mobile ---------- */
 
 @media (max-width: 480px) {
@@ -1767,6 +1810,15 @@ a:focus-visible {
   .topbar__brand span:last-child,
   .topbar__name {
     display: none;
+  }
+
+  .topbar__account {
+    gap: 7px;
+  }
+
+  .topbar__account .btn {
+    padding-inline: 10px;
+    font-size: 0.74rem;
   }
 
   .main {

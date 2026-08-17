@@ -34,6 +34,11 @@ accessible focus states and higher-contrast system support. Match cards explain
 why each channel was recommended and keep deeper VOD, clip, schedule, account,
 and local-history information inside an expandable details area. Searches use
 skeleton cards and provide retry guidance when Twitch cannot return results.
+The filter-collapse and explicit high-contrast controls run in a small,
+independent UI module so they remain available even if Twitch authentication or
+another API feature fails to initialize. Responsive breakpoints cover desktop,
+tablet, and narrow mobile layouts, and a bundled SVG Wormhole mark appears in
+both the login panel and application header.
 
 If you are offline, Wormhole offers up to five recent past-broadcast VODs to
 choose from. Twitch supplies each VOD's title, date, duration, and thumbnail.

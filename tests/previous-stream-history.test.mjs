@@ -1,0 +1,65 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+
+class MemoryStorage {
+  constructor() {
+    this.data = new Map();
+  }
+  getItem(key) {
+    return this.data.has(key) ? this.data.get(key) : null;
+  }
+  setItem(key, value) {
+    this.data.set(key, String(value));
+  }
+  removeItem(key) {
+    this.data.delete(key);
+  }
+  clear() {
+    this.data.clear();
+  }
+}
+
+globalThis.localStorage = new MemoryStorage();
+const { PreviousStreamHistory } = await import('../js/previous-stream-history.js');
+
+function stream(id, viewers = 20) {
+  return {
+    id,
+    user_id: 'creator',
+    title: `Stream ${id}`,
+    game_id: `game-${id}`,
+    game_name: `Game ${id}`,
+    started_at: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    viewer_count: viewers,
+  };
+}
+
+test('stores stream-specific category and viewer data', () => {
+  localStorage.clear();
+  PreviousStreamHistory.record(stream('abc', 24));
+  const saved = PreviousStreamHistory.getByStreamId('abc');
+  assert.equal(saved.gameId, 'game-abc');
+  assert.equal(saved.gameName, 'Game abc');
+  assert.equal(saved.averageViewers, 24);
+  assert.equal(saved.sampleCount, 1);
+});
+
+test('retains only the five most recent stream sessions', () => {
+  localStorage.clear();
+  for (let index = 1; index <= 6; index += 1) {
+    PreviousStreamHistory.record(stream(String(index), index));
+  }
+  const recent = PreviousStreamHistory.getRecent('creator');
+  assert.equal(recent.length, 5);
+  assert.equal(recent[0].streamId, '6');
+  assert.equal(PreviousStreamHistory.getByStreamId('1'), null);
+});
+
+test('does not duplicate rapid samples from the same stream', () => {
+  localStorage.clear();
+  PreviousStreamHistory.record(stream('same', 10));
+  PreviousStreamHistory.record(stream('same', 30));
+  const saved = PreviousStreamHistory.getByStreamId('same');
+  assert.equal(saved.sampleCount, 1);
+  assert.equal(saved.averageViewers, 10);
+});

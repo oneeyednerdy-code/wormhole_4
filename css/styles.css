@@ -408,11 +408,19 @@ button {
   font-weight: 600;
 }
 
-.offline-reference__viewer-label {
+.offline-reference__field-label {
   display: block;
   margin: 16px 0 6px;
   color: var(--text-dim);
   font-size: 0.78rem;
+  text-align: left;
+}
+
+.offline-reference__select {
+  appearance: auto;
+}
+
+.offline-reference__category-search {
   text-align: left;
 }
 

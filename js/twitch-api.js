@@ -56,15 +56,15 @@ export class TwitchApi {
     return json.data?.[0] ?? null;
   }
 
-  /** The broadcaster's newest published past-broadcast VOD, if one exists. */
-  async getLatestArchive(userId) {
+  /** The broadcaster's newest published past-broadcast VODs. */
+  async getRecentArchives(userId, { maxResults = 5 } = {}) {
     const json = await this._get('/videos', {
       user_id: userId,
       type: 'archive',
       sort: 'time',
-      first: 1,
+      first: Math.min(Math.max(maxResults, 1), 100),
     });
-    return json.data?.[0] ?? null;
+    return (json.data ?? []).slice(0, maxResults);
   }
 
   /**

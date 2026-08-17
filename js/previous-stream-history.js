@@ -1,0 +1,74 @@
+const STORAGE_KEY = 'wormhole_previous_streams_v1';
+const MAX_STREAMS = 5;
+const MAX_SAMPLES_PER_STREAM = 50;
+const MIN_SAMPLE_INTERVAL_MS = 5 * 60 * 1000;
+
+/** Locally remembers stream-specific category and viewer samples. */
+export const PreviousStreamHistory = {
+  _load() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  },
+
+  _save(streams) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(streams.slice(0, MAX_STREAMS)));
+  },
+
+  record(stream) {
+    if (!stream?.id || !stream?.user_id || !stream?.game_id) return;
+    const now = Date.now();
+    const streams = this._load();
+    const existingIndex = streams.findIndex((item) => item.streamId === stream.id);
+    const existing = existingIndex >= 0 ? streams.splice(existingIndex, 1)[0] : null;
+    const samples = Array.isArray(existing?.samples) ? existing.samples : [];
+    const lastSampleAt = new Date(samples.at(-1)?.sampledAt ?? 0).getTime();
+
+    if (
+      Number.isFinite(stream.viewer_count) &&
+      stream.viewer_count >= 0 &&
+      now - lastSampleAt >= MIN_SAMPLE_INTERVAL_MS
+    ) {
+      samples.push({ viewerCount: stream.viewer_count, sampledAt: new Date(now).toISOString() });
+      if (samples.length > MAX_SAMPLES_PER_STREAM) samples.shift();
+    }
+
+    streams.unshift({
+      streamId: stream.id,
+      userId: stream.user_id,
+      title: stream.title || existing?.title || '',
+      gameId: stream.game_id,
+      gameName: stream.game_name || existing?.gameName || '',
+      startedAt: stream.started_at || existing?.startedAt || null,
+      lastSeenAt: new Date(now).toISOString(),
+      samples,
+    });
+    this._save(streams);
+  },
+
+  getByStreamId(streamId) {
+    const stream = this._load().find((item) => item.streamId === streamId);
+    if (!stream) return null;
+    const validSamples = (stream.samples ?? []).filter((sample) =>
+      Number.isFinite(sample?.viewerCount)
+    );
+    const averageViewers = validSamples.length
+      ? validSamples.reduce((sum, sample) => sum + sample.viewerCount, 0) / validSamples.length
+      : null;
+    return { ...stream, averageViewers, sampleCount: validSamples.length };
+  },
+
+  getRecent(userId) {
+    return this._load()
+      .filter((stream) => stream.userId === userId)
+      .map((stream) => this.getByStreamId(stream.streamId))
+      .filter(Boolean);
+  },
+
+  clearAll() {
+    localStorage.removeItem(STORAGE_KEY);
+  },
+};

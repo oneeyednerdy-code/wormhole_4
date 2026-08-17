@@ -4,13 +4,16 @@ import { TwitchApi } from './twitch-api.js';
 import { applyHardFilters, findRaidMatches } from './raid-match.js';
 import { RaidListener } from './raid-listener.js';
 import { ViewerHistory } from './viewer-history.js';
+import { PreviousStreamHistory } from './previous-stream-history.js';
 
 const state = {
   api: null,
   user: null,
   myStream: null,
   channelInfo: null,
-  latestVod: null,
+  recentVods: [],
+  selectedPreviousVodId: null,
+  offlineCategorySelection: null,
   usingPreviousStream: false,
   myTeams: [], // Twitch Teams the logged-in user belongs to
   matches: [],
@@ -115,14 +118,16 @@ async function loadCurrentUser() {
     state.api.getLiveStreamForUser(state.user.id),
     state.api.getChannelTeams(state.user.id),
     state.api.getChannelInformation(state.user.id),
-    state.api.getLatestArchive(state.user.id),
+    state.api.getRecentArchives(state.user.id, { maxResults: 5 }),
   ]);
   if (streamResult.status === 'rejected') throw streamResult.reason;
   state.myStream = streamResult.value;
   state.myTeams = teamsResult.status === 'fulfilled' ? teamsResult.value : [];
   state.channelInfo = channelResult.status === 'fulfilled' ? channelResult.value : null;
-  state.latestVod = vodResult.status === 'fulfilled' ? vodResult.value : null;
+  state.recentVods = vodResult.status === 'fulfilled' ? vodResult.value : [];
+  state.selectedPreviousVodId = state.recentVods[0]?.id ?? null;
   state.usingPreviousStream = false;
+  if (state.myStream) PreviousStreamHistory.record(state.myStream);
   renderUser();
   renderStreamPanel();
   renderViewerMatchHint();
@@ -187,6 +192,7 @@ async function refreshLiveStatus() {
   try {
     state.myStream = await state.api.getLiveStreamForUser(state.user.id);
     state.usingPreviousStream = false;
+    if (state.myStream) PreviousStreamHistory.record(state.myStream);
     renderStreamPanel();
   } catch (error) {
     console.error(error);
@@ -197,46 +203,60 @@ async function refreshLiveStatus() {
 function renderStreamPanel() {
   const s = state.myStream;
   if (!s) {
-    const average = ViewerHistory.getAverage(state.user.id);
-    const categoryAvailable = Boolean(state.channelInfo?.game_id);
-    const previousTitle = state.latestVod?.title || state.channelInfo?.title || 'Previous stream';
-    const previousDate = state.latestVod?.created_at
-      ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
-          new Date(state.latestVod.created_at)
-        )
-      : null;
-    const baselineValue = average ? Math.round(average.average) : '';
+    const selectedVod = getSelectedPreviousVod();
+    const defaults = getPreviousStreamDefaults(selectedVod);
+    state.offlineCategorySelection = defaults.category;
+    const vodOptions = state.recentVods
+      .slice(0, 5)
+      .map((vod) => `<option value="${escapeHtml(vod.id)}"${vod.id === state.selectedPreviousVodId ? ' selected' : ''}>${escapeHtml(formatPreviousVodLabel(vod))}</option>`)
+      .join('');
     el.streamPanel.innerHTML = `
       <div class="offline-card">
         <div class="offline-card__dot"></div>
         <p class="offline-card__title">You're not live right now.</p>
-        ${categoryAvailable ? `
-          <div class="offline-reference">
-            <p class="offline-reference__eyebrow">Previous stream</p>
-            <p class="offline-reference__title">${escapeHtml(previousTitle)}</p>
-            <p class="offline-card__hint">${escapeHtml(state.channelInfo.game_name)}${previousDate ? ` · ${escapeHtml(previousDate)}` : ''}</p>
-            <label class="offline-reference__viewer-label" for="offline-viewers-input">
-              Average viewers for that stream
-            </label>
+        <div class="offline-reference">
+          <p class="offline-reference__eyebrow">Previous stream</p>
+          ${state.recentVods.length ? `
+            <label class="offline-reference__field-label" for="offline-vod-select">Choose one of your latest streams</label>
+            <select id="offline-vod-select" class="text-input offline-reference__select">${vodOptions}</select>` : `
+            <p class="offline-card__hint">No published Twitch VODs were found. You can still create a reference manually.</p>`}
+
+          <label class="offline-reference__field-label" for="offline-category-input">Category for that stream</label>
+          <div class="category-search offline-reference__category-search">
             <input
-              id="offline-viewers-input"
-              class="text-input offline-reference__viewer-input"
-              type="number"
-              min="0"
-              step="1"
-              value="${baselineValue}"
-              placeholder="Enter an average"
+              id="offline-category-input"
+              class="text-input"
+              type="text"
+              value="${escapeHtml(defaults.category?.name ?? '')}"
+              placeholder="Search for the stream category"
+              autocomplete="off"
             />
-            <p class="offline-card__hint">${average
-              ? `Pre-filled from ${average.sampleCount} locally saved Wormhole sample${average.sampleCount === 1 ? '' : 's'}.`
-              : 'Twitch does not expose past concurrent viewers, so enter your previous average once.'}</p>
-            <button class="btn btn--primary" id="use-previous-stream-btn">Find using previous stream</button>
-          </div>` : `
-          <p class="offline-card__hint">No previous Twitch category was available. Go live once, then Wormhole can save a reference.</p>`}
+            <ul id="offline-category-suggestions" class="category-suggestions hidden"></ul>
+          </div>
+          <p id="offline-category-hint" class="offline-card__hint">${escapeHtml(defaults.categoryHint)}</p>
+
+          <label class="offline-reference__field-label" for="offline-viewers-input">Average viewers for that stream</label>
+          <input
+            id="offline-viewers-input"
+            class="text-input offline-reference__viewer-input"
+            type="number"
+            min="0"
+            step="1"
+            value="${defaults.viewerBaseline ?? ''}"
+            placeholder="Enter an average"
+          />
+          <p class="offline-card__hint">${escapeHtml(defaults.viewerHint)}</p>
+          <button class="btn btn--primary" id="use-previous-stream-btn">Find using selected stream</button>
+        </div>
         <button class="btn btn--ghost offline-card__refresh" id="refresh-stream-btn">Refresh live status</button>
       </div>`;
     document.getElementById('refresh-stream-btn').addEventListener('click', refreshLiveStatus);
-    document.getElementById('use-previous-stream-btn')?.addEventListener('click', () => {
+    document.getElementById('offline-vod-select')?.addEventListener('change', (event) => {
+      state.selectedPreviousVodId = event.target.value;
+      renderStreamPanel();
+    });
+    setupOfflineCategorySearch();
+    document.getElementById('use-previous-stream-btn').addEventListener('click', () => {
       const input = document.getElementById('offline-viewers-input');
       const viewerCount = Number(input.value);
       if (!Number.isFinite(viewerCount) || viewerCount < 0 || input.value.trim() === '') {
@@ -244,7 +264,16 @@ function renderStreamPanel() {
         input.focus();
         return;
       }
-      state.myStream = buildPreviousStreamReference(viewerCount);
+      if (!state.offlineCategorySelection?.id) {
+        showToast('Choose the category used for that stream.', true);
+        document.getElementById('offline-category-input').focus();
+        return;
+      }
+      state.myStream = buildPreviousStreamReference(
+        viewerCount,
+        getSelectedPreviousVod(),
+        state.offlineCategorySelection
+      );
       state.usingPreviousStream = true;
       renderStreamPanel();
       showToast('Using your previous stream as the match baseline.');
@@ -295,11 +324,113 @@ function parseTwitchDuration(duration) {
   return ((Number(match[1] ?? 0) * 60 + Number(match[2] ?? 0)) * 60 + Number(match[3] ?? 0)) * 1000;
 }
 
-function buildPreviousStreamReference(viewerCount) {
-  const latestSample = ViewerHistory.getLatestSample(state.user.id);
-  const vodDuration = parseTwitchDuration(state.latestVod?.duration);
-  const sampledDuration = latestSample?.streamStartedAt && latestSample?.sampledAt
-    ? new Date(latestSample.sampledAt).getTime() - new Date(latestSample.streamStartedAt).getTime()
+function formatPreviousVodLabel(vod) {
+  const date = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
+    new Date(vod.created_at)
+  );
+  return `${date} — ${vod.title || 'Untitled stream'} (${vod.duration || 'duration unknown'})`;
+}
+
+function getSelectedPreviousVod() {
+  return state.recentVods.find((vod) => vod.id === state.selectedPreviousVodId)
+    ?? state.recentVods[0]
+    ?? null;
+}
+
+function getPreviousStreamDefaults(vod) {
+  const saved = vod?.stream_id ? PreviousStreamHistory.getByStreamId(vod.stream_id) : null;
+  const generalAverage = ViewerHistory.getAverage(state.user.id);
+  const category = saved?.gameId
+    ? { id: saved.gameId, name: saved.gameName, source: 'saved' }
+    : state.channelInfo?.game_id
+      ? { id: state.channelInfo.game_id, name: state.channelInfo.game_name, source: 'last-played' }
+      : null;
+
+  return {
+    category,
+    categoryHint: saved?.gameId
+      ? 'Category restored from this stream’s locally saved Wormhole data.'
+      : category
+        ? 'Twitch does not include a category on each VOD. Confirm or change the last-played category shown above.'
+        : 'Twitch did not provide a category for this VOD. Search and select one above.',
+    viewerBaseline: saved?.averageViewers != null
+      ? Math.round(saved.averageViewers)
+      : generalAverage
+        ? Math.round(generalAverage.average)
+        : '',
+    viewerHint: saved?.averageViewers != null
+      ? `Calculated from ${saved.sampleCount} sample${saved.sampleCount === 1 ? '' : 's'} saved for this stream.`
+      : generalAverage
+        ? `Using your broader Wormhole average from ${generalAverage.sampleCount} saved sample${generalAverage.sampleCount === 1 ? '' : 's'}; edit it if this stream differed.`
+        : 'Twitch does not expose past concurrent viewers, so enter the stream’s average.',
+  };
+}
+
+let offlineCategorySearchDebounce = null;
+
+function setupOfflineCategorySearch() {
+  const input = document.getElementById('offline-category-input');
+  const suggestions = document.getElementById('offline-category-suggestions');
+  const hint = document.getElementById('offline-category-hint');
+  if (!input || !suggestions) return;
+
+  const hideSuggestions = () => suggestions.classList.add('hidden');
+  const chooseCategory = (category) => {
+    state.offlineCategorySelection = category;
+    input.value = category.name;
+    hint.textContent = `Using ${category.name} for this previous stream.`;
+    hideSuggestions();
+  };
+
+  input.addEventListener('input', () => {
+    clearTimeout(offlineCategorySearchDebounce);
+    state.offlineCategorySelection = null;
+    hint.textContent = 'Select a Twitch category from the suggestions.';
+    const query = input.value.trim();
+    if (!query) {
+      hideSuggestions();
+      return;
+    }
+    offlineCategorySearchDebounce = setTimeout(async () => {
+      try {
+        const results = await state.api.searchCategories(query, { maxResults: 8 });
+        if (input.value.trim() !== query) return;
+        if (!results.length) {
+          suggestions.innerHTML = '<li class="category-suggestions__empty">No matches</li>';
+        } else {
+          suggestions.innerHTML = results.map((category) => `
+            <li class="category-suggestions__item" tabindex="0" data-id="${escapeHtml(category.id)}" data-name="${escapeHtml(category.name)}">
+              ${escapeHtml(category.name)}
+            </li>`).join('');
+          suggestions.querySelectorAll('[data-id]').forEach((item) => {
+            const selectItem = () => chooseCategory({ id: item.dataset.id, name: item.dataset.name });
+            item.addEventListener('mousedown', (event) => {
+              event.preventDefault();
+              selectItem();
+            });
+            item.addEventListener('keydown', (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                selectItem();
+              }
+            });
+          });
+        }
+        suggestions.classList.remove('hidden');
+      } catch (error) {
+        console.error(error);
+        hideSuggestions();
+      }
+    }, 300);
+  });
+  input.addEventListener('blur', () => setTimeout(hideSuggestions, 150));
+}
+
+function buildPreviousStreamReference(viewerCount, vod, category) {
+  const saved = vod?.stream_id ? PreviousStreamHistory.getByStreamId(vod.stream_id) : null;
+  const vodDuration = parseTwitchDuration(vod?.duration);
+  const sampledDuration = saved?.startedAt && saved?.lastSeenAt
+    ? new Date(saved.lastSeenAt).getTime() - new Date(saved.startedAt).getTime()
     : null;
   const durationMs = vodDuration || (sampledDuration > 0 ? sampledDuration : 4 * 60 * 60 * 1000);
 
@@ -307,9 +438,9 @@ function buildPreviousStreamReference(viewerCount) {
     user_id: state.user.id,
     user_login: state.user.login,
     user_name: state.user.display_name,
-    game_id: state.channelInfo.game_id,
-    game_name: state.channelInfo.game_name,
-    title: state.latestVod?.title || state.channelInfo.title || 'Previous stream',
+    game_id: category.id,
+    game_name: category.name,
+    title: vod?.title || saved?.title || state.channelInfo?.title || 'Previous stream',
     viewer_count: viewerCount,
     started_at: new Date(Date.now() - durationMs).toISOString(),
     tags: [],
@@ -492,6 +623,7 @@ let searchGeneration = 0;
 
 async function runSearch() {
   if (!state.myStream) return;
+  if (!state.usingPreviousStream) PreviousStreamHistory.record(state.myStream);
 
   const generation = ++searchGeneration;
 

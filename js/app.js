@@ -545,10 +545,24 @@ function getSelectedGenreIds() {
     .map((checkbox) => checkbox.value);
 }
 
-el.addGenresBtn.addEventListener('click', async () => {
+let genreApplyDebounce = null;
+let genreApplyGeneration = 0;
+
+async function applyGenreSelection({ showEmptyError = false } = {}) {
+  const generation = ++genreApplyGeneration;
   const genreIds = getSelectedGenreIds();
   if (!genreIds.length) {
-    showToast('Choose at least one genre group first.', true);
+    const hadGenreCategories = state.extraCategories.some(
+      (category) => category.source === 'genre'
+    );
+    state.extraCategories = state.extraCategories.filter(
+      (category) => category.source !== 'genre'
+    );
+    el.addGenresBtn.disabled = false;
+    renderSelectedCategories();
+    el.genreHint.textContent = 'Choose one or more genre groups; selections apply automatically.';
+    if (showEmptyError) showToast('Choose at least one genre group first.', true);
+    if (hadGenreCategories) rerunIfResultsVisible();
     return;
   }
 
@@ -556,8 +570,16 @@ el.addGenresBtn.addEventListener('click', async () => {
   el.addGenresBtn.disabled = true;
   el.genreHint.textContent = 'Resolving genre games against Twitch categories…';
   try {
-    const games = await state.api.getGamesByNames(names);
-    let added = 0;
+    const { games, unresolved } = await state.api.resolveGenreCategories(names);
+    if (generation !== genreApplyGeneration) return;
+
+    state.extraCategories = state.extraCategories.filter((category) => {
+      if (category.source !== 'genre') return true;
+      const labels = getGenreLabelsForGame(category.name, genreIds);
+      category.genreLabels = labels;
+      return labels.length > 0;
+    });
+
     for (const game of games) {
       if (game.id === state.myStream?.game_id) continue;
       const labels = getGenreLabelsForGame(game.name, genreIds);
@@ -574,22 +596,37 @@ el.addGenresBtn.addEventListener('click', async () => {
         source: 'genre',
         genreLabels: labels,
       });
-      added += 1;
     }
     renderSelectedCategories();
-    const unresolved = names.length - games.length;
-    el.genreHint.textContent = `${added} genre ${added === 1 ? 'category' : 'categories'} added${unresolved ? `; ${unresolved} unavailable names were skipped` : ''}. Remove individual games below if needed.`;
-    if (added) rerunIfResultsVisible();
+    const totalGenreCategories = state.extraCategories.filter(
+      (category) => category.source === 'genre'
+    ).length;
+    el.genreHint.textContent = `${totalGenreCategories} genre ${totalGenreCategories === 1 ? 'category' : 'categories'} selected${unresolved.length ? `; ${unresolved.length} unavailable names were skipped` : ''}. Remove individual games below if needed.`;
+    rerunIfResultsVisible();
   } catch (error) {
+    if (generation !== genreApplyGeneration) return;
     console.error(error);
     el.genreHint.textContent = 'Could not resolve genre categories. Please try again.';
     showToast('Could not add genre categories.', true);
   } finally {
-    el.addGenresBtn.disabled = false;
+    if (generation === genreApplyGeneration) el.addGenresBtn.disabled = false;
   }
+}
+
+el.addGenresBtn.addEventListener('click', () => applyGenreSelection({ showEmptyError: true }));
+
+el.genreFilters.addEventListener('change', () => {
+  clearTimeout(genreApplyDebounce);
+  const selected = getSelectedGenreIds();
+  el.genreHint.textContent = selected.length
+    ? 'Applying selected genre groups…'
+    : 'Clearing genre categories…';
+  genreApplyDebounce = setTimeout(() => applyGenreSelection(), 250);
 });
 
 el.clearGenresBtn.addEventListener('click', () => {
+  genreApplyGeneration += 1;
+  clearTimeout(genreApplyDebounce);
   state.extraCategories = state.extraCategories.filter(
     (category) => category.source !== 'genre'
   );
@@ -597,6 +634,7 @@ el.clearGenresBtn.addEventListener('click', () => {
     checkbox.checked = false;
   });
   el.genreHint.textContent = 'Genre categories cleared. Exact categories remain selected.';
+  el.addGenresBtn.disabled = false;
   renderSelectedCategories();
   rerunIfResultsVisible();
 });

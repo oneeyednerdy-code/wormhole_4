@@ -76,9 +76,14 @@ export function getGenreGameNames(ids) {
 }
 
 export function getGenreLabelsForGame(name, ids) {
-  const normalized = name.toLowerCase();
+  const normalized = name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   return ids
     .map(getGenrePreset)
-    .filter((preset) => preset?.games.some((game) => game.toLowerCase() === normalized))
+    .filter((preset) => preset?.games.some((game) => {
+      const presetName = game.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+      return presetName === normalized ||
+        presetName.includes(normalized) ||
+        normalized.includes(presetName);
+    }))
     .map((preset) => preset.label);
 }

@@ -1,5 +1,13 @@
 import { TWITCH_CONFIG } from './config.js';
 
+function normalizeGameName(name) {
+  return String(name ?? '')
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
 export class TwitchApiError extends Error {
   constructor(message, status) {
     super(message);
@@ -195,13 +203,13 @@ export class TwitchApi {
     return json.data ?? [];
   }
 
-  /** Resolves exact Twitch category names in batches of up to 100. */
+  /** Resolves exact Twitch category names in URL-safe batches. */
   async getGamesByNames(names) {
     const requested = [...new Set(names.map((name) => name.trim()).filter(Boolean))];
-    const missing = requested.filter((name) => !this.gameNameCache.has(name.toLowerCase()));
+    const missing = requested.filter((name) => !this.gameNameCache.has(normalizeGameName(name)));
 
-    for (let i = 0; i < missing.length; i += 100) {
-      const batch = missing.slice(i, i + 100);
+    for (let i = 0; i < missing.length; i += 20) {
+      const batch = missing.slice(i, i + 20);
       const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/games');
       batch.forEach((name) => url.searchParams.append('name', name));
       const res = await fetch(url, { headers: this.headers });
@@ -213,16 +221,67 @@ export class TwitchApi {
       }
       const json = await res.json();
       const returned = new Map(
-        (json.data ?? []).map((game) => [game.name.toLowerCase(), game])
+        (json.data ?? []).map((game) => [normalizeGameName(game.name), game])
       );
       for (const name of batch) {
-        this.gameNameCache.set(name.toLowerCase(), returned.get(name.toLowerCase()) ?? null);
+        const key = normalizeGameName(name);
+        this.gameNameCache.set(key, returned.get(key) ?? null);
       }
     }
 
     return requested
-      .map((name) => this.gameNameCache.get(name.toLowerCase()))
+      .map((name) => this.gameNameCache.get(normalizeGameName(name)))
       .filter(Boolean);
+  }
+
+  /**
+   * Resolves genre preset names with exact batched lookup first, then a
+   * limited-concurrency category search for Twitch naming variations.
+   */
+  async resolveGenreCategories(names, { concurrency = 4 } = {}) {
+    const requested = [...new Set(names.map((name) => name.trim()).filter(Boolean))];
+    try {
+      await this.getGamesByNames(requested);
+    } catch (error) {
+      console.error(error);
+    }
+    const unresolvedQueue = requested.filter(
+      (name) => !this.gameNameCache.get(normalizeGameName(name))
+    );
+
+    const worker = async () => {
+      while (unresolvedQueue.length) {
+        const requestedName = unresolvedQueue.shift();
+        const requestedKey = normalizeGameName(requestedName);
+        try {
+          const results = await this.searchCategories(requestedName, { maxResults: 5 });
+          const match = results.find((game) => {
+            const candidateKey = normalizeGameName(game.name);
+            return candidateKey === requestedKey ||
+              candidateKey.includes(requestedKey) ||
+              requestedKey.includes(candidateKey);
+          }) ?? null;
+          if (match) this.gameNameCache.set(requestedKey, match);
+        } catch (error) {
+          console.error(error);
+        }
+      }
+    };
+
+    await Promise.all(
+      Array.from(
+        { length: Math.min(concurrency, unresolvedQueue.length) },
+        () => worker()
+      )
+    );
+
+    const games = requested
+      .map((name) => this.gameNameCache.get(normalizeGameName(name)))
+      .filter(Boolean);
+    const unresolved = requested.filter(
+      (name) => !this.gameNameCache.get(normalizeGameName(name))
+    );
+    return { games, unresolved };
   }
 
   /**

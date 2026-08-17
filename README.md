@@ -150,10 +150,11 @@ an OAuth Redirect URL on your Twitch app (step 1).
     beyond your own current one. See the IGDB note below for why this uses
     Twitch's own search instead of calling IGDB directly.
   - **Genre groups** — broad presets based on IGDB's genre, theme, and game-mode
-    concepts. Wormhole resolves their curated game names through Twitch's
-    `/games` endpoint, visually marks the added categories, and lets you remove
-    any game individually. Genre IDs are sent together in a batched `/streams`
-    request, so up to 100 mapped games do not become 100 separate searches.
+    concepts. Checkbox changes apply automatically. Wormhole resolves curated
+    game names through small Twitch `/games` batches and falls back to Twitch's
+    category search for naming variations. It visually marks added categories
+    and lets you remove any game individually. Genre IDs are sent together in a
+    batched `/streams` request, so mapped games do not become separate searches.
 - Each result card marks channels you already follow with a **Following**
   badge and, when available, the month and year you followed them. This uses
   Twitch's `/channels/followed` endpoint and the `user:read:follows` scope; it

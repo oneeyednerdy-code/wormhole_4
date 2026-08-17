@@ -199,3 +199,27 @@ test('genre streams send multiple category IDs in one request', async () => {
   assert.deepEqual(requestedUrl.searchParams.getAll('game_id'), ['game-1', 'game-2']);
   assert.equal(requestedUrl.searchParams.get('first'), '100');
 });
+
+test('genre resolution falls back to category search for Twitch name variations', async () => {
+  const paths = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    paths.push(parsed.pathname);
+    return {
+      ok: true,
+      async json() {
+        if (parsed.pathname === '/helix/games') return { data: [] };
+        return {
+          data: [{ id: 'warzone-id', name: 'Call of Duty: Warzone 2.0' }],
+          pagination: {},
+        };
+      },
+    };
+  };
+
+  const api = new TwitchApi('test-token');
+  const result = await api.resolveGenreCategories(['Call of Duty: Warzone']);
+  assert.equal(result.games[0].id, 'warzone-id');
+  assert.deepEqual(result.unresolved, []);
+  assert.deepEqual(paths, ['/helix/games', '/helix/search/categories']);
+});

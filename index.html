@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
   <title>Wormhole</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,7 +27,7 @@
         viewer count, and how long you've both been live.
       </p>
       <button id="login-btn" class="btn btn--primary btn--block">Log in with Twitch</button>
-      <p id="login-error" class="login-card__error"></p>
+      <p id="login-error" class="login-card__error" role="alert"></p>
     </div>
   </main>
 
@@ -46,21 +47,16 @@
       <section class="panel filters-panel">
         <h2 class="filters-panel__title">Filters</h2>
 
-        <div class="filter-row filter-row--stack">
-          <div class="filter-row__top">
+        <div class="filter-row">
+          <div>
             <span class="filter-row__label">Viewer count</span>
-            <span class="filter-row__value">
-              <span id="viewer-range-min-label" class="mono-value">0</span>
-              <span class="range-inputs__dash">–</span>
-              <span id="viewer-range-max-label" class="mono-value">No limit</span>
-            </span>
+            <p id="viewer-match-hint" class="filter-row__hint filter-row__hint--inline"></p>
           </div>
-          <div class="dual-range" id="viewer-range">
-            <div class="dual-range__track"></div>
-            <div class="dual-range__fill" id="viewer-range-fill"></div>
-            <input type="range" id="viewer-range-min" class="dual-range__input" min="0" max="1000" step="5" value="0" />
-            <input type="range" id="viewer-range-max" class="dual-range__input" min="0" max="1000" step="5" value="1000" />
-          </div>
+          <label class="toggle">
+            <input type="checkbox" id="show-all-viewers-filter" />
+            <span class="toggle__box"></span>
+            <span class="toggle__text">Show all viewer counts</span>
+          </label>
         </div>
 
         <div class="filter-row">
@@ -144,24 +140,11 @@
       </section>
 
       <section class="control-row">
-        <label class="tolerance-label" for="tolerance-slider">
-          Match tolerance
-          <span id="tolerance-value" class="tolerance-value">60%</span>
-        </label>
-        <input
-          id="tolerance-slider"
-          type="range"
-          min="10"
-          max="150"
-          step="10"
-          value="60"
-          class="slider"
-        />
         <button id="find-btn" class="btn btn--primary" disabled>Find someone to raid</button>
       </section>
 
       <section id="results-panel" class="panel results-panel hidden">
-        <p id="results-status" class="results-status hidden"></p>
+        <p id="results-status" class="results-status hidden" role="status" aria-live="polite"></p>
         <ul id="results-list" class="results-list"></ul>
       </section>
     </main>
@@ -176,7 +159,7 @@
     </div>
   </dialog>
 
-  <div id="toast" class="toast"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <footer class="site-footer">
     <a href="https://ko-fi.com/S6S5BZT4I" target="_blank" rel="noopener noreferrer" class="site-footer__kofi">

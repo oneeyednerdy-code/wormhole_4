@@ -11,6 +11,8 @@ export class TwitchApiError extends Error {
 export class TwitchApi {
   constructor(accessToken) {
     this.accessToken = accessToken;
+    this.broadcasterTypeCache = new Map();
+    this.teamCache = new Map();
   }
 
   get headers() {
@@ -58,18 +60,34 @@ export class TwitchApi {
   async getBroadcasterTypes(userIds) {
     const types = new Map();
     const uniqueIds = [...new Set(userIds)];
+    const uncachedIds = uniqueIds.filter((id) => {
+      if (!this.broadcasterTypeCache.has(id)) return true;
+      types.set(id, this.broadcasterTypeCache.get(id));
+      return false;
+    });
 
-    for (let i = 0; i < uniqueIds.length; i += 100) {
-      const batch = uniqueIds.slice(i, i + 100);
+    for (let i = 0; i < uncachedIds.length; i += 100) {
+      const batch = uncachedIds.slice(i, i + 100);
       const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/users');
       batch.forEach((id) => url.searchParams.append('id', id));
       const res = await fetch(url, { headers: this.headers });
       if (!res.ok) {
-        throw new TwitchApiError(`GET /users failed (${res.status}): ${await res.text()}`);
+        throw new TwitchApiError(
+          `GET /users failed (${res.status}): ${await res.text()}`,
+          res.status
+        );
       }
       const json = await res.json();
       for (const user of json.data ?? []) {
-        types.set(user.id, user.broadcaster_type || 'none');
+        const type = user.broadcaster_type || 'none';
+        types.set(user.id, type);
+        this.broadcasterTypeCache.set(user.id, type);
+      }
+      for (const id of batch) {
+        if (!types.has(id)) {
+          types.set(id, 'none');
+          this.broadcasterTypeCache.set(id, 'none');
+        }
       }
     }
 
@@ -86,11 +104,17 @@ export class TwitchApi {
    * the broadcaster isn't on any team, so that case is normalized to [].
    */
   async getChannelTeams(broadcasterId) {
+    if (this.teamCache.has(broadcasterId)) return this.teamCache.get(broadcasterId);
     try {
       const json = await this._get('/teams/channel', { broadcaster_id: broadcasterId });
-      return json.data ?? [];
+      const teams = json.data ?? [];
+      this.teamCache.set(broadcasterId, teams);
+      return teams;
     } catch (e) {
-      if (e instanceof TwitchApiError && e.status === 404) return [];
+      if (e instanceof TwitchApiError && e.status === 404) {
+        this.teamCache.set(broadcasterId, []);
+        return [];
+      }
       throw e;
     }
   }
@@ -137,7 +161,10 @@ export class TwitchApi {
    * Fetch up to maxResults currently-live streams for a game/category,
    * paginating through Twitch's cursor-based results as needed.
    */
-  async getLiveStreamsByGame(gameId, { maxResults = 100, language } = {}) {
+  async getLiveStreamsByGame(
+    gameId,
+    { maxResults = 100, language, stopBelowViewers = null } = {}
+  ) {
     const streams = [];
     let cursor = null;
 
@@ -148,6 +175,15 @@ export class TwitchApi {
 
       const json = await this._get('/streams', query);
       streams.push(...(json.data ?? []));
+
+      const lastViewerCount = json.data?.at(-1)?.viewer_count;
+      if (
+        stopBelowViewers != null &&
+        Number.isFinite(lastViewerCount) &&
+        lastViewerCount < stopBelowViewers
+      ) {
+        break;
+      }
 
       cursor = json.pagination?.cursor ?? null;
       if (!cursor || !json.data?.length) break;
@@ -200,7 +236,10 @@ export class TwitchApi {
       url.searchParams.set('first', '100');
       const res = await fetch(url, { headers: this.headers });
       if (!res.ok) {
-        throw new TwitchApiError(`GET /streams failed (${res.status}): ${await res.text()}`);
+        throw new TwitchApiError(
+          `GET /streams failed (${res.status}): ${await res.text()}`,
+          res.status
+        );
       }
       const json = await res.json();
       streams.push(...(json.data ?? []));
@@ -228,7 +267,8 @@ export class TwitchApi {
     });
     if (!res.ok) {
       throw new TwitchApiError(
-        `Failed to create EventSub subscription (${res.status}): ${await res.text()}`
+        `Failed to create EventSub subscription (${res.status}): ${await res.text()}`,
+        res.status
       );
     }
     return res.json();
@@ -244,7 +284,10 @@ export class TwitchApi {
     url.searchParams.set('to_broadcaster_id', toBroadcasterId);
     const res = await fetch(url, { method: 'POST', headers: this.headers });
     if (!res.ok) {
-      throw new TwitchApiError(`Failed to start raid (${res.status}): ${await res.text()}`);
+      throw new TwitchApiError(
+        `Failed to start raid (${res.status}): ${await res.text()}`,
+        res.status
+      );
     }
   }
 
@@ -254,7 +297,10 @@ export class TwitchApi {
     url.searchParams.set('broadcaster_id', fromBroadcasterId);
     const res = await fetch(url, { method: 'DELETE', headers: this.headers });
     if (!res.ok && res.status !== 204) {
-      throw new TwitchApiError(`Failed to cancel raid (${res.status}): ${await res.text()}`);
+      throw new TwitchApiError(
+        `Failed to cancel raid (${res.status}): ${await res.text()}`,
+        res.status
+      );
     }
   }
 }

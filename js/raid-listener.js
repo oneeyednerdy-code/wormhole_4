@@ -1,34 +1,42 @@
 import { RaidHistory } from './raid-history.js';
 
 const EVENTSUB_WS_URL = 'wss://eventsub.wss.twitch.tv/ws';
+const MAX_RECONNECT_DELAY_MS = 30_000;
+const SEEN_MESSAGE_LIMIT = 200;
 
-/**
- * Listens for channel.raid events targeting the logged-in broadcaster,
- * using Twitch's EventSub WebSocket transport — the only way to observe
- * raids at all, since Twitch has no REST endpoint for past raid history.
- * This only captures raids that happen while connected; see
- * raid-history.js for the caveat that implies.
- *
- * channel.raid needs no special OAuth scope over the WebSocket transport
- * (just a valid user token), so this works with the scopes the app
- * already requests at login.
- */
+/** Maintains incoming and outgoing channel.raid EventSub subscriptions. */
 export class RaidListener {
-  constructor(api, broadcasterId, { onRaid, onStatusChange } = {}) {
+  constructor(api, broadcasterId, { onRaid, onRaidSent, onStatusChange } = {}) {
     this.api = api;
     this.broadcasterId = broadcasterId;
     this.onRaid = onRaid ?? (() => {});
+    this.onRaidSent = onRaidSent ?? (() => {});
     this.onStatusChange = onStatusChange ?? (() => {});
     this.socket = null;
-    this.status = 'disconnected'; // disconnected | connecting | connected | error
+    this.sockets = new Set();
+    this.status = 'disconnected';
+    this.shouldStop = true;
+    this.reconnectAttempt = 0;
+    this.reconnectTimer = null;
+    this.keepaliveTimer = null;
+    this.keepaliveTimeoutSeconds = 10;
+    this.seenMessageIds = new Set();
   }
 
   start() {
+    this.stop();
+    this.shouldStop = false;
     this._connect(EVENTSUB_WS_URL);
   }
 
   stop() {
-    this.socket?.close();
+    this.shouldStop = true;
+    clearTimeout(this.reconnectTimer);
+    clearTimeout(this.keepaliveTimer);
+    this.reconnectTimer = null;
+    this.keepaliveTimer = null;
+    for (const socket of this.sockets) socket.close();
+    this.sockets.clear();
     this.socket = null;
     this._setStatus('disconnected');
   }
@@ -38,10 +46,12 @@ export class RaidListener {
     this.onStatusChange(status);
   }
 
-  _connect(url) {
+  _connect(url, { isTwitchReconnect = false, oldSocket = null } = {}) {
+    if (this.shouldStop) return;
     this._setStatus('connecting');
     const socket = new WebSocket(url);
     this.socket = socket;
+    this.sockets.add(socket);
 
     socket.addEventListener('message', (event) => {
       let message;
@@ -50,50 +60,111 @@ export class RaidListener {
       } catch {
         return;
       }
-      this._handleMessage(message);
+
+      const messageId = message.metadata?.message_id;
+      if (messageId && this.seenMessageIds.has(messageId)) return;
+      if (messageId) {
+        this.seenMessageIds.add(messageId);
+        if (this.seenMessageIds.size > SEEN_MESSAGE_LIMIT) {
+          this.seenMessageIds.delete(this.seenMessageIds.values().next().value);
+        }
+      }
+
+      this._handleMessage(message, socket, { isTwitchReconnect, oldSocket });
     });
 
     socket.addEventListener('close', () => {
-      if (this.socket === socket) this._setStatus('disconnected');
+      this.sockets.delete(socket);
+      if (this.shouldStop || this.socket !== socket) return;
+      clearTimeout(this.keepaliveTimer);
+      this._setStatus('disconnected');
+      this._scheduleReconnect();
     });
 
     socket.addEventListener('error', () => {
-      if (this.socket === socket) this._setStatus('error');
+      if (this.socket === socket && !this.shouldStop) this._setStatus('error');
     });
   }
 
-  async _handleMessage(message) {
+  _scheduleReconnect() {
+    if (this.shouldStop || this.reconnectTimer) return;
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempt, MAX_RECONNECT_DELAY_MS);
+    this.reconnectAttempt += 1;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this._connect(EVENTSUB_WS_URL);
+    }, delay);
+  }
+
+  _armKeepaliveTimer() {
+    clearTimeout(this.keepaliveTimer);
+    if (this.shouldStop) return;
+    this.keepaliveTimer = setTimeout(() => {
+      if (this.shouldStop) return;
+      this.socket?.close();
+    }, (this.keepaliveTimeoutSeconds + 5) * 1000);
+  }
+
+  async _handleMessage(message, socket, { isTwitchReconnect, oldSocket }) {
     const type = message.metadata?.message_type;
 
     if (type === 'session_welcome') {
-      const sessionId = message.payload.session.id;
+      this.keepaliveTimeoutSeconds = message.payload.session.keepalive_timeout_seconds ?? 10;
+      this.reconnectAttempt = 0;
+      this._armKeepaliveTimer();
+
       try {
-        await this.api.createEventSubWebSocketSubscription(
-          'channel.raid',
-          '1',
-          { to_broadcaster_user_id: this.broadcasterId },
-          sessionId
-        );
+        if (!isTwitchReconnect) {
+          const sessionId = message.payload.session.id;
+          await Promise.all([
+            this.api.createEventSubWebSocketSubscription(
+              'channel.raid',
+              '1',
+              { to_broadcaster_user_id: this.broadcasterId },
+              sessionId
+            ),
+            this.api.createEventSubWebSocketSubscription(
+              'channel.raid',
+              '1',
+              { from_broadcaster_user_id: this.broadcasterId },
+              sessionId
+            ),
+          ]);
+        }
         this._setStatus('connected');
-      } catch (e) {
-        console.error('Failed to subscribe to channel.raid:', e);
+        if (oldSocket) {
+          oldSocket.close();
+          this.sockets.delete(oldSocket);
+        }
+      } catch (error) {
+        console.error('Failed to subscribe to channel.raid:', error);
         this._setStatus('error');
       }
       return;
     }
 
+    if (type === 'session_keepalive' || type === 'notification') {
+      this._armKeepaliveTimer();
+    }
+
     if (type === 'session_reconnect') {
-      // Twitch is asking us to migrate to a new session before this one
-      // closes; existing subscriptions carry over automatically.
       const reconnectUrl = message.payload.session.reconnect_url;
-      const oldSocket = this.socket;
-      this._connect(reconnectUrl);
-      setTimeout(() => oldSocket?.close(), 1000);
+      this._connect(reconnectUrl, { isTwitchReconnect: true, oldSocket: socket });
       return;
     }
 
-    if (type === 'notification' && message.payload?.subscription?.type === 'channel.raid') {
-      const event = message.payload.event;
+    if (type === 'revocation') {
+      console.error('Twitch revoked an EventSub subscription:', message.payload?.subscription?.status);
+      this._setStatus('error');
+      return;
+    }
+
+    if (type !== 'notification' || message.payload?.subscription?.type !== 'channel.raid') {
+      return;
+    }
+
+    const event = message.payload.event;
+    if (event.to_broadcaster_user_id === this.broadcasterId) {
       RaidHistory.record({
         broadcasterId: event.from_broadcaster_user_id,
         login: event.from_broadcaster_user_login,
@@ -103,9 +174,7 @@ export class RaidListener {
         toBroadcasterId: event.to_broadcaster_user_id,
       });
       this.onRaid(event);
-      return;
     }
-
-    // 'session_keepalive' and 'revocation' messages need no handling here.
+    if (event.from_broadcaster_user_id === this.broadcasterId) this.onRaidSent(event);
   }
 }

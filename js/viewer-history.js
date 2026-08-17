@@ -1,5 +1,6 @@
-const STORAGE_KEY = 'raid_finder_viewer_history_v1';
+const STORAGE_KEY = 'wormhole_viewer_history_v2';
 const MAX_SAMPLES_PER_CHANNEL = 50;
+const MIN_SAMPLE_INTERVAL_MS = 5 * 60 * 1000;
 
 /**
  * Twitch's public API exposes only a channel's *current* live viewer
@@ -12,20 +13,34 @@ const MAX_SAMPLES_PER_CHANNEL = 50;
  */
 export const ViewerHistory = {
   _loadAll() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : {};
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
   },
 
   _saveAll(data) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   },
 
-  /** Records samples for many streams at once: { userId: viewerCount } */
+  /** Records samples no more than once every five minutes per channel. */
   recordSamples(viewerCountsByUserId) {
     const all = this._loadAll();
-    for (const [userId, viewerCount] of Object.entries(viewerCountsByUserId)) {
+    const now = Date.now();
+    for (const [userId, value] of Object.entries(viewerCountsByUserId)) {
+      const viewerCount = typeof value === 'number' ? value : value.viewerCount;
+      if (!Number.isFinite(viewerCount) || viewerCount < 0) continue;
       const samples = all[userId] ?? [];
-      samples.push(viewerCount);
+      const lastSampleAt = new Date(samples.at(-1)?.sampledAt ?? 0).getTime();
+      if (now - lastSampleAt < MIN_SAMPLE_INTERVAL_MS) continue;
+      samples.push({
+        viewerCount,
+        sampledAt: new Date(now).toISOString(),
+        streamStartedAt: typeof value === 'object' ? value.streamStartedAt ?? null : null,
+      });
       if (samples.length > MAX_SAMPLES_PER_CHANNEL) samples.shift();
       all[userId] = samples;
     }
@@ -37,8 +52,10 @@ export const ViewerHistory = {
     const all = this._loadAll();
     const samples = all[userId];
     if (!samples?.length) return null;
-    const average = samples.reduce((a, b) => a + b, 0) / samples.length;
-    return { average, sampleCount: samples.length };
+    const valid = samples.filter((s) => Number.isFinite(s?.viewerCount));
+    if (!valid.length) return null;
+    const average = valid.reduce((sum, sample) => sum + sample.viewerCount, 0) / valid.length;
+    return { average, sampleCount: valid.length };
   },
 
   clearAll() {

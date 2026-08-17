@@ -11,7 +11,6 @@ const state = {
   myStream: null,
   myTeams: [], // Twitch Teams the logged-in user belongs to
   matches: [],
-  tolerance: 60,
   extraCategories: [], // additional {id, name} categories to include, beyond myStream's own game
   expandedWatchId: null, // user_id of the result card currently showing a live embed, if any
   raidListener: null,
@@ -28,13 +27,8 @@ const el = {
   userAvatar: document.getElementById('user-avatar'),
   streamPanel: document.getElementById('stream-panel'),
   findBtn: document.getElementById('find-btn'),
-  toleranceSlider: document.getElementById('tolerance-slider'),
-  toleranceValue: document.getElementById('tolerance-value'),
-  viewerRangeMin: document.getElementById('viewer-range-min'),
-  viewerRangeMax: document.getElementById('viewer-range-max'),
-  viewerRangeFill: document.getElementById('viewer-range-fill'),
-  viewerRangeMinLabel: document.getElementById('viewer-range-min-label'),
-  viewerRangeMaxLabel: document.getElementById('viewer-range-max-label'),
+  viewerMatchHint: document.getElementById('viewer-match-hint'),
+  showAllViewersFilter: document.getElementById('show-all-viewers-filter'),
   statusFilters: document.getElementById('status-filters'),
   sameTeamFilter: document.getElementById('same-team-filter'),
   teamHint: document.getElementById('team-hint'),
@@ -98,6 +92,7 @@ el.loginBtn.addEventListener('click', () => {
 });
 
 el.logoutBtn.addEventListener('click', async () => {
+  searchGeneration += 1;
   await TwitchAuth.logout();
   state.raidListener?.stop();
   state.raidListener = null;
@@ -111,9 +106,15 @@ el.logoutBtn.addEventListener('click', async () => {
 async function loadCurrentUser() {
   state.user = await state.api.getCurrentUser();
   state.myStream = await state.api.getLiveStreamForUser(state.user.id);
-  state.myTeams = await state.api.getChannelTeams(state.user.id);
+  try {
+    state.myTeams = await state.api.getChannelTeams(state.user.id);
+  } catch (error) {
+    console.error('Could not load Twitch teams:', error);
+    state.myTeams = [];
+  }
   renderUser();
   renderStreamPanel();
+  renderViewerMatchHint();
   renderTeamHint();
   renderFollowingHint();
   renderRecentRaidersHint();
@@ -128,6 +129,9 @@ function startRaidListener() {
       showToast(`${event.from_broadcaster_user_name} just raided you with ${event.viewers} viewers!`);
       renderRecentRaidersHint();
     },
+    onRaidSent: (event) => {
+      showToast(`Raid completed to ${event.to_broadcaster_user_name}!`);
+    },
     onStatusChange: (status) => {
       state.raidListenerStatus = status;
       renderRecentRaidersHint();
@@ -137,7 +141,14 @@ function startRaidListener() {
 }
 
 async function init() {
-  const capturedToken = TwitchAuth.captureRedirectToken();
+  let capturedToken;
+  try {
+    capturedToken = TwitchAuth.captureRedirectToken();
+  } catch (error) {
+    el.loginError.textContent = error.message;
+    showView('login');
+    return;
+  }
   const token = capturedToken ?? TwitchAuth.getSavedToken();
 
   if (!token) {
@@ -181,10 +192,16 @@ function renderStreamPanel() {
         <button class="btn btn--ghost" id="refresh-stream-btn">Refresh</button>
       </div>`;
     document.getElementById('refresh-stream-btn').addEventListener('click', async () => {
-      state.myStream = await state.api.getLiveStreamForUser(state.user.id);
-      renderStreamPanel();
+      try {
+        state.myStream = await state.api.getLiveStreamForUser(state.user.id);
+        renderStreamPanel();
+      } catch (error) {
+        console.error(error);
+        showToast('Could not refresh your Twitch stream. Please try again.', true);
+      }
     });
     el.findBtn.disabled = true;
+    renderViewerMatchHint();
     renderSelectedCategories();
     return;
   }
@@ -202,6 +219,20 @@ function renderStreamPanel() {
       <span class="stat-chip"><span class="stat-chip__mono">${fmtDuration(Date.now() - new Date(s.started_at).getTime())}</span> live</span>
     </div>`;
   renderSelectedCategories();
+  renderViewerMatchHint();
+}
+
+function renderViewerMatchHint() {
+  if (!state.myStream) {
+    el.viewerMatchHint.textContent = 'Go live to calculate your ±50% viewer range.';
+    return;
+  }
+  const viewers = state.myStream.viewer_count;
+  const min = Math.max(0, Math.floor(viewers * 0.5));
+  const max = Math.ceil(viewers * 1.5);
+  el.viewerMatchHint.textContent = el.showAllViewersFilter.checked
+    ? 'Showing channels regardless of viewer count.'
+    : `Default match: ${fmtNumber(min)}–${fmtNumber(max)} viewers (±50% of your ${fmtNumber(viewers)}).`;
 }
 
 function renderTeamHint() {
@@ -248,11 +279,6 @@ function renderRecentRaidersHint() {
 
 // ---- Raid match search -------------------------------------------------
 
-el.toleranceSlider.addEventListener('input', () => {
-  state.tolerance = Number(el.toleranceSlider.value);
-  el.toleranceValue.textContent = `${state.tolerance}%`;
-});
-
 el.findBtn.addEventListener('click', () => runSearch());
 
 // Re-run the search automatically when a filter changes, but only if
@@ -261,7 +287,10 @@ function rerunIfResultsVisible() {
   if (!el.resultsPanel.classList.contains('hidden')) runSearch();
 }
 
-el.toleranceSlider.addEventListener('change', rerunIfResultsVisible);
+el.showAllViewersFilter.addEventListener('change', () => {
+  renderViewerMatchHint();
+  rerunIfResultsVisible();
+});
 el.statusFilters.addEventListener('change', rerunIfResultsVisible);
 el.sameTeamFilter.addEventListener('change', rerunIfResultsVisible);
 el.followingFilter.addEventListener('change', rerunIfResultsVisible);
@@ -285,59 +314,6 @@ function getTagsQuery() {
     .map((t) => t.trim())
     .filter(Boolean);
 }
-
-// ---- Viewer-count dual-range slider ------------------------------------
-//
-// Twitch viewer counts span orders of magnitude (a handful up to tens of
-// thousands), so a linear slider would waste most of its range on numbers
-// nobody uses. Internally the sliders move 0-1000; that position is mapped
-// onto viewer counts on a log curve, and the max handle's top position
-// means "no upper limit" rather than a specific number.
-
-const SLIDER_STEPS = 1000;
-const SLIDER_LOG_CEILING = 100000; // viewer count at ~99% up the slider
-
-function posToViewers(pos) {
-  if (pos <= 0) return 0;
-  const ratio = pos / SLIDER_STEPS;
-  return Math.round(Math.exp(Math.log(SLIDER_LOG_CEILING) * ratio));
-}
-
-function renderViewerRange() {
-  let minPos = Number(el.viewerRangeMin.value);
-  let maxPos = Number(el.viewerRangeMax.value);
-
-  // Keep the handles from crossing.
-  if (minPos > maxPos) {
-    [minPos, maxPos] = [maxPos, minPos];
-    el.viewerRangeMin.value = minPos;
-    el.viewerRangeMax.value = maxPos;
-  }
-
-  const minPct = (minPos / SLIDER_STEPS) * 100;
-  const maxPct = (maxPos / SLIDER_STEPS) * 100;
-  el.viewerRangeFill.style.left = `${minPct}%`;
-  el.viewerRangeFill.style.width = `${Math.max(0, maxPct - minPct)}%`;
-
-  const minViewers = posToViewers(minPos);
-  el.viewerRangeMinLabel.textContent = fmtNumber(minViewers);
-  el.viewerRangeMaxLabel.textContent =
-    maxPos >= SLIDER_STEPS ? 'No limit' : fmtNumber(posToViewers(maxPos));
-}
-
-function getViewerBounds() {
-  const minPos = Number(el.viewerRangeMin.value);
-  const maxPos = Number(el.viewerRangeMax.value);
-  const min = minPos <= 0 ? null : posToViewers(minPos);
-  const max = maxPos >= SLIDER_STEPS ? null : posToViewers(maxPos);
-  return { min, max };
-}
-
-el.viewerRangeMin.addEventListener('input', renderViewerRange);
-el.viewerRangeMax.addEventListener('input', renderViewerRange);
-el.viewerRangeMin.addEventListener('change', rerunIfResultsVisible);
-el.viewerRangeMax.addEventListener('change', rerunIfResultsVisible);
-renderViewerRange();
 
 // ---- Category search (Twitch's category database, IGDB-backed) --------
 //
@@ -396,10 +372,20 @@ function renderCategorySuggestions(results) {
       .join('');
 
     el.categorySuggestions.querySelectorAll('.category-suggestions__item[data-id]').forEach((item) => {
-      item.addEventListener('mousedown', () => {
+      const selectItem = () => {
         addCategory({ id: item.dataset.id, name: item.dataset.name });
         el.categorySearchInput.value = '';
         hideCategorySuggestions();
+      };
+      item.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        selectItem();
+      });
+      item.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          selectItem();
+        }
       });
     });
   }
@@ -446,14 +432,21 @@ function renderSelectedCategories() {
   });
 }
 
+let searchGeneration = 0;
+
 async function runSearch() {
   if (!state.myStream) return;
+
+  const generation = ++searchGeneration;
 
   const selectedStatuses = getSelectedStatuses();
   const wantsSameTeam = el.sameTeamFilter.checked && !el.sameTeamFilter.disabled;
   const wantsFollowing = el.followingFilter.checked;
   const wantsRecentRaiders = el.recentRaidersFilter.checked && !el.recentRaidersFilter.disabled;
+  const showAllViewerCounts = el.showAllViewersFilter.checked;
   const tags = getTagsQuery();
+
+  el.findBtn.disabled = true;
 
   el.resultsPanel.classList.remove('hidden');
   el.resultsList.innerHTML = '';
@@ -463,9 +456,16 @@ async function runSearch() {
   try {
     const gameIds = [state.myStream.game_id, ...state.extraCategories.map((c) => c.id)];
 
+    const minimumMatchedViewers = showAllViewerCounts
+      ? null
+      : Math.max(0, Math.floor(state.myStream.viewer_count * 0.5));
     const candidateLists = await Promise.all(
-      gameIds.map((id) => state.api.getLiveStreamsByGame(id, { maxResults: 100 }))
+      gameIds.map((id) => state.api.getLiveStreamsByGame(id, {
+        maxResults: showAllViewerCounts ? 500 : 1000,
+        stopBelowViewers: minimumMatchedViewers,
+      }))
     );
+    if (generation !== searchGeneration) return;
 
     const seen = new Set();
     const candidates = [];
@@ -510,11 +510,10 @@ async function runSearch() {
     const broadcasterTypes = await state.api.getBroadcasterTypes(
       candidates.map((s) => s.user_id)
     );
+    if (generation !== searchGeneration) return;
     for (const s of candidates) {
       s.broadcaster_type = broadcasterTypes.get(s.user_id) ?? 'none';
     }
-
-    const { min, max } = getViewerBounds();
 
     // Team membership has no batch endpoint (one request per channel), so
     // only fetch it for candidates that already survive the cheap filters
@@ -524,8 +523,6 @@ async function runSearch() {
       el.resultsStatus.textContent = 'Checking team rosters…';
 
       const preFiltered = applyHardFilters(candidates, {
-        minViewers: min,
-        maxViewers: max,
         allowedBroadcasterTypes: selectedStatuses,
         requiredTags: tags,
       });
@@ -534,6 +531,7 @@ async function runSearch() {
       const memberships = await state.api.getTeamMembershipsForUsers(
         preFiltered.map((s) => s.user_id)
       );
+      if (generation !== searchGeneration) return;
 
       for (const s of preFiltered) {
         const teams = memberships.get(s.user_id) ?? [];
@@ -544,17 +542,19 @@ async function runSearch() {
     }
 
     state.matches = findRaidMatches(state.myStream, candidates, {
-      viewerTolerancePercent: state.tolerance,
-      minViewers: min,
-      maxViewers: max,
+      viewerTolerancePercent: 50,
+      ignoreViewerTolerance: showAllViewerCounts,
       allowedBroadcasterTypes: selectedStatuses,
       requireSharedTeam: wantsSameTeam,
       requiredTags: tags,
     });
     renderResults();
   } catch (e) {
+    if (generation !== searchGeneration) return;
     console.error(e);
-    el.resultsStatus.textContent = `Could not fetch raid matches: ${e.message}`;
+    el.resultsStatus.textContent = 'Could not fetch raid matches. Please try again in a moment.';
+  } finally {
+    if (generation === searchGeneration && state.myStream) el.findBtn.disabled = false;
   }
 }
 
@@ -567,7 +567,7 @@ function scoreClass(score) {
 function renderResults() {
   if (!state.matches.length) {
     el.resultsStatus.textContent =
-      'No matches found. Try loosening the tolerance, viewer range, tags, or other filters above.';
+      'No matches found. Try showing all viewer counts or loosening the tags and other filters.';
     el.resultsStatus.classList.remove('hidden');
     el.resultsList.innerHTML = '';
     return;
@@ -691,10 +691,17 @@ el.raidConfirmBtn.addEventListener('click', async () => {
   el.raidDialog.close();
   try {
     await state.api.startRaid(state.user.id, target.stream.user_id);
-    showToast(`Raid started on ${target.stream.user_name}!`);
+    showToast(`Raid countdown started for ${target.stream.user_name}.`);
   } catch (e) {
     console.error(e);
-    showToast(`Could not start raid: ${e.message}`, true);
+    const messages = {
+      400: 'Twitch would not allow this raid. The channel may restrict incoming raids.',
+      401: 'Your Twitch permission expired. Log out and back in, then try again.',
+      404: 'That channel is no longer available.',
+      409: 'A raid countdown is already in progress.',
+      429: 'Twitch’s raid limit was reached. Please wait before trying again.',
+    };
+    showToast(messages[e.status] ?? 'Could not start the raid. Please try again.', true);
   }
   pendingRaid = null;
 });
@@ -702,9 +709,12 @@ el.raidConfirmBtn.addEventListener('click', async () => {
 // ---- Utils ---------------------------------------------------------
 
 function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str ?? '';
-  return div.innerHTML;
+  return String(str ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
 }
 
 init();

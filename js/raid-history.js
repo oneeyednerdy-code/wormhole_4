@@ -17,8 +17,13 @@ const MAX_ENTRIES = 50;
  */
 export const RaidHistory = {
   _loadAll() {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   },
 
   getAll(toBroadcasterId) {

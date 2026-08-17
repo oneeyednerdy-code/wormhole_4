@@ -5,8 +5,8 @@ logs in with Twitch and finds you a good channel to raid, matched on:
 
 - **Game / category** — search and add extra games/categories, not just your
   current one
-- **Viewer count** — closeness of live viewer counts, plus an optional
-  range slider filter
+- **Viewer count** — defaults to channels within ±50% of your current live
+  viewers, with an option to show every viewer count
 - **Channel status** — additive Partner/Affiliate toggles on top of an
   always-included non-affiliate pool
 - **Team** — optionally only show channels sharing one of your Twitch Teams
@@ -95,21 +95,19 @@ an OAuth Redirect URL on your Twitch app (step 1).
 
 - Pulls your current live stream (game, viewer count, start time) via the
   Twitch Helix API.
-- Pulls up to 100 live streams for each category you've selected (your own
-  current game is always included — see "Categories" below for adding more).
+- Paginates through live streams for each selected category until it reaches
+  channels below your ±50% range (up to 1,000 candidates per category). When
+  "Show all viewer counts" is enabled, it retrieves up to 500 per category.
 - Scores each by: viewer-count closeness (50%), estimated-average-viewers
   closeness (30%), and stream-duration closeness (20%) — see
   `js/raid-match.js` to tune these weights.
-- A tolerance slider lets you widen or narrow how far off in viewer count a
-  match is allowed to be.
+- By default, only channels from 50% to 150% of your current live viewer count
+  qualify. **Show all viewer counts** removes that limit while retaining viewer
+  similarity as part of the ranking score.
 - The **Filters** panel adds several hard filters (candidates outside these
   are excluded entirely, not just scored lower):
-  - **Viewer count** — a dual-handle slider rather than plain number
-    fields, since viewer counts span orders of magnitude (a handful up to
-    tens of thousands). It moves on a log curve so the low end (where most
-    streamers are) gets much finer control than the high end, and dragging
-    the top handle all the way right means "no upper limit" rather than a
-    specific number.
+  - **Viewer count** — automatically shows the ±50% range calculated from your
+    current audience. A checkbox can include channels outside that range.
   - **Channel status** — Partner and Affiliate are *additive* toggles on
     top of an always-included non-affiliate pool (most of Twitch). There's
     no separate "non-affiliate" checkbox — unchecking both Partner and
@@ -181,7 +179,9 @@ Twitch's public API only exposes a channel's **current, live** viewer count
 analytics sites, not the official API). To approximate a real average
 instead of a single snapshot, this app keeps a small local history of
 viewer-count samples for every channel it's seen, stored in your browser's
-`localStorage`, and averages those samples once it has at least a few.
+`localStorage`, and averages those samples once it has at least a few. Samples
+are recorded no more than once every five minutes per channel, so repeated
+filter changes do not distort the estimate.
 Until a channel's been seen a few times, its "average" falls back to its
 current live viewer count, and result cards mark that with **"(est.)"**.
 The more you use the app, the better these estimates get. This history is
@@ -205,11 +205,15 @@ index.html          # Page shell, both views (login + app)
 css/styles.css       # All styling
 js/
   config.js          # Client ID, scopes, redirect URI
-  twitch-auth.js      # OAuth redirect flow, token storage
+  twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   viewer-history.js   # Local rolling viewer-count history
-  raid-match.js        # Scoring/ranking algorithm
-  app.js               # Wires everything together, renders the UI
+  raid-history.js     # Locally recorded incoming raids
+  raid-listener.js    # Resilient EventSub WebSocket listener
+  raid-match.js       # Filtering and scoring algorithm
+  app.js              # Wires everything together, renders the UI
+tests/
+  raid-match.test.mjs # Core matching behavior tests
 ```
 
 No dependencies, no `package.json`, no build step — the only external

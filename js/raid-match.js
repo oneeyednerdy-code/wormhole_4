@@ -15,18 +15,15 @@ function percentDiff(a, b) {
   return (Math.abs(a - b) / base) * 100;
 }
 
-function computeScore({ viewerDiffPercent, durationDiffMs }) {
-  const viewerScore = Math.max(0, 100 - viewerDiffPercent);
+function computeScore({ liveViewerDiffPercent, averageViewerDiffPercent, durationDiffMs }) {
+  const viewerScore = Math.max(0, 100 - liveViewerDiffPercent);
 
   const durationDiffHours = durationDiffMs / 1000 / 60 / 60;
   // Being live for a wildly different amount of time matters less than
   // viewer count; cap the penalty at 6 hours of difference.
   const durationScore = Math.max(0, 100 - (durationDiffHours / 6) * 100);
 
-  // The average-viewership factor is baked into viewerDiffPercent (we
-  // compare estimated averages, not live snapshots), reused here as a
-  // distinct weighted term to reflect its independent importance.
-  const averageScore = viewerScore;
+  const averageScore = Math.max(0, 100 - averageViewerDiffPercent);
 
   return (
     viewerScore * WEIGHT_VIEWER_COUNT +
@@ -94,7 +91,8 @@ export function findRaidMatches(
   myStream,
   candidates,
   {
-    viewerTolerancePercent = 60,
+    viewerTolerancePercent = 50,
+    ignoreViewerTolerance = false,
     minViewers = null,
     maxViewers = null,
     allowedBroadcasterTypes = null,
@@ -112,8 +110,15 @@ export function findRaidMatches(
 
   // Record fresh samples for everyone we just looked at, so the local
   // average-viewership estimate keeps improving over time.
-  const samples = {};
-  for (const s of filtered) samples[s.user_id] = s.viewer_count;
+  const samples = {
+    [myStream.user_id]: {
+      viewerCount: myStream.viewer_count,
+      streamStartedAt: myStream.started_at,
+    },
+  };
+  for (const s of filtered) {
+    samples[s.user_id] = { viewerCount: s.viewer_count, streamStartedAt: s.started_at };
+  }
   ViewerHistory.recordSamples(samples);
 
   const myAvgRecord = ViewerHistory.getAverage(myStream.user_id);
@@ -128,22 +133,28 @@ export function findRaidMatches(
     const estimatedAverage = avgRecord?.average ?? candidate.viewer_count;
     const averageIsHistorical = (avgRecord?.sampleCount ?? 0) >= 3;
 
-    const viewerDiffPercent = percentDiff(myEstimatedAverage, estimatedAverage);
+    const liveViewerDiffPercent = percentDiff(myStream.viewer_count, candidate.viewer_count);
+    const averageViewerDiffPercent = percentDiff(myEstimatedAverage, estimatedAverage);
 
     // Skip channels wildly outside the requested tolerance band - raiding
     // a streamer 10x your size (or 1/10th) usually isn't a meaningful match.
-    if (viewerDiffPercent > viewerTolerancePercent) continue;
+    if (!ignoreViewerTolerance && liveViewerDiffPercent > viewerTolerancePercent) continue;
 
     const durationDiffMs = Math.abs(liveDurationMs(myStream) - liveDurationMs(candidate));
 
-    const matchScore = computeScore({ viewerDiffPercent, durationDiffMs });
+    const matchScore = computeScore({
+      liveViewerDiffPercent,
+      averageViewerDiffPercent,
+      durationDiffMs,
+    });
 
     results.push({
       stream: candidate,
       estimatedAverageViewers: estimatedAverage,
       averageIsHistorical,
       matchScore,
-      viewerCountDiffPercent: viewerDiffPercent,
+      viewerCountDiffPercent: liveViewerDiffPercent,
+      averageViewerCountDiffPercent: averageViewerDiffPercent,
       streamDurationDiffMs: durationDiffMs,
     });
   }

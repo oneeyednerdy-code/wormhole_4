@@ -159,8 +159,11 @@ an OAuth Redirect URL on your Twitch app (step 1).
 - **Recent activity** loads on demand for one result at a time and includes:
   the latest three public VODs, total broadcasts found in the last 30 days,
   popular clips with in-card previews, account creation date, and the next
-  published schedule segment. VOD views are labelled clearly as replay views,
-  not historical concurrent viewers.
+  published schedule segment. It also estimates when the current live stream
+  may end by adding the median duration of recent VODs to its actual start time,
+  while showing Twitch's scheduled end separately when a current schedule
+  segment exists. Both are clearly labelled as estimates/plans. VOD views are
+  replay views, not historical concurrent viewers.
 - Wormhole stores a small local snapshot when a result is viewed. Returning to
   the same channel later can show observed category history and follower-count
   change. Twitch does not provide those time series, so this history begins on

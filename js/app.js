@@ -7,6 +7,7 @@ import { ViewerHistory } from './viewer-history.js';
 import { PreviousStreamHistory } from './previous-stream-history.js';
 import { paginate } from './pagination.js';
 import { ChannelHistory } from './channel-history.js';
+import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js';
 
 const state = {
   api: null,
@@ -352,12 +353,6 @@ function renderViewerMatchHint() {
   el.viewerMatchHint.textContent = el.showAllViewersFilter.checked
     ? 'Showing channels regardless of viewer count.'
     : `Default match: ${fmtNumber(min)}–${fmtNumber(max)} viewers (±50% of ${source}).`;
-}
-
-function parseTwitchDuration(duration) {
-  const match = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/.exec(duration ?? '');
-  if (!match) return null;
-  return ((Number(match[1] ?? 0) * 60 + Number(match[2] ?? 0)) * 60 + Number(match[3] ?? 0)) * 1000;
 }
 
 function formatPreviousVodLabel(vod) {
@@ -902,7 +897,7 @@ async function loadRecentActivity(stream, renderGeneration) {
   const [videosResult, clipsResult, scheduleResult, profileResult] = await Promise.allSettled([
     state.api.getBroadcastHistory(stream.user_id, { days: 30, maxResults: 100 }),
     state.api.getRecentClips(stream.user_id, { days: 30, maxResults: 3 }),
-    state.api.getNextScheduledStream(stream.user_id),
+    state.api.getScheduleContext(stream.user_id),
     state.api.getBroadcasterProfile(stream.user_id),
   ]);
   if (
@@ -912,11 +907,15 @@ async function loadRecentActivity(stream, renderGeneration) {
 
   const videos = videosResult.status === 'fulfilled' ? videosResult.value : [];
   const clips = clipsResult.status === 'fulfilled' ? clipsResult.value : [];
-  const schedule = scheduleResult.status === 'fulfilled' ? scheduleResult.value : null;
+  const scheduleContext = scheduleResult.status === 'fulfilled'
+    ? scheduleResult.value
+    : { current: null, next: null };
   const profile = profileResult.status === 'fulfilled' ? profileResult.value : null;
   const history = ChannelHistory.getSummary(stream.user_id);
 
-  panel.innerHTML = recentActivityHtml({ stream, videos, clips, schedule, profile, history });
+  panel.innerHTML = recentActivityHtml({
+    stream, videos, clips, scheduleContext, profile, history,
+  });
   panel.querySelectorAll('[data-clip-id]').forEach((button) => {
     button.addEventListener('click', () => {
       const clipId = button.dataset.clipId;
@@ -939,12 +938,27 @@ async function loadRecentActivity(stream, renderGeneration) {
   });
 }
 
-function recentActivityHtml({ stream, videos, clips, schedule, profile, history }) {
+function recentActivityHtml({ stream, videos, clips, scheduleContext, profile, history }) {
   const recentVods = videos.slice(0, 3);
   const accountAge = profile?.created_at ? fmtDate(profile.created_at) : 'Unavailable';
-  const nextStream = schedule?.start_time
-    ? `${fmtDate(schedule.start_time, { dateStyle: 'medium', timeStyle: 'short' })}${schedule.title ? ` — ${escapeHtml(schedule.title)}` : ''}`
+  const nextStream = scheduleContext?.next?.start_time
+    ? `${fmtDate(scheduleContext.next.start_time, { dateStyle: 'medium', timeStyle: 'short' })}${scheduleContext.next.title ? ` — ${escapeHtml(scheduleContext.next.title)}` : ''}`
     : 'No upcoming stream published';
+  const plannedEnd = scheduleContext?.current?.end_time
+    ? fmtDate(scheduleContext.current.end_time, { dateStyle: 'medium', timeStyle: 'short' })
+    : 'No current scheduled end';
+  const endEstimate = estimateStreamEnd(stream.started_at, videos);
+  const estimatedEndMs = endEstimate
+    ? new Date(endEstimate.estimatedEndAt).getTime()
+    : null;
+  const estimatedEnd = endEstimate
+    ? estimatedEndMs > Date.now()
+      ? fmtDate(endEstimate.estimatedEndAt, { dateStyle: 'medium', timeStyle: 'short' })
+      : `${fmtDuration(Date.now() - estimatedEndMs)} past typical end`
+    : 'Not enough VOD history';
+  const estimateBasis = endEstimate
+    ? `${fmtDuration(endEstimate.medianDurationMs)} typical length · median of ${endEstimate.sampleCount} VOD${endEstimate.sampleCount === 1 ? '' : 's'}`
+    : 'Requires at least one public VOD with duration';
   const categories = history?.categories?.slice(0, 4) ?? [];
   const followerGrowth = history?.sampleCount > 1 && Number.isFinite(history.followerDelta)
     ? `${history.followerDelta >= 0 ? '+' : ''}${fmtNumber(history.followerDelta)} since ${fmtDate(history.followerStartAt)}`
@@ -975,14 +989,16 @@ function recentActivityHtml({ stream, videos, clips, schedule, profile, history 
       <div><strong>${videos.length}</strong><span>streams in 30 days</span></div>
       <div><strong>${escapeHtml(accountAge)}</strong><span>account created</span></div>
       <div><strong>${escapeHtml(followerGrowth)}</strong><span>local follower growth</span></div>
+      <div><strong>${escapeHtml(estimatedEnd)}</strong><span>estimated end · ${escapeHtml(estimateBasis)}</span></div>
     </div>
+    <p class="activity-schedule"><strong>Current scheduled end:</strong> ${escapeHtml(plannedEnd)}</p>
     <p class="activity-schedule"><strong>Next scheduled:</strong> ${nextStream}</p>
     <p class="activity-history"><strong>Observed categories:</strong> ${categories.length ? categories.map(escapeHtml).join(', ') : `First snapshot recorded for ${escapeHtml(stream.game_name)}`}</p>
     <h4>Recent broadcasts</h4>
     ${vodsHtml}
     <h4>Popular clips from the last 30 days</h4>
     ${clipsHtml}
-    <p class="activity-note">VOD views are total replay views, not average live viewers. Local history improves as Wormhole sees this channel again.</p>`;
+    <p class="activity-note">The estimated end uses the median length of recent public VODs and is not a Twitch-confirmed end time. Scheduled times are plans published by the streamer. VOD views are total replay views, not average live viewers.</p>`;
 }
 
 function contentLabelsHtml(stream) {

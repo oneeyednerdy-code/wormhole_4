@@ -362,21 +362,44 @@ export class TwitchApi {
     return request;
   }
 
-  /** The broadcaster's next scheduled stream, or null if none is published. */
-  async getNextScheduledStream(userId) {
+  /** Current and next published schedule segments, when available. */
+  async getScheduleContext(userId) {
     if (this.scheduleCache.has(userId)) return this.scheduleCache.get(userId);
+    const now = new Date();
+    const lookback = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const request = this._get('/schedule', {
       broadcaster_id: userId,
-      start_time: new Date().toISOString(),
-      first: 1,
+      start_time: lookback.toISOString(),
+      first: 25,
     })
-      .then((json) => json.data?.segments?.[0] ?? null)
+      .then((json) => {
+        const segments = (json.data?.segments ?? []).filter(
+          (segment) => !segment.canceled_until
+        );
+        const nowMs = now.getTime();
+        return {
+          current: segments.find((segment) => {
+            const start = new Date(segment.start_time).getTime();
+            const end = new Date(segment.end_time).getTime();
+            return start <= nowMs && end > nowMs;
+          }) ?? null,
+          next: segments.find(
+            (segment) => new Date(segment.start_time).getTime() > nowMs
+          ) ?? null,
+        };
+      })
       .catch((error) => {
-        if (error instanceof TwitchApiError && error.status === 404) return null;
+        if (error instanceof TwitchApiError && error.status === 404) {
+          return { current: null, next: null };
+        }
         throw error;
       });
     this.scheduleCache.set(userId, request);
     return request;
+  }
+
+  async getNextScheduledStream(userId) {
+    return (await this.getScheduleContext(userId)).next;
   }
 
   /**

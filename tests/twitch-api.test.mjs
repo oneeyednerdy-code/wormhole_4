@@ -94,13 +94,17 @@ test('follower totals use the public total and are cached per channel', async ()
 
 test('activity history calls request broadcasts, clips, schedule, and profile data', async () => {
   const requestedUrls = [];
+  const futureStart = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  const futureEnd = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
   globalThis.fetch = async (url) => {
     const parsed = new URL(url);
     requestedUrls.push(parsed);
     const payloads = {
       '/helix/videos': { data: [{ id: 'vod-1', created_at: new Date().toISOString() }] },
       '/helix/clips': { data: [{ id: 'clip-1' }] },
-      '/helix/schedule': { data: { segments: [{ id: 'segment-1' }] } },
+      '/helix/schedule': {
+        data: { segments: [{ id: 'segment-1', start_time: futureStart, end_time: futureEnd }] },
+      },
       '/helix/users': { data: [{ id: 'channel-9', created_at: '2020-01-01T00:00:00Z' }] },
     };
     return { ok: true, async json() { return payloads[parsed.pathname]; } };
@@ -125,4 +129,26 @@ test('activity history calls request broadcasts, clips, schedule, and profile da
   const clipsUrl = requestedUrls.find((url) => url.pathname === '/helix/clips');
   assert.equal(clipsUrl.searchParams.get('broadcaster_id'), 'channel-9');
   assert.ok(clipsUrl.searchParams.get('started_at'));
+  const scheduleUrl = requestedUrls.find((url) => url.pathname === '/helix/schedule');
+  assert.equal(scheduleUrl.searchParams.get('first'), '25');
+});
+
+test('schedule context identifies a currently active published segment', async () => {
+  const currentStart = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+  const currentEnd = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+  globalThis.fetch = async () => ({
+    ok: true,
+    async json() {
+      return {
+        data: {
+          segments: [{ id: 'current-segment', start_time: currentStart, end_time: currentEnd }],
+        },
+      };
+    },
+  });
+
+  const api = new TwitchApi('test-token');
+  const context = await api.getScheduleContext('channel-10');
+  assert.equal(context.current.id, 'current-segment');
+  assert.equal(context.next, null);
 });

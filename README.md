@@ -5,6 +5,9 @@ logs in with Twitch and finds you a good channel to raid, matched on:
 
 - **Game / category** — search and add extra games/categories, not just your
   current one
+- **Genre groups** — add curated RPG, MMO, Shooter, Strategy, Horror,
+  Survival, Simulation, or Adventure game groups, then remove individual
+  categories you do not want
 - **Viewer count** — defaults to channels within ±50% of your current live
   viewers, with an option to show every viewer count
 - **Channel status** — additive Partner/Affiliate toggles on top of an
@@ -146,6 +149,11 @@ an OAuth Redirect URL on your Twitch app (step 1).
   - **Categories** — search box to add other games/categories to the search,
     beyond your own current one. See the IGDB note below for why this uses
     Twitch's own search instead of calling IGDB directly.
+  - **Genre groups** — broad presets based on IGDB's genre, theme, and game-mode
+    concepts. Wormhole resolves their curated game names through Twitch's
+    `/games` endpoint, visually marks the added categories, and lets you remove
+    any game individually. Genre IDs are sent together in a batched `/streams`
+    request, so up to 100 mapped games do not become 100 separate searches.
 - Each result card marks channels you already follow with a **Following**
   badge and, when available, the month and year you followed them. This uses
   Twitch's `/channels/followed` endpoint and the `user:read:follows` scope; it
@@ -194,6 +202,12 @@ app already has. That's what powers the "Categories" filter — search for
 another game or category by name and add it to your search, rather than an
 automatic "similar games" suggestion (which would need IGDB's genre/
 similar-games fields specifically).
+
+The broad genre filter uses a browser-safe curated mapping in
+`js/genre-presets.js`. RPG/Shooter/Strategy/Adventure correspond primarily to
+IGDB genres; MMO corresponds to a game mode; Horror and Survival are treated as
+themes. This avoids shipping an IGDB client secret in public JavaScript. The
+mapping can be updated as games become more or less relevant on Twitch.
 
 If you do want true IGDB genre-based matching, it's possible — but it needs
 a small backend (even a single serverless function) to hold the client

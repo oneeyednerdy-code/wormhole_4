@@ -152,3 +152,50 @@ test('schedule context identifies a currently active published segment', async (
   assert.equal(context.current.id, 'current-segment');
   assert.equal(context.next, null);
 });
+
+test('exact category names resolve in one cached Twitch games batch', async () => {
+  const requestedUrls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    requestedUrls.push(parsed);
+    return {
+      ok: true,
+      async json() {
+        return { data: [
+          { id: 'game-1', name: 'World of Warcraft' },
+          { id: 'game-2', name: 'Phasmophobia' },
+        ] };
+      },
+    };
+  };
+
+  const api = new TwitchApi('test-token');
+  const first = await api.getGamesByNames(['World of Warcraft', 'Phasmophobia']);
+  const second = await api.getGamesByNames(['World of Warcraft']);
+  assert.deepEqual(first.map((game) => game.id), ['game-1', 'game-2']);
+  assert.equal(second[0].id, 'game-1');
+  assert.equal(requestedUrls.length, 1);
+  assert.deepEqual(
+    requestedUrls[0].searchParams.getAll('name'),
+    ['World of Warcraft', 'Phasmophobia']
+  );
+});
+
+test('genre streams send multiple category IDs in one request', async () => {
+  let requestedUrl;
+  globalThis.fetch = async (url) => {
+    requestedUrl = new URL(url);
+    return {
+      ok: true,
+      async json() {
+        return { data: [{ user_id: 'live-1', viewer_count: 10 }], pagination: {} };
+      },
+    };
+  };
+
+  const api = new TwitchApi('test-token');
+  const streams = await api.getLiveStreamsByGames(['game-1', 'game-2']);
+  assert.equal(streams[0].user_id, 'live-1');
+  assert.deepEqual(requestedUrl.searchParams.getAll('game_id'), ['game-1', 'game-2']);
+  assert.equal(requestedUrl.searchParams.get('first'), '100');
+});

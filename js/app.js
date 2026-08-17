@@ -8,6 +8,10 @@ import { PreviousStreamHistory } from './previous-stream-history.js';
 import { paginate } from './pagination.js';
 import { ChannelHistory } from './channel-history.js';
 import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js';
+import {
+  getGenreGameNames,
+  getGenreLabelsForGame,
+} from './genre-presets.js';
 
 const state = {
   api: null,
@@ -45,6 +49,10 @@ const el = {
   sameTeamFilter: document.getElementById('same-team-filter'),
   teamHint: document.getElementById('team-hint'),
   tagsInput: document.getElementById('tags-input'),
+  genreFilters: document.getElementById('genre-filters'),
+  addGenresBtn: document.getElementById('add-genres-btn'),
+  clearGenresBtn: document.getElementById('clear-genres-btn'),
+  genreHint: document.getElementById('genre-hint'),
   categorySearchInput: document.getElementById('category-search-input'),
   categorySuggestions: document.getElementById('category-suggestions'),
   selectedCategories: document.getElementById('selected-categories'),
@@ -532,6 +540,67 @@ function getTagsQuery() {
     .filter(Boolean);
 }
 
+function getSelectedGenreIds() {
+  return [...el.genreFilters.querySelectorAll('input[type="checkbox"]:checked')]
+    .map((checkbox) => checkbox.value);
+}
+
+el.addGenresBtn.addEventListener('click', async () => {
+  const genreIds = getSelectedGenreIds();
+  if (!genreIds.length) {
+    showToast('Choose at least one genre group first.', true);
+    return;
+  }
+
+  const names = getGenreGameNames(genreIds);
+  el.addGenresBtn.disabled = true;
+  el.genreHint.textContent = 'Resolving genre games against Twitch categories…';
+  try {
+    const games = await state.api.getGamesByNames(names);
+    let added = 0;
+    for (const game of games) {
+      if (game.id === state.myStream?.game_id) continue;
+      const labels = getGenreLabelsForGame(game.name, genreIds);
+      const existing = state.extraCategories.find((category) => category.id === game.id);
+      if (existing) {
+        if (existing.source === 'genre') {
+          existing.genreLabels = [...new Set([...(existing.genreLabels ?? []), ...labels])];
+        }
+        continue;
+      }
+      state.extraCategories.push({
+        id: game.id,
+        name: game.name,
+        source: 'genre',
+        genreLabels: labels,
+      });
+      added += 1;
+    }
+    renderSelectedCategories();
+    const unresolved = names.length - games.length;
+    el.genreHint.textContent = `${added} genre ${added === 1 ? 'category' : 'categories'} added${unresolved ? `; ${unresolved} unavailable names were skipped` : ''}. Remove individual games below if needed.`;
+    if (added) rerunIfResultsVisible();
+  } catch (error) {
+    console.error(error);
+    el.genreHint.textContent = 'Could not resolve genre categories. Please try again.';
+    showToast('Could not add genre categories.', true);
+  } finally {
+    el.addGenresBtn.disabled = false;
+  }
+});
+
+el.clearGenresBtn.addEventListener('click', () => {
+  state.extraCategories = state.extraCategories.filter(
+    (category) => category.source !== 'genre'
+  );
+  el.genreFilters.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+    checkbox.checked = false;
+  });
+  el.genreHint.textContent = 'Genre categories cleared. Exact categories remain selected.';
+  renderSelectedCategories();
+  rerunIfResultsVisible();
+});
+
 // ---- Category search (Twitch's category database, IGDB-backed) --------
 //
 // IGDB's own API can't be called from a browser: it has no CORS support
@@ -616,7 +685,7 @@ function hideCategorySuggestions() {
 
 function addCategory(category) {
   if (state.extraCategories.some((c) => c.id === category.id)) return;
-  state.extraCategories.push(category);
+  state.extraCategories.push({ ...category, source: category.source ?? 'manual' });
   renderSelectedCategories();
   rerunIfResultsVisible();
 }
@@ -635,7 +704,7 @@ function renderSelectedCategories() {
   const extra = state.extraCategories
     .map(
       (c) => `
-      <span class="category-chip">
+      <span class="category-chip${c.source === 'genre' ? ' category-chip--genre' : ''}"${c.source === 'genre' ? ` title="Genre group: ${escapeHtml((c.genreLabels ?? []).join(', '))}"` : ''}>
         ${escapeHtml(c.name)}
         <button type="button" class="category-chip__remove" data-remove-id="${escapeHtml(c.id)}" aria-label="Remove ${escapeHtml(c.name)}">×</button>
       </span>`
@@ -671,17 +740,32 @@ async function runSearch() {
   el.resultsStatus.classList.remove('hidden');
 
   try {
-    const gameIds = [state.myStream.game_id, ...state.extraCategories.map((c) => c.id)];
+    const individualGameIds = [
+      state.myStream.game_id,
+      ...state.extraCategories
+        .filter((category) => category.source !== 'genre')
+        .map((category) => category.id),
+    ];
+    const genreGameIds = state.extraCategories
+      .filter((category) => category.source === 'genre')
+      .map((category) => category.id);
 
     const minimumMatchedViewers = showAllViewerCounts
       ? null
       : Math.max(0, Math.floor(state.myStream.viewer_count * 0.5));
-    const candidateLists = await Promise.all(
-      gameIds.map((id) => state.api.getLiveStreamsByGame(id, {
+    const candidateRequests = individualGameIds.map(
+      (id) => state.api.getLiveStreamsByGame(id, {
         maxResults: showAllViewerCounts ? 500 : 1000,
         stopBelowViewers: minimumMatchedViewers,
-      }))
+      })
     );
+    if (genreGameIds.length) {
+      candidateRequests.push(state.api.getLiveStreamsByGames(genreGameIds, {
+        maxResults: showAllViewerCounts ? 500 : 1000,
+        stopBelowViewers: minimumMatchedViewers,
+      }));
+    }
+    const candidateLists = await Promise.all(candidateRequests);
     if (generation !== searchGeneration) return;
 
     const seen = new Set();

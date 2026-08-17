@@ -20,6 +20,7 @@ export class TwitchApi {
     this.broadcastHistoryCache = new Map();
     this.clipHistoryCache = new Map();
     this.scheduleCache = new Map();
+    this.gameNameCache = new Map();
   }
 
   get headers() {
@@ -194,6 +195,36 @@ export class TwitchApi {
     return json.data ?? [];
   }
 
+  /** Resolves exact Twitch category names in batches of up to 100. */
+  async getGamesByNames(names) {
+    const requested = [...new Set(names.map((name) => name.trim()).filter(Boolean))];
+    const missing = requested.filter((name) => !this.gameNameCache.has(name.toLowerCase()));
+
+    for (let i = 0; i < missing.length; i += 100) {
+      const batch = missing.slice(i, i + 100);
+      const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/games');
+      batch.forEach((name) => url.searchParams.append('name', name));
+      const res = await fetch(url, { headers: this.headers });
+      if (!res.ok) {
+        throw new TwitchApiError(
+          `GET /games failed (${res.status}): ${await res.text()}`,
+          res.status
+        );
+      }
+      const json = await res.json();
+      const returned = new Map(
+        (json.data ?? []).map((game) => [game.name.toLowerCase(), game])
+      );
+      for (const name of batch) {
+        this.gameNameCache.set(name.toLowerCase(), returned.get(name.toLowerCase()) ?? null);
+      }
+    }
+
+    return requested
+      .map((name) => this.gameNameCache.get(name.toLowerCase()))
+      .filter(Boolean);
+  }
+
   /**
    * Fetch up to maxResults currently-live streams for a game/category,
    * paginating through Twitch's cursor-based results as needed.
@@ -222,6 +253,45 @@ export class TwitchApi {
         break;
       }
 
+      cursor = json.pagination?.cursor ?? null;
+      if (!cursor || !json.data?.length) break;
+    }
+
+    return streams.slice(0, maxResults);
+  }
+
+  /** Fetches live streams matching any of up to 100 category IDs. */
+  async getLiveStreamsByGames(
+    gameIds,
+    { maxResults = 100, language, stopBelowViewers = null } = {}
+  ) {
+    const ids = [...new Set(gameIds)].slice(0, 100);
+    if (!ids.length) return [];
+    const streams = [];
+    let cursor = null;
+
+    while (streams.length < maxResults) {
+      const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/streams');
+      ids.forEach((id) => url.searchParams.append('game_id', id));
+      url.searchParams.set('first', '100');
+      if (language) url.searchParams.set('language', language);
+      if (cursor) url.searchParams.set('after', cursor);
+
+      const res = await fetch(url, { headers: this.headers });
+      if (!res.ok) {
+        throw new TwitchApiError(
+          `GET /streams failed (${res.status}): ${await res.text()}`,
+          res.status
+        );
+      }
+      const json = await res.json();
+      streams.push(...(json.data ?? []));
+      const lastViewerCount = json.data?.at(-1)?.viewer_count;
+      if (
+        stopBelowViewers != null &&
+        Number.isFinite(lastViewerCount) &&
+        lastViewerCount < stopBelowViewers
+      ) break;
       cursor = json.pagination?.cursor ?? null;
       if (!cursor || !json.data?.length) break;
     }

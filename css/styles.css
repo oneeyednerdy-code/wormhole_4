@@ -384,6 +384,52 @@ button {
   margin: 0 0 16px;
 }
 
+.offline-reference {
+  max-width: 520px;
+  margin: 20px auto 16px;
+  padding: 18px;
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  background: var(--panel-raised);
+}
+
+.offline-reference__eyebrow {
+  margin: 0 0 6px;
+  color: var(--violet-bright);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.offline-reference__title {
+  margin: 0 0 6px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+}
+
+.offline-reference__viewer-label {
+  display: block;
+  margin: 16px 0 6px;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.offline-reference__viewer-input {
+  max-width: 220px;
+  margin: 0 auto 12px;
+  text-align: center;
+}
+
+.offline-card__refresh {
+  margin-top: 8px;
+}
+
+.historical-refresh {
+  margin-top: 16px;
+}
+
 /* ---------- Filters panel ---------- */
 
 .filters-panel__title {

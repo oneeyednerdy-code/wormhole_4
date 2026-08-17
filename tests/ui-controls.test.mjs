@@ -50,7 +50,7 @@ function fixture() {
       getElementById(id) { return elements[id] ?? null; },
       querySelectorAll(selector) {
         return selector === '[data-theme-toggle]'
-          ? [elements['theme-toggle'], elements['login-theme-toggle']]
+          ? [elements['theme-toggle'], elements['login-theme-toggle']].filter(Boolean)
           : [];
       },
     },
@@ -103,4 +103,17 @@ test('independent controls initialize and respond to clicks', () => {
   assert.equal(document.documentElement.hasAttribute('data-light-theme'), true);
   assert.equal(stored.get(THEME_PREFERENCE_KEY), 'true');
   assert.equal(elements['login-theme-toggle'].textContent, 'Dark mode');
+});
+
+test('theme controls initialize even when unrelated app controls are absent', () => {
+  const { document, elements } = fixture();
+  delete elements['contrast-toggle'];
+  delete elements['filters-toggle'];
+  delete elements['filters-panel'];
+  delete elements['filters-content'];
+  const stored = new Map([[THEME_PREFERENCE_KEY, 'false']]);
+  const storage = { getItem: (key) => stored.get(key), setItem: (key, value) => stored.set(key, value) };
+  assert.equal(initializeUiControls(document, storage), true);
+  elements['theme-toggle'].click();
+  assert.equal(document.documentElement.hasAttribute('data-light-theme'), true);
 });

@@ -3,7 +3,7 @@ export const THEME_PREFERENCE_KEY = 'wormhole_light_mode';
 
 function getThemeButtons(documentRef) {
   const buttons = documentRef.querySelectorAll?.('[data-theme-toggle]');
-  if (buttons?.length) return [...buttons];
+  if (buttons?.length) return Array.from(buttons);
   const fallback = documentRef.getElementById('theme-toggle');
   return fallback ? [fallback] : [];
 }
@@ -45,7 +45,7 @@ export function initializeUiControls(documentRef = document, storage = localStor
   const contrastButton = documentRef.getElementById('contrast-toggle');
   const filtersButton = documentRef.getElementById('filters-toggle');
   const themeButtons = getThemeButtons(documentRef);
-  if (!contrastButton || !filtersButton || !themeButtons.length) return false;
+  if (!contrastButton && !filtersButton && !themeButtons.length) return false;
 
   let contrastEnabled = false;
   let lightEnabled = false;
@@ -56,10 +56,10 @@ export function initializeUiControls(documentRef = document, storage = localStor
     // Storage may be unavailable in privacy modes; the control still works.
   }
   applyTheme(documentRef, lightEnabled);
-  applyContrast(documentRef, contrastEnabled);
-  applyFilterVisibility(documentRef, true);
+  if (contrastButton) applyContrast(documentRef, contrastEnabled);
+  if (filtersButton) applyFilterVisibility(documentRef, true);
 
-  contrastButton.addEventListener('click', () => {
+  contrastButton?.addEventListener('click', () => {
     contrastEnabled = !documentRef.documentElement.hasAttribute('data-high-contrast');
     applyContrast(documentRef, contrastEnabled);
     try {
@@ -79,7 +79,7 @@ export function initializeUiControls(documentRef = document, storage = localStor
     }
   }));
 
-  filtersButton.addEventListener('click', () => {
+  filtersButton?.addEventListener('click', () => {
     const expanded = filtersButton.getAttribute('aria-expanded') !== 'true';
     applyFilterVisibility(documentRef, expanded);
   });

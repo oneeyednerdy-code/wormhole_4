@@ -47,7 +47,8 @@
   --glow: 0 0 40px -8px rgba(139, 92, 246, 0.35);
 }
 
-html[data-light-theme] {
+html[data-light-theme],
+body.light-theme {
   color-scheme: light;
   --bg: #f7f4fc;
   --panel: #ffffff;
@@ -129,23 +130,27 @@ body {
   line-height: 1.5;
 }
 
-html[data-light-theme] body {
+html[data-light-theme] body,
+body.light-theme {
   background-image:
     radial-gradient(ellipse 900px 520px at 12% -8%, rgba(139, 92, 246, 0.15), transparent),
     radial-gradient(ellipse 700px 500px at 105% 0%, rgba(109, 40, 217, 0.1), transparent),
     radial-gradient(ellipse 600px 500px at 50% 110%, rgba(139, 92, 246, 0.08), transparent);
 }
 
-html[data-light-theme] .topbar {
+html[data-light-theme] .topbar,
+body.light-theme .topbar {
   background: rgba(255, 255, 255, 0.86);
 }
 
-html[data-light-theme] .storage-choice {
+html[data-light-theme] .storage-choice,
+body.light-theme .storage-choice {
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 18px 70px rgba(48, 29, 78, 0.22), var(--glow);
 }
 
-html[data-light-theme] .skeleton {
+html[data-light-theme] .skeleton,
+body.light-theme .skeleton {
   background: linear-gradient(90deg, var(--panel-raised) 25%, #e4d9f2 50%, var(--panel-raised) 75%);
 }
 
@@ -231,7 +236,8 @@ button {
   box-shadow: 0 4px 28px -4px rgba(139, 92, 246, 0.7);
 }
 
-html[data-light-theme] .btn--primary:hover:not(:disabled) {
+html[data-light-theme] .btn--primary:hover:not(:disabled),
+body.light-theme .btn--primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #6d28d9, var(--violet) 60%, var(--violet-deep));
 }
 

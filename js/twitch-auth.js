@@ -24,6 +24,10 @@ export const TwitchAuth = {
   redirectToLogin() {
     const state = createOAuthState();
     sessionStorage.setItem(OAUTH_STATE_KEY, state);
+    // Also persist the short-lived verifier across browsing contexts. Some
+    // hosts/browsers return from Twitch in a fresh tab where sessionStorage
+    // is empty, while localStorage remains scoped to the same app origin.
+    localStorage.setItem(OAUTH_STATE_KEY, state);
     const url = new URL(TWITCH_CONFIG.authorizeUrl);
     url.searchParams.set('client_id', TWITCH_CONFIG.clientId);
     url.searchParams.set('redirect_uri', TWITCH_CONFIG.redirectUri);
@@ -50,9 +54,11 @@ export const TwitchAuth = {
     const token = params.get('access_token');
     if (!token) return null;
 
-    const expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
+    const expectedState =
+      sessionStorage.getItem(OAUTH_STATE_KEY) || localStorage.getItem(OAUTH_STATE_KEY);
     const returnedState = params.get('state');
     sessionStorage.removeItem(OAUTH_STATE_KEY);
+    localStorage.removeItem(OAUTH_STATE_KEY);
     if (!expectedState || !returnedState || returnedState !== expectedState) {
       cleanRedirectUrl();
       throw new Error('Twitch login could not be verified. Please try again.');
@@ -100,6 +106,7 @@ export const TwitchAuth = {
     }
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(OAUTH_STATE_KEY);
+    localStorage.removeItem(OAUTH_STATE_KEY);
     localStorage.removeItem(LEGACY_TOKEN_KEY);
   },
 };

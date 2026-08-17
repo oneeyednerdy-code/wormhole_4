@@ -58,6 +58,13 @@ export const ViewerHistory = {
     return { average, sampleCount: valid.length };
   },
 
+  getLatestSample(userId) {
+    const samples = this._loadAll()[userId];
+    if (!Array.isArray(samples)) return null;
+    const latest = [...samples].reverse().find((sample) => Number.isFinite(sample?.viewerCount));
+    return latest ?? null;
+  },
+
   clearAll() {
     localStorage.removeItem(STORAGE_KEY);
   },

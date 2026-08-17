@@ -120,6 +120,28 @@
         <h3 class="filter-section-title">Content</h3>
         <div class="filter-row filter-row--stack">
           <div class="filter-row__top">
+            <label class="filter-row__label" for="language-select">Language</label>
+            <span class="filter-row__hint-inline">adds the selection to Twitch tags</span>
+          </div>
+          <select id="language-select" class="text-input language-select">
+            <option value="">Any language</option>
+            <option value="English" selected>English</option>
+            <option value="Spanish">Spanish</option>
+            <option value="German">German</option>
+            <option value="French">French</option>
+            <option value="Portuguese">Portuguese</option>
+            <option value="Japanese">Japanese</option>
+            <option value="Korean">Korean</option>
+            <option value="Russian">Russian</option>
+            <option value="Italian">Italian</option>
+            <option value="Polish">Polish</option>
+            <option value="Turkish">Turkish</option>
+            <option value="Arabic">Arabic</option>
+            <option value="Chinese">Chinese</option>
+          </select>
+        </div>
+        <div class="filter-row filter-row--stack">
+          <div class="filter-row__top">
             <span class="filter-row__label">Tags</span>
             <span class="filter-row__hint-inline">comma-separated, matches any</span>
           </div>
@@ -127,6 +149,7 @@
             id="tags-input"
             type="text"
             class="text-input"
+            value="English"
             placeholder="e.g. speedrun, cozy, english…"
             autocomplete="off"
           />

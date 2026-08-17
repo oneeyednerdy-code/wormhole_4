@@ -15,6 +15,9 @@ logs in with Twitch and finds you a good channel to raid, matched on:
 - **Team** — optionally only show channels sharing one of your Twitch Teams
 - **Tags** — optionally require candidates to have at least one of the tags
   you type in (e.g. "speedrun", "cozy", "english")
+- **Language** — defaults to English and offers popular language choices;
+  selecting one adds it to the existing Twitch-tags filter, while **Any
+  language** removes language tags without deleting your other tag choices
 - **Average viewership** — see note below on how this is estimated
 - **Stream duration** — how long the candidate has been live, vs. you
 

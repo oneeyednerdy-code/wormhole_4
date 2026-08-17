@@ -19,6 +19,7 @@ import {
   getGenreGameNames,
   getGenreLabelsForGame,
 } from './genre-presets.js';
+import { applyLanguageTag } from './language-tags.js';
 
 const state = {
   api: null,
@@ -67,6 +68,7 @@ const el = {
   sameTeamFilter: document.getElementById('same-team-filter'),
   teamHint: document.getElementById('team-hint'),
   tagsInput: document.getElementById('tags-input'),
+  languageSelect: document.getElementById('language-select'),
   genreFilters: document.getElementById('genre-filters'),
   addGenresBtn: document.getElementById('add-genres-btn'),
   clearGenresBtn: document.getElementById('clear-genres-btn'),
@@ -559,6 +561,10 @@ el.statusFilters.addEventListener('change', onFilterChanged);
 el.sameTeamFilter.addEventListener('change', onFilterChanged);
 el.tagsInput.addEventListener('input', renderActiveFilters);
 el.tagsInput.addEventListener('change', rerunIfResultsVisible);
+el.languageSelect.addEventListener('change', () => {
+  el.tagsInput.value = applyLanguageTag(el.tagsInput.value, el.languageSelect.value);
+  onFilterChanged();
+});
 
 // Partner/Affiliate are additive toggles on top of the always-included
 // non-affiliate majority — unchecking both doesn't hide anyone, it just
@@ -646,6 +652,9 @@ function clearFilter(key) {
     el.tagsInput.value = getTagsQuery()
       .filter((tag) => tag.toLowerCase() !== removedTag)
       .join(', ');
+    if (el.languageSelect.value.toLowerCase() === removedTag) {
+      el.languageSelect.value = '';
+    }
   } else if (key.startsWith('genre:')) {
     const value = key.slice('genre:'.length);
     const checkbox = [...el.genreFilters.querySelectorAll('input')]
@@ -669,6 +678,7 @@ el.clearAllFilters.addEventListener('click', () => {
   if (allViewers) allViewers.checked = true;
   el.statusFilters.querySelectorAll('input').forEach((input) => { input.checked = true; });
   el.sameTeamFilter.checked = false;
+  el.languageSelect.value = '';
   el.tagsInput.value = '';
   el.genreFilters.querySelectorAll('input').forEach((input) => { input.checked = false; });
   state.extraCategories = [];

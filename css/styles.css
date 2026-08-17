@@ -724,6 +724,11 @@ button {
   color: #5c5e6c;
 }
 
+.language-select {
+  appearance: auto;
+  cursor: pointer;
+}
+
 .text-input:focus {
   border-color: var(--violet-dim);
   outline: none;

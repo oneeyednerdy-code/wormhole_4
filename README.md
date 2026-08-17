@@ -20,8 +20,10 @@ logs in with Twitch and finds you a good channel to raid, matched on:
 
 Results render as a grid of cards, each with a click-to-play live preview
 (Twitch's own embedded player) alongside the stats. Results are paginated with
-a selector for 12 through 100 cards per page. It can also **start the
-raid** for you directly, via the Twitch API.
+a selector for 12 through 100 cards per page. They can be sorted by recommended
+match, viewers high-to-low or low-to-high, longest live (the best available
+"ending soon" proxy), or most recently started. It can also **start the raid**
+for you directly, via the Twitch API.
 
 If you are offline, Wormhole offers up to five recent past-broadcast VODs to
 choose from. Twitch supplies each VOD's title, date, duration, and thumbnail.
@@ -160,6 +162,10 @@ an OAuth Redirect URL on your Twitch app (step 1).
   Twitch's `/channels/followed` endpoint and the `user:read:follows` scope; it
   does not add channels or filter results. If you logged in before that
   permission was added, log out and back in once.
+- The results toolbar can sort the current matches without rerunning the Twitch
+  search. **Ending Soon** places the longest-currently-live channels first;
+  Twitch does not publish a reliable end time for every live channel, so this
+  is a clearly labelled proxy rather than a promise that the stream will end.
 - Each visible result card loads the channel's public follower total from
   Twitch's `/channels/followers` endpoint. Totals are cached while the app is
   open, and only the current results page is loaded to limit API requests.

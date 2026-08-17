@@ -148,6 +148,16 @@
       <section id="results-panel" class="panel results-panel hidden">
         <p id="results-status" class="results-status hidden" role="status" aria-live="polite"></p>
         <div id="results-pagination" class="results-pagination hidden">
+          <label class="results-pagination__sort" for="results-sort">
+            Sort by
+            <select id="results-sort" class="results-pagination__select">
+              <option value="recommended" selected>Recommended</option>
+              <option value="viewers-high">Viewers: High to Low</option>
+              <option value="viewers-low">Viewers: Low to High</option>
+              <option value="ending-soon">Ending Soon (Longest Live)</option>
+              <option value="just-started">Just Started</option>
+            </select>
+          </label>
           <label class="results-pagination__limit" for="results-page-size">
             Results per page
             <select id="results-page-size" class="results-pagination__select">

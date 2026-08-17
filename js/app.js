@@ -6,6 +6,7 @@ import { RaidListener } from './raid-listener.js';
 import { ViewerHistory } from './viewer-history.js';
 import { PreviousStreamHistory } from './previous-stream-history.js';
 import { paginate } from './pagination.js';
+import { sortRaidMatches } from './result-sort.js';
 import { ChannelHistory } from './channel-history.js';
 import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js';
 import {
@@ -31,6 +32,7 @@ const state = {
   followStatusWarningShown: false,
   resultsPage: 1,
   resultsPageSize: 12,
+  resultsSort: 'recommended',
 };
 
 const el = {
@@ -60,6 +62,7 @@ const el = {
   resultsList: document.getElementById('results-list'),
   resultsStatus: document.getElementById('results-status'),
   resultsPagination: document.getElementById('results-pagination'),
+  resultsSort: document.getElementById('results-sort'),
   resultsPageSize: document.getElementById('results-page-size'),
   resultsPageSummary: document.getElementById('results-page-summary'),
   resultsPrevPage: document.getElementById('results-prev-page'),
@@ -913,9 +916,11 @@ function renderResults() {
   }
 
   el.resultsStatus.classList.add('hidden');
-  const page = paginate(state.matches, state.resultsPage, state.resultsPageSize);
+  const sortedMatches = sortRaidMatches(state.matches, state.resultsSort);
+  const page = paginate(sortedMatches, state.resultsPage, state.resultsPageSize);
   state.resultsPage = page.page;
   state.resultsPageSize = page.pageSize;
+  el.resultsSort.value = state.resultsSort;
   el.resultsPageSize.value = String(page.pageSize);
   el.resultsPageSummary.textContent =
     `Showing ${page.startIndex + 1}–${page.endIndex} of ${state.matches.length} · Page ${page.page} of ${page.pageCount}`;
@@ -929,10 +934,12 @@ function renderResults() {
 
   loadFollowerCountsForVisiblePage(page.items, renderGeneration);
 
-  el.resultsList.querySelectorAll('[data-raid-index]').forEach((btn) => {
+  el.resultsList.querySelectorAll('[data-raid-id]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      const idx = Number(btn.dataset.raidIndex);
-      openRaidDialog(state.matches[idx]);
+      const match = state.matches.find(
+        (candidate) => candidate.stream.user_id === btn.dataset.raidId
+      );
+      if (match) openRaidDialog(match);
     });
   });
 
@@ -988,6 +995,14 @@ async function loadFollowerCountsForVisiblePage(matches, renderGeneration) {
 
 el.resultsPageSize.addEventListener('change', () => {
   state.resultsPageSize = Number(el.resultsPageSize.value);
+  state.resultsPage = 1;
+  state.expandedWatchId = null;
+  state.expandedActivityId = null;
+  renderResults();
+});
+
+el.resultsSort.addEventListener('change', () => {
+  state.resultsSort = el.resultsSort.value;
   state.resultsPage = 1;
   state.expandedWatchId = null;
   state.expandedActivityId = null;
@@ -1175,7 +1190,7 @@ function resultCardHtml(match, rank) {
   const statusLabel = STATUS_LABELS[s.broadcaster_type ?? 'none'];
   const raidButton = state.usingPreviousStream
     ? '<button class="btn btn--outline" disabled title="You must be live to start a raid">Go live to raid</button>'
-    : `<button class="btn btn--outline" data-raid-index="${rank - 1}">Raid this channel</button>`;
+    : `<button class="btn btn--outline" data-raid-id="${escapeHtml(s.user_id)}">Raid this channel</button>`;
   const previewButton = state.expandedWatchId === s.user_id
     ? `<button class="btn btn--ghost" type="button" data-watch-id="${escapeHtml(s.user_id)}">Close preview</button>`
     : `<button class="btn btn--ghost" type="button" data-watch-id="${escapeHtml(s.user_id)}">Preview stream</button>`;

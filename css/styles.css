@@ -766,7 +766,8 @@ button {
   border-radius: var(--radius);
 }
 
-.results-pagination__limit {
+.results-pagination__limit,
+.results-pagination__sort {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -781,6 +782,10 @@ button {
   background: var(--panel-raised);
   border: 1px solid var(--panel-line);
   border-radius: 6px;
+}
+
+.results-pagination__sort .results-pagination__select {
+  min-width: 190px;
 }
 
 .results-pagination__summary {
@@ -1372,6 +1377,7 @@ input:focus-visible {
   }
 
   .results-pagination__limit,
+  .results-pagination__sort,
   .results-pagination__buttons {
     justify-content: center;
   }

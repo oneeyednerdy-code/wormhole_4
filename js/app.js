@@ -50,6 +50,7 @@ const el = {
   appView: document.getElementById('app-view'),
   loginBtn: document.getElementById('login-btn'),
   loginError: document.getElementById('login-error'),
+  oauthRedirectUri: document.getElementById('oauth-redirect-uri'),
   logoutBtn: document.getElementById('logout-btn'),
   contrastToggle: document.getElementById('contrast-toggle'),
   userName: document.getElementById('user-name'),
@@ -215,6 +216,7 @@ function startRaidListener() {
 }
 
 async function init() {
+  el.oauthRedirectUri.textContent = TWITCH_CONFIG.redirectUri;
   let capturedToken;
   try {
     capturedToken = TwitchAuth.captureRedirectToken();
@@ -230,9 +232,19 @@ async function init() {
     return;
   }
 
-  const valid = await TwitchAuth.isTokenValid(token);
-  if (!valid) {
+  const tokenStatus = await TwitchAuth.validateToken(token);
+  if (!tokenStatus.valid && tokenStatus.reason !== 'unavailable') {
     await TwitchAuth.logout();
+    el.loginError.textContent = tokenStatus.reason === 'missing_scopes'
+      ? 'Twitch permissions changed. Log in again and approve the requested permissions.'
+      : tokenStatus.reason === 'wrong_client'
+        ? 'This login token belongs to a different Twitch application. Log in again.'
+        : 'Your Twitch login expired. Please log in again.';
+    showView('login');
+    return;
+  }
+  if (!tokenStatus.valid) {
+    el.loginError.textContent = 'Twitch could not be reached to verify your login. Your session was kept; check your connection and refresh.';
     showView('login');
     return;
   }

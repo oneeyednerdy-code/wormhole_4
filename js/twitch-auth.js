@@ -5,7 +5,7 @@ const LEGACY_TOKEN_KEY = 'raid_finder_token';
 const OAUTH_STATE_KEY = 'wormhole_oauth_state';
 
 function cleanRedirectUrl() {
-  window.history.replaceState({}, document.title, window.location.origin + window.location.pathname);
+  window.history.replaceState({}, document.title, TWITCH_CONFIG.redirectUri);
 }
 
 function createOAuthState() {
@@ -44,19 +44,27 @@ export const TwitchAuth = {
    */
   captureRedirectToken() {
     const query = new URLSearchParams(window.location.search);
-    if (query.has('error')) {
-      const message = query.get('error_description') || 'Twitch login was cancelled.';
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    const callback = query.has('error') ? query : fragment;
+    if (callback.has('error')) {
+      const expectedState =
+        sessionStorage.getItem(OAUTH_STATE_KEY) || localStorage.getItem(OAUTH_STATE_KEY);
+      const returnedState = callback.get('state');
+      sessionStorage.removeItem(OAUTH_STATE_KEY);
+      localStorage.removeItem(OAUTH_STATE_KEY);
+      const message = expectedState && returnedState === expectedState
+        ? callback.get('error_description') || 'Twitch login was cancelled.'
+        : 'Twitch login could not be verified. Please try again.';
       cleanRedirectUrl();
       throw new Error(message);
     }
     if (!window.location.hash) return null;
-    const params = new URLSearchParams(window.location.hash.slice(1));
-    const token = params.get('access_token');
+    const token = fragment.get('access_token');
     if (!token) return null;
 
     const expectedState =
       sessionStorage.getItem(OAUTH_STATE_KEY) || localStorage.getItem(OAUTH_STATE_KEY);
-    const returnedState = params.get('state');
+    const returnedState = fragment.get('state');
     sessionStorage.removeItem(OAUTH_STATE_KEY);
     localStorage.removeItem(OAUTH_STATE_KEY);
     if (!expectedState || !returnedState || returnedState !== expectedState) {
@@ -81,15 +89,28 @@ export const TwitchAuth = {
     return legacy;
   },
 
-  async isTokenValid(token) {
+  async validateToken(token) {
     try {
       const res = await fetch(TWITCH_CONFIG.validateUrl, {
         headers: { Authorization: `OAuth ${token}` },
       });
-      return res.ok;
+      if (!res.ok) return { valid: false, reason: 'invalid' };
+      const validation = await res.json();
+      if (validation.client_id !== TWITCH_CONFIG.clientId) {
+        return { valid: false, reason: 'wrong_client' };
+      }
+      const grantedScopes = new Set(validation.scopes ?? []);
+      if (!TWITCH_CONFIG.scopes.every((scope) => grantedScopes.has(scope))) {
+        return { valid: false, reason: 'missing_scopes' };
+      }
+      return { valid: true, validation };
     } catch {
-      return false;
+      return { valid: false, reason: 'unavailable' };
     }
+  },
+
+  async isTokenValid(token) {
+    return (await this.validateToken(token)).valid;
   },
 
   async logout() {

@@ -30,7 +30,13 @@ globalThis.window = {
   history: { replaceState() {} },
 };
 
+const { getOAuthRedirectUri } = await import('../js/config.js');
 const { TwitchAuth } = await import('../js/twitch-auth.js');
+
+test('normalizes index.html to a stable OAuth callback directory', () => {
+  assert.equal(getOAuthRedirectUri({ origin: 'https://wormhole.example', pathname: '/index.html' }), 'https://wormhole.example/');
+  assert.equal(getOAuthRedirectUri({ origin: 'https://example.com', pathname: '/wormhole/index.html' }), 'https://example.com/wormhole/');
+});
 
 test('login creates a valid Twitch authorization URL and durable verifier', () => {
   sessionStorage.removeItem('wormhole_oauth_state');
@@ -66,4 +72,36 @@ test('OAuth callbacks with the wrong state remain rejected', () => {
     /could not be verified/
   );
   assert.equal(sessionStorage.getItem('wormhole_access_token'), 'test-token');
+});
+
+test('OAuth callback errors are shown and cleared instead of silently ignored', () => {
+  sessionStorage.setItem('wormhole_oauth_state', 'error-state');
+  window.location.search = '?error=access_denied&error_description=Permission+declined&state=error-state';
+  window.location.hash = '';
+  assert.throws(() => TwitchAuth.captureRedirectToken(), /Permission declined/);
+  assert.equal(sessionStorage.getItem('wormhole_oauth_state'), null);
+  window.location.search = '';
+});
+
+test('token validation checks client identity and every requested scope', async () => {
+  globalThis.fetch = async () => ({
+    ok: true,
+    async json() {
+      return { client_id: 'wrong-client', scopes: ['channel:manage:raids', 'user:read:follows'] };
+    },
+  });
+  assert.equal((await TwitchAuth.validateToken('token')).reason, 'wrong_client');
+
+  globalThis.fetch = async () => ({
+    ok: true,
+    async json() {
+      return { client_id: '15d6s3tdyd3p7o3owf1ugx6zorpgfw', scopes: ['user:read:follows'] };
+    },
+  });
+  assert.equal((await TwitchAuth.validateToken('token')).reason, 'missing_scopes');
+});
+
+test('temporary validation outages preserve the session for retry', async () => {
+  globalThis.fetch = async () => { throw new Error('offline'); };
+  assert.equal((await TwitchAuth.validateToken('token')).reason, 'unavailable');
 });

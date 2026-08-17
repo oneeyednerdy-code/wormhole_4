@@ -97,6 +97,11 @@ from wherever the page is being served (`window.location.origin +
 window.location.pathname`), as long as it matches something you registered
 in step 3.
 
+Wormhole normalizes `/index.html` to its containing directory so the callback
+is stable. Expand **Login setup help** on the login screen and copy the exact
+URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
+match, including HTTPS, hostname, path, and trailing slash.
+
 ---
 
 ## 2. Run it locally

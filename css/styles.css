@@ -282,6 +282,32 @@ button {
   min-height: 1em;
 }
 
+.login-card__setup {
+  margin-top: 16px;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  text-align: left;
+}
+
+.login-card__setup summary {
+  cursor: pointer;
+  color: var(--violet-bright);
+}
+
+.login-card__setup p {
+  margin: 10px 0 6px;
+}
+
+.login-card__setup code {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 8px;
+  border: 1px solid var(--panel-line);
+  border-radius: 6px;
+  color: var(--text);
+  background: var(--panel-raised);
+}
+
 /* ---------- App shell ---------- */
 
 .topbar {

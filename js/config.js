@@ -6,6 +6,14 @@
 // - This uses the OAuth *implicit* grant flow (response_type=token), which
 //   is the right choice for a client-only static site: no server, no client
 //   secret to protect.
+export function getOAuthRedirectUri(location = window.location) {
+  const path = location.pathname || '/';
+  const directoryPath = path.endsWith('/')
+    ? path
+    : path.slice(0, path.lastIndexOf('/') + 1) || '/';
+  return new URL(directoryPath, location.origin).toString();
+}
+
 export const TWITCH_CONFIG = {
   clientId: '15d6s3tdyd3p7o3owf1ugx6zorpgfw',
 
@@ -14,7 +22,7 @@ export const TWITCH_CONFIG = {
   // unchanged on localhost, GitHub Pages, Netlify, etc. — just make sure
   // the URL you register in the Twitch console matches this at runtime.
   get redirectUri() {
-    return window.location.origin + window.location.pathname;
+    return getOAuthRedirectUri();
   },
 
   // channel:manage:raids -> lets the app actually start a raid for you

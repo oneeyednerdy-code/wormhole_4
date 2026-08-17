@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
   <title>Wormhole</title>
-  <script src="js/appearance-boot.js?v=33"></script>
+  <script src="js/appearance-boot.js?v=34"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=33" />
+  <link rel="stylesheet" href="css/styles.css?v=34" />
 </head>
 <body>
 
@@ -59,6 +59,20 @@
 
     <main class="main">
       <section id="stream-panel" class="panel stream-panel"></section>
+
+      <section class="panel direct-search-panel" aria-labelledby="direct-search-title">
+        <div class="direct-search-panel__copy">
+          <p class="section-eyebrow">Direct lookup</p>
+          <h2 id="direct-search-title">Find a specific streamer</h2>
+          <p>Enter an exact Twitch username. Direct lookup bypasses discovery filters but still compares the live channel with your current or previous-stream baseline.</p>
+        </div>
+        <form id="direct-streamer-form" class="direct-search-form">
+          <label class="sr-only" for="direct-streamer-input">Twitch username or channel URL</label>
+          <input id="direct-streamer-input" class="text-input" type="text" placeholder="Twitch username or channel URL" autocomplete="off" spellcheck="false" />
+          <button id="direct-streamer-btn" class="btn btn--outline" type="submit" disabled>Find streamer</button>
+        </form>
+        <p id="direct-streamer-status" class="direct-search-status" role="status" aria-live="polite">Go live or choose a previous stream before using direct lookup.</p>
+      </section>
 
       <section id="filters-panel" class="panel filters-panel">
         <div class="filters-panel__header">
@@ -339,8 +353,8 @@
     </p>
   </footer>
 
-  <script type="module" src="js/storage-consent-ui.js?v=33"></script>
-  <script type="module" src="js/ui-controls.js?v=33"></script>
-  <script type="module" src="js/app.js?v=33"></script>
+  <script type="module" src="js/storage-consent-ui.js?v=34"></script>
+  <script type="module" src="js/ui-controls.js?v=34"></script>
+  <script type="module" src="js/app.js?v=34"></script>
 </body>
 </html>

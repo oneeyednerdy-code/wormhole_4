@@ -7,6 +7,24 @@ globalThis.window = {
 
 const { TwitchApi } = await import('../js/twitch-api.js');
 
+test('resolves an exact streamer login through Twitch users', async () => {
+  let requestedUrl;
+  globalThis.fetch = async (url) => {
+    requestedUrl = new URL(url);
+    return {
+      ok: true,
+      async json() {
+        return { data: [{ id: 'streamer-1', login: 'example', display_name: 'Example', broadcaster_type: 'affiliate' }] };
+      },
+    };
+  };
+  const api = new TwitchApi('test-token');
+  const user = await api.getUserByLogin('Example');
+  assert.equal(user.id, 'streamer-1');
+  assert.equal(requestedUrl.pathname, '/helix/users');
+  assert.equal(requestedUrl.searchParams.get('login'), 'example');
+});
+
 test('starts a raid and returns Twitch\'s countdown timestamp', async () => {
   let requestedUrl;
   let requestedMethod;

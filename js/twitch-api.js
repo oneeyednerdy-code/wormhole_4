@@ -60,6 +60,19 @@ export class TwitchApi {
     return json.data[0];
   }
 
+  /** Resolves an exact Twitch login to its public user profile. */
+  async getUserByLogin(login) {
+    const normalized = String(login ?? '').trim().toLowerCase();
+    if (!normalized) return null;
+    const json = await this._get('/users', { login: normalized });
+    const user = json.data?.[0] ?? null;
+    if (user) {
+      this.userProfileCache.set(user.id, user);
+      this.broadcasterTypeCache.set(user.id, user.broadcaster_type || 'none');
+    }
+    return user;
+  }
+
   /** Returns the given user's current live stream, or null if offline. */
   async getLiveStreamForUser(userId) {
     const json = await this._get('/streams', { user_id: userId });

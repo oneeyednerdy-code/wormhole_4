@@ -143,6 +143,10 @@ an OAuth Redirect URL on your Twitch app (step 1).
 
 ## How matching works
 
+- An exact streamer lookup accepts a Twitch username, `@mention`, or channel
+  URL. If that channel is live, it appears in the standard match card with
+  discovery filters bypassed; offline and missing channels are reported
+  directly.
 - Pulls your current live stream (game, viewer count, start time) via the
   Twitch Helix API.
 - When offline, offers up to five recent VODs and combines them with locally
@@ -318,6 +322,7 @@ js/
   config.js          # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
+  direct-search.js    # Normalizes exact streamer usernames and URLs
   viewer-history.js   # Local rolling viewer-count history
   previous-stream-history.js # Last five locally observed stream sessions
   storage-consent.js  # Optional-history permission and deletion

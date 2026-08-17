@@ -21,6 +21,7 @@ import {
 } from './genre-presets.js';
 import { applyLanguageTag, isLanguageTag } from './language-tags.js';
 import { prepareTagDisplay } from './tag-display.js';
+import { normalizeTwitchLogin } from './direct-search.js';
 
 const state = {
   api: null,
@@ -65,6 +66,10 @@ const el = {
   activeFilterChips: document.getElementById('active-filter-chips'),
   clearAllFilters: document.getElementById('clear-all-filters'),
   findBtn: document.getElementById('find-btn'),
+  directStreamerForm: document.getElementById('direct-streamer-form'),
+  directStreamerInput: document.getElementById('direct-streamer-input'),
+  directStreamerBtn: document.getElementById('direct-streamer-btn'),
+  directStreamerStatus: document.getElementById('direct-streamer-status'),
   viewerMatchHint: document.getElementById('viewer-match-hint'),
   viewerToleranceFilter: document.getElementById('viewer-tolerance-filter'),
   statusFilters: document.getElementById('status-filters'),
@@ -384,12 +389,18 @@ function renderStreamPanel() {
       runSearch();
     });
     el.findBtn.disabled = true;
+    el.directStreamerBtn.disabled = true;
+    el.directStreamerStatus.textContent = 'Go live or choose a previous stream before using direct lookup.';
     renderViewerMatchHint();
     renderSelectedCategories();
     return;
   }
 
   el.findBtn.disabled = false;
+  el.directStreamerBtn.disabled = false;
+  if (!el.directStreamerStatus.dataset.result) {
+    el.directStreamerStatus.textContent = 'Ready to look up an exact live Twitch channel.';
+  }
   const historical = state.usingPreviousStream;
   el.streamPanel.innerHTML = `
     <div class="tally">
@@ -585,6 +596,90 @@ function renderTeamHint() {
 // ---- Raid match search -------------------------------------------------
 
 el.findBtn.addEventListener('click', () => runSearch());
+
+let directSearchGeneration = 0;
+
+el.directStreamerForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  if (!state.myStream || !state.api) {
+    el.directStreamerStatus.textContent = 'Go live or choose a previous stream first.';
+    return;
+  }
+
+  const login = normalizeTwitchLogin(el.directStreamerInput.value);
+  if (!login) {
+    el.directStreamerStatus.textContent = 'Enter a valid Twitch username or channel URL.';
+    el.directStreamerInput.focus();
+    return;
+  }
+
+  const generation = ++directSearchGeneration;
+  state.matches = [];
+  el.resultsPanel.classList.add('hidden');
+  el.directStreamerBtn.disabled = true;
+  el.directStreamerBtn.textContent = 'Looking up…';
+  el.directStreamerStatus.dataset.result = 'true';
+  el.directStreamerStatus.textContent = `Looking up ${login}…`;
+
+  try {
+    const profile = await state.api.getUserByLogin(login);
+    if (generation !== directSearchGeneration) return;
+    if (!profile) {
+      state.matches = [];
+      el.resultsPanel.classList.add('hidden');
+      el.directStreamerStatus.textContent = `No Twitch channel named ${login} was found.`;
+      return;
+    }
+    if (profile.id === state.user.id) {
+      state.matches = [];
+      el.resultsPanel.classList.add('hidden');
+      el.directStreamerStatus.textContent = `${profile.display_name} is your own channel.`;
+      return;
+    }
+
+    const stream = await state.api.getLiveStreamForUser(profile.id);
+    if (generation !== directSearchGeneration) return;
+    if (!stream) {
+      state.matches = [];
+      el.resultsPanel.classList.add('hidden');
+      el.directStreamerStatus.textContent = `${profile.display_name} is currently offline.`;
+      return;
+    }
+
+    stream.broadcaster_type = profile.broadcaster_type || 'none';
+    try {
+      const followedIds = await state.api.getFollowedBroadcasterIds(state.user.id);
+      if (generation !== directSearchGeneration) return;
+      stream.is_followed = followedIds.has(profile.id);
+      stream.followed_at = stream.is_followed ? state.api.getFollowedAt(profile.id) : null;
+    } catch (error) {
+      console.error(error);
+      stream.is_followed = false;
+    }
+
+    state.matches = findRaidMatches(state.myStream, [stream], {
+      ignoreViewerTolerance: true,
+      compareTags: el.matchStreamTags.checked,
+      categoryMatchApplied: Boolean(
+        state.myStream.game_id && state.myStream.game_id === stream.game_id
+      ),
+    });
+    state.resultsPage = 1;
+    state.resultsSort = 'recommended';
+    el.directStreamerStatus.textContent = `Showing ${profile.display_name}. Discovery filters were bypassed.`;
+    el.resultsPanel.classList.remove('hidden');
+    renderResults();
+  } catch (error) {
+    if (generation !== directSearchGeneration) return;
+    console.error(error);
+    el.directStreamerStatus.textContent = 'Wormhole could not look up that streamer. Try again.';
+  } finally {
+    if (generation === directSearchGeneration && state.myStream) {
+      el.directStreamerBtn.disabled = false;
+      el.directStreamerBtn.textContent = 'Find streamer';
+    }
+  }
+});
 
 // Re-run the search automatically when a filter changes, but only if
 // results are already showing — no point searching before the first click.

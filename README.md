@@ -38,7 +38,8 @@ The filter-collapse and explicit high-contrast controls run in a small,
 independent UI module so they remain available even if Twitch authentication or
 another API feature fails to initialize. Responsive breakpoints cover desktop,
 tablet, and narrow mobile layouts, and a bundled SVG Wormhole mark appears in
-both the login panel and application header.
+both the login panel and application header. The mark depicts two glowing
+portal mouths connected by the narrow throat of an hourglass-shaped wormhole.
 
 If you are offline, Wormhole offers up to five recent past-broadcast VODs to
 choose from. Twitch supplies each VOD's title, date, duration, and thumbnail.

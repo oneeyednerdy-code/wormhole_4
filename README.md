@@ -180,6 +180,10 @@ an OAuth Redirect URL on your Twitch app (step 1).
     Since Twitch's `/streams` endpoint doesn't include broadcaster status
     at all, the app makes one extra batched call to `/users` per search to
     look it up.
+  - **Following only** — limits recommendations to live channels already in
+    the logged-in user's Twitch follow list. If Twitch's follow lookup fails,
+    the app stops the filtered search instead of pretending there are no
+    matches.
   - **Team** — only show channels sharing one of your Twitch Teams. (Twitch
     doesn't have "guilds" — Teams are the closest equivalent: a named group
     of channels shown on each member's About page.) Twitch has no batch
@@ -207,8 +211,8 @@ an OAuth Redirect URL on your Twitch app (step 1).
 - Each result card marks channels you already follow with a **Following**
   badge and, when available, the month and year you followed them. This uses
   Twitch's `/channels/followed` endpoint and the `user:read:follows` scope; it
-  does not add channels or filter results. If you logged in before that
-  permission was added, log out and back in once.
+  only filters discovery results when **Following only** is enabled. If you
+  logged in before that permission was added, log out and back in once.
 - The results toolbar can sort the current matches without rerunning the Twitch
   search. **Following First** groups channels you already follow at the top and
   keeps them ordered by recommendation score. **Ending Soon** places the

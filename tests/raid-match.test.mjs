@@ -95,6 +95,16 @@ test('show-all mode bypasses viewer tolerance', () => {
   assert.equal(matches.length, 1);
 });
 
+test('following-only excludes channels the user does not follow', () => {
+  localStorage.clear();
+  const followed = { ...stream('followed', 100), is_followed: true };
+  const notFollowed = { ...stream('not-followed', 100), is_followed: false };
+  const matches = findRaidMatches(stream('mine', 100), [notFollowed, followed], {
+    requireFollowed: true,
+  });
+  assert.deepEqual(matches.map((match) => match.stream.user_id), ['followed']);
+});
+
 test('custom 75% and 100% viewer bands include their exact boundaries', () => {
   localStorage.clear();
   const mine = stream('mine', 100);

@@ -83,6 +83,8 @@ function combinedScore(scores, tagSimilarityPercent) {
  *   TwitchApi.getTeamMembershipsForUsers). Exported separately so callers
  *   can narrow the candidate list *before* doing the (uncached, one-call-
  *   per-channel) team lookup, rather than fetching teams for everyone.
+ * - requireFollowed: only keep candidates whose follow lookup set
+ *   `is_followed` to true.
  * - requiredTags: array of tag strings (case-insensitive) — a candidate
  *   must have at least one of these in its own `tags` array (the free-text
  *   tags Twitch streamers set, e.g. "Speedrun", "Cozy", "English").
@@ -93,6 +95,7 @@ export function applyHardFilters(
     minViewers = null,
     maxViewers = null,
     allowedBroadcasterTypes = null,
+    requireFollowed = false,
     requireSharedTeam = false,
     requiredTags = null,
   } = {}
@@ -106,6 +109,7 @@ export function applyHardFilters(
     if (minViewers != null && s.viewer_count < minViewers) return false;
     if (maxViewers != null && s.viewer_count > maxViewers) return false;
     if (typeFilter && !typeFilter.has(s.broadcaster_type ?? 'none')) return false;
+    if (requireFollowed && s.is_followed !== true) return false;
     if (requireSharedTeam && !(s.shared_team_names?.length > 0)) return false;
     if (tagFilter) {
       const streamTags = (s.tags ?? []).map((t) => t.toLowerCase());
@@ -134,6 +138,7 @@ export function findRaidMatches(
     minViewers = null,
     maxViewers = null,
     allowedBroadcasterTypes = null,
+    requireFollowed = false,
     requireSharedTeam = false,
     requiredTags = null,
     compareTags = true,
@@ -144,6 +149,7 @@ export function findRaidMatches(
     minViewers,
     maxViewers,
     allowedBroadcasterTypes,
+    requireFollowed,
     requireSharedTeam,
     requiredTags,
   });

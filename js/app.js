@@ -73,6 +73,7 @@ const el = {
   viewerMatchHint: document.getElementById('viewer-match-hint'),
   viewerToleranceFilter: document.getElementById('viewer-tolerance-filter'),
   statusFilters: document.getElementById('status-filters'),
+  onlyFollowingFilter: document.getElementById('only-following-filter'),
   sameTeamFilter: document.getElementById('same-team-filter'),
   teamHint: document.getElementById('team-hint'),
   tagsInput: document.getElementById('tags-input'),
@@ -697,6 +698,7 @@ el.viewerToleranceFilter.addEventListener('change', () => {
   onFilterChanged();
 });
 el.statusFilters.addEventListener('change', onFilterChanged);
+el.onlyFollowingFilter.addEventListener('change', onFilterChanged);
 el.sameTeamFilter.addEventListener('change', onFilterChanged);
 el.tagsInput.addEventListener('input', renderActiveFilters);
 el.tagsInput.addEventListener('change', rerunIfResultsVisible);
@@ -765,6 +767,9 @@ function renderActiveFilters() {
   if (el.sameTeamFilter.checked && !el.sameTeamFilter.disabled) {
     filters.push({ key: 'same-team', label: 'Shared team' });
   }
+  if (el.onlyFollowingFilter.checked) {
+    filters.push({ key: 'only-following', label: 'Following only' });
+  }
   if (el.matchStreamTags.checked) {
     filters.push({ key: 'my-tags', label: 'Match my tags' });
   }
@@ -807,6 +812,8 @@ function clearFilter(key) {
     renderViewerMatchHint();
   } else if (key === 'same-team') {
     el.sameTeamFilter.checked = false;
+  } else if (key === 'only-following') {
+    el.onlyFollowingFilter.checked = false;
   } else if (key === 'my-tags') {
     el.matchStreamTags.checked = false;
   } else if (key.startsWith('status:')) {
@@ -844,6 +851,7 @@ el.clearAllFilters.addEventListener('click', () => {
   const allViewers = el.viewerToleranceFilter.querySelector('input[value="all"]');
   if (allViewers) allViewers.checked = true;
   el.statusFilters.querySelectorAll('input').forEach((input) => { input.checked = true; });
+  el.onlyFollowingFilter.checked = false;
   el.sameTeamFilter.checked = false;
   el.matchStreamTags.checked = false;
   el.languageSelect.value = '';
@@ -1111,6 +1119,7 @@ async function runSearch() {
   const generation = ++searchGeneration;
 
   const selectedStatuses = getSelectedStatuses();
+  const wantsOnlyFollowing = el.onlyFollowingFilter.checked;
   const wantsSameTeam = el.sameTeamFilter.checked && !el.sameTeamFilter.disabled;
   const viewerTolerancePercent = getViewerTolerancePercent();
   const showAllViewerCounts = viewerTolerancePercent === null;
@@ -1185,8 +1194,9 @@ async function runSearch() {
       s.broadcaster_type = broadcasterTypes.get(s.user_id) ?? 'none';
     }
 
-    // Follow status annotates results; it never expands or filters the
-    // candidate pool. If the optional lookup fails, matching continues.
+    // Follow status annotates results and powers the optional following-only
+    // filter. When that filter is active, a failed lookup must stop the search
+    // instead of presenting an incorrect empty result set.
     showSearchStatus('Checking channels you already follow…');
     try {
       const followedIds = await state.api.getFollowedBroadcasterIds(state.user.id);
@@ -1198,6 +1208,16 @@ async function runSearch() {
     } catch (e) {
       console.error(e);
       for (const s of candidates) s.is_followed = false;
+      if (wantsOnlyFollowing) {
+        el.resultsList.innerHTML = '';
+        state.matches = [];
+        showResultNotice({
+          title: 'Follow list unavailable',
+          message: 'Wormhole could not load the channels you follow. Log out and back in if Twitch needs the follow permission.',
+          retry: true,
+        });
+        return;
+      }
       if (!state.followStatusWarningShown) {
         showToast(
           'Follow status is unavailable. Log out and back in if Twitch needs the follow permission.',
@@ -1216,6 +1236,7 @@ async function runSearch() {
 
       const preFiltered = applyHardFilters(candidates, {
         allowedBroadcasterTypes: selectedStatuses,
+        requireFollowed: wantsOnlyFollowing,
         requiredTags: tags,
       });
 
@@ -1237,6 +1258,7 @@ async function runSearch() {
       viewerTolerancePercent: viewerTolerancePercent ?? 50,
       ignoreViewerTolerance: showAllViewerCounts,
       allowedBroadcasterTypes: selectedStatuses,
+      requireFollowed: wantsOnlyFollowing,
       requireSharedTeam: wantsSameTeam,
       requiredTags: tags,
       compareTags: el.matchStreamTags.checked,

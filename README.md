@@ -28,6 +28,13 @@ starts, Wormhole displays Twitch's 90-second countdown with a cancel option.
 When Twitch confirms completion (or the countdown finishes), the same tab
 navigates to the raided channel.
 
+The interface uses a responsive raid-control-room layout with collapsible
+discovery controls, removable active-filter chips, a sticky results toolbar,
+accessible focus states and higher-contrast system support. Match cards explain
+why each channel was recommended and keep deeper VOD, clip, schedule, account,
+and local-history information inside an expandable details area. Searches use
+skeleton cards and provide retry guidance when Twitch cannot return results.
+
 If you are offline, Wormhole offers up to five recent past-broadcast VODs to
 choose from. Twitch supplies each VOD's title, date, duration, and thumbnail.
 When Wormhole previously observed that live session, it restores that stream's

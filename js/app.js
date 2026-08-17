@@ -49,9 +49,16 @@ const el = {
   loginBtn: document.getElementById('login-btn'),
   loginError: document.getElementById('login-error'),
   logoutBtn: document.getElementById('logout-btn'),
+  contrastToggle: document.getElementById('contrast-toggle'),
   userName: document.getElementById('user-name'),
   userAvatar: document.getElementById('user-avatar'),
   streamPanel: document.getElementById('stream-panel'),
+  filtersPanel: document.getElementById('filters-panel'),
+  filtersContent: document.getElementById('filters-content'),
+  filtersToggle: document.getElementById('filters-toggle'),
+  activeFilterCount: document.getElementById('active-filter-count'),
+  activeFilterChips: document.getElementById('active-filter-chips'),
+  clearAllFilters: document.getElementById('clear-all-filters'),
   findBtn: document.getElementById('find-btn'),
   viewerMatchHint: document.getElementById('viewer-match-hint'),
   showAllViewersFilter: document.getElementById('show-all-viewers-filter'),
@@ -80,8 +87,11 @@ const el = {
   raidConfirmBtn: document.getElementById('raid-confirm-btn'),
   raidCancelBtn: document.getElementById('raid-cancel-btn'),
   raidProgressDialog: document.getElementById('raid-progress-dialog'),
+  raidProgressAvatar: document.getElementById('raid-progress-avatar'),
   raidProgressTitle: document.getElementById('raid-progress-title'),
   raidProgressText: document.getElementById('raid-progress-text'),
+  raidProgressAudience: document.getElementById('raid-progress-audience'),
+  raidProgressRing: document.getElementById('raid-progress-ring'),
   raidCountdownValue: document.getElementById('raid-countdown-value'),
   raidProgressBar: document.getElementById('raid-progress-bar'),
   raidProgressCancelBtn: document.getElementById('raid-progress-cancel-btn'),
@@ -102,6 +112,30 @@ const CONTENT_LABELS = {
   SexualThemes: 'Sexual themes',
   ViolentGraphic: 'Graphic violence',
 };
+
+const CONTRAST_PREFERENCE_KEY = 'wormhole_high_contrast';
+
+function setHighContrast(enabled) {
+  document.body.classList.toggle('high-contrast', enabled);
+  el.contrastToggle.setAttribute('aria-pressed', String(enabled));
+  el.contrastToggle.textContent = enabled ? 'Standard contrast' : 'High contrast';
+}
+
+try {
+  setHighContrast(localStorage.getItem(CONTRAST_PREFERENCE_KEY) === 'true');
+} catch {
+  setHighContrast(false);
+}
+
+el.contrastToggle.addEventListener('click', () => {
+  const enabled = !document.body.classList.contains('high-contrast');
+  setHighContrast(enabled);
+  try {
+    localStorage.setItem(CONTRAST_PREFERENCE_KEY, String(enabled));
+  } catch {
+    // The preference still works for this page load if storage is unavailable.
+  }
+});
 
 function fmtNumber(n) {
   return new Intl.NumberFormat().format(Math.round(n));
@@ -184,6 +218,7 @@ async function loadCurrentUser() {
   renderStreamPanel();
   renderViewerMatchHint();
   renderTeamHint();
+  renderActiveFilters();
   startRaidListener();
   showView('app');
 }
@@ -526,18 +561,30 @@ function renderTeamHint() {
 
 el.findBtn.addEventListener('click', () => runSearch());
 
+el.filtersToggle.addEventListener('click', () => {
+  const collapsed = el.filtersPanel.classList.toggle('filters-panel--collapsed');
+  el.filtersToggle.setAttribute('aria-expanded', String(!collapsed));
+  el.filtersToggle.textContent = collapsed ? 'Show filters' : 'Hide filters';
+});
+
 // Re-run the search automatically when a filter changes, but only if
 // results are already showing — no point searching before the first click.
 function rerunIfResultsVisible() {
   if (!el.resultsPanel.classList.contains('hidden')) runSearch();
 }
 
+function onFilterChanged() {
+  renderActiveFilters();
+  rerunIfResultsVisible();
+}
+
 el.showAllViewersFilter.addEventListener('change', () => {
   renderViewerMatchHint();
-  rerunIfResultsVisible();
+  onFilterChanged();
 });
-el.statusFilters.addEventListener('change', rerunIfResultsVisible);
-el.sameTeamFilter.addEventListener('change', rerunIfResultsVisible);
+el.statusFilters.addEventListener('change', onFilterChanged);
+el.sameTeamFilter.addEventListener('change', onFilterChanged);
+el.tagsInput.addEventListener('input', renderActiveFilters);
 el.tagsInput.addEventListener('change', rerunIfResultsVisible);
 
 // Partner/Affiliate are additive toggles on top of the always-included
@@ -562,6 +609,93 @@ function getSelectedGenreIds() {
   return [...el.genreFilters.querySelectorAll('input[type="checkbox"]:checked')]
     .map((checkbox) => checkbox.value);
 }
+
+function renderActiveFilters() {
+  const filters = [];
+  if (!el.showAllViewersFilter.checked) {
+    filters.push({ key: 'viewer-range', label: 'Audience ±50%' });
+  }
+  el.statusFilters.querySelectorAll('input[type="checkbox"]:not(:checked)').forEach((checkbox) => {
+    filters.push({ key: `status:${checkbox.value}`, label: `Hide ${STATUS_LABELS[checkbox.value]}` });
+  });
+  if (el.sameTeamFilter.checked && !el.sameTeamFilter.disabled) {
+    filters.push({ key: 'same-team', label: 'Shared team' });
+  }
+  for (const tag of getTagsQuery()) {
+    filters.push({ key: `tag:${tag}`, label: `#${tag}` });
+  }
+  for (const genre of getSelectedGenreIds()) {
+    filters.push({
+      key: `genre:${genre}`,
+      label: genre.toUpperCase(),
+    });
+  }
+  state.extraCategories
+    .filter((category) => category.source !== 'genre')
+    .forEach((category) => {
+      filters.push({ key: `category:${category.id}`, label: category.name });
+    });
+
+  el.activeFilterCount.textContent = `${filters.length} active filter${filters.length === 1 ? '' : 's'}`;
+  el.clearAllFilters.hidden = filters.length === 0;
+  el.activeFilterChips.innerHTML = filters.length
+    ? filters.map((filter) => `
+        <button class="active-filter-chip" type="button" data-clear-filter="${escapeHtml(filter.key)}" aria-label="Remove ${escapeHtml(filter.label)} filter">
+          ${escapeHtml(filter.label)} <span aria-hidden="true">×</span>
+        </button>`).join('')
+    : '<span class="active-filters__empty">No extra restrictions — your current category is always included.</span>';
+
+  el.activeFilterChips.querySelectorAll('[data-clear-filter]').forEach((button) => {
+    button.addEventListener('click', () => clearFilter(button.dataset.clearFilter));
+  });
+}
+
+function clearFilter(key) {
+  if (key === 'viewer-range') {
+    el.showAllViewersFilter.checked = true;
+    renderViewerMatchHint();
+  } else if (key === 'same-team') {
+    el.sameTeamFilter.checked = false;
+  } else if (key.startsWith('status:')) {
+    const value = key.slice('status:'.length);
+    const checkbox = [...el.statusFilters.querySelectorAll('input')]
+      .find((input) => input.value === value);
+    if (checkbox) checkbox.checked = true;
+  } else if (key.startsWith('tag:')) {
+    const removedTag = key.slice('tag:'.length).toLowerCase();
+    el.tagsInput.value = getTagsQuery()
+      .filter((tag) => tag.toLowerCase() !== removedTag)
+      .join(', ');
+  } else if (key.startsWith('genre:')) {
+    const value = key.slice('genre:'.length);
+    const checkbox = [...el.genreFilters.querySelectorAll('input')]
+      .find((input) => input.value === value);
+    if (checkbox) checkbox.checked = false;
+    applyGenreSelection();
+    renderActiveFilters();
+    return;
+  } else if (key.startsWith('category:')) {
+    removeCategory(key.slice('category:'.length));
+    return;
+  }
+  renderActiveFilters();
+  rerunIfResultsVisible();
+}
+
+el.clearAllFilters.addEventListener('click', () => {
+  genreApplyGeneration += 1;
+  clearTimeout(genreApplyDebounce);
+  el.showAllViewersFilter.checked = true;
+  el.statusFilters.querySelectorAll('input').forEach((input) => { input.checked = true; });
+  el.sameTeamFilter.checked = false;
+  el.tagsInput.value = '';
+  el.genreFilters.querySelectorAll('input').forEach((input) => { input.checked = false; });
+  state.extraCategories = [];
+  el.genreHint.textContent = 'Choose one or more genre groups; selections apply automatically.';
+  renderViewerMatchHint();
+  renderSelectedCategories();
+  rerunIfResultsVisible();
+});
 
 let genreApplyDebounce = null;
 let genreApplyGeneration = 0;
@@ -640,6 +774,7 @@ el.genreFilters.addEventListener('change', () => {
     ? 'Applying selected genre groups…'
     : 'Clearing genre categories…';
   genreApplyDebounce = setTimeout(() => applyGenreSelection(), 250);
+  renderActiveFilters();
 });
 
 el.clearGenresBtn.addEventListener('click', () => {
@@ -772,10 +907,41 @@ function renderSelectedCategories() {
   el.selectedCategories.querySelectorAll('[data-remove-id]').forEach((btn) => {
     btn.addEventListener('click', () => removeCategory(btn.dataset.removeId));
   });
+  renderActiveFilters();
 }
 
 let searchGeneration = 0;
 let resultsRenderGeneration = 0;
+
+function loadingCardsHtml(count = 6) {
+  return Array.from({ length: count }, () => `
+    <li class="result-card result-card--skeleton" aria-hidden="true">
+      <div class="skeleton skeleton--heading"></div>
+      <div class="skeleton skeleton--media"></div>
+      <div class="skeleton skeleton--line"></div>
+      <div class="skeleton skeleton--line skeleton--short"></div>
+    </li>`).join('');
+}
+
+function showSearchStatus(message) {
+  el.resultsStatus.innerHTML = `
+    <div class="search-state search-state--loading">
+      <span class="search-state__spinner" aria-hidden="true"></span>
+      <div><strong>Searching Twitch</strong><p>${escapeHtml(message)}</p></div>
+    </div>`;
+  el.resultsStatus.classList.remove('hidden');
+}
+
+function showResultNotice({ title, message, retry = false }) {
+  el.resultsStatus.innerHTML = `
+    <div class="search-state">
+      <span class="search-state__icon" aria-hidden="true">◎</span>
+      <div><strong>${escapeHtml(title)}</strong><p>${escapeHtml(message)}</p></div>
+      ${retry ? '<button class="btn btn--ghost" type="button" data-retry-search>Try again</button>' : ''}
+    </div>`;
+  el.resultsStatus.classList.remove('hidden');
+  el.resultsStatus.querySelector('[data-retry-search]')?.addEventListener('click', () => runSearch());
+}
 
 async function runSearch() {
   if (!state.myStream) return;
@@ -789,11 +955,12 @@ async function runSearch() {
   const tags = getTagsQuery();
 
   el.findBtn.disabled = true;
+  el.findBtn.textContent = 'Finding matches…';
 
   el.resultsPanel.classList.remove('hidden');
-  el.resultsList.innerHTML = '';
-  el.resultsStatus.textContent = 'Scanning the category…';
-  el.resultsStatus.classList.remove('hidden');
+  el.resultsPagination.classList.add('hidden');
+  el.resultsList.innerHTML = loadingCardsHtml();
+  showSearchStatus('Scanning your selected categories…');
 
   try {
     const individualGameIds = [
@@ -835,7 +1002,7 @@ async function runSearch() {
     };
     addCandidates(candidateLists.flat());
 
-    el.resultsStatus.textContent = 'Scanning the category…';
+    showSearchStatus('Comparing channel status and audience size…');
 
     // broadcaster_type isn't on /streams — look it up in one batched call
     // and attach it to each candidate before filtering/scoring.
@@ -849,7 +1016,7 @@ async function runSearch() {
 
     // Follow status annotates results; it never expands or filters the
     // candidate pool. If the optional lookup fails, matching continues.
-    el.resultsStatus.textContent = 'Checking channels you follow…';
+    showSearchStatus('Checking channels you already follow…');
     try {
       const followedIds = await state.api.getFollowedBroadcasterIds(state.user.id);
       if (generation !== searchGeneration) return;
@@ -874,7 +1041,7 @@ async function runSearch() {
     // — narrowing the list first keeps this from firing 100 requests when
     // most of them would've been filtered out anyway.
     if (wantsSameTeam) {
-      el.resultsStatus.textContent = 'Checking team rosters…';
+      showSearchStatus('Checking shared Twitch teams…');
 
       const preFiltered = applyHardFilters(candidates, {
         allowedBroadcasterTypes: selectedStatuses,
@@ -907,9 +1074,17 @@ async function runSearch() {
   } catch (e) {
     if (generation !== searchGeneration) return;
     console.error(e);
-    el.resultsStatus.textContent = 'Could not fetch raid matches. Please try again in a moment.';
+    el.resultsList.innerHTML = '';
+    showResultNotice({
+      title: 'The search hit turbulence',
+      message: 'Wormhole could not fetch raid matches. Check your connection and try again.',
+      retry: true,
+    });
   } finally {
-    if (generation === searchGeneration && state.myStream) el.findBtn.disabled = false;
+    if (generation === searchGeneration && state.myStream) {
+      el.findBtn.disabled = false;
+      el.findBtn.textContent = 'Find someone to raid';
+    }
   }
 }
 
@@ -919,12 +1094,28 @@ function scoreClass(score) {
   return 'score--low';
 }
 
+function scoreLabel(score) {
+  if (score >= 80) return 'Excellent match';
+  if (score >= 55) return 'Good match';
+  return 'Possible match';
+}
+
+function matchReasons(match) {
+  const reasons = ['Matching category'];
+  if (match.viewerCountDiffPercent <= 20) reasons.push('Similar live audience');
+  else if (match.viewerCountDiffPercent <= 50) reasons.push('Compatible audience size');
+  if (match.averageViewerCountDiffPercent <= 25) reasons.push('Similar average viewers');
+  if (match.streamDurationDiffMs <= 90 * 60 * 1000) reasons.push('Similar stream duration');
+  return reasons.slice(0, 3);
+}
+
 function renderResults() {
   const renderGeneration = ++resultsRenderGeneration;
   if (!state.matches.length) {
-    el.resultsStatus.textContent =
-      'No matches found. Try showing all viewer counts or loosening the tags and other filters.';
-    el.resultsStatus.classList.remove('hidden');
+    showResultNotice({
+      title: 'No matching channels found',
+      message: 'Try removing a tag or team filter, adding another category, or showing all viewer counts.',
+    });
     el.resultsPagination.classList.add('hidden');
     el.resultsList.innerHTML = '';
     return;
@@ -987,7 +1178,7 @@ function renderResults() {
   const expandedMatch = page.items.find(
     (match) => match.stream.user_id === state.expandedActivityId
   );
-  if (expandedMatch) loadRecentActivity(expandedMatch.stream, renderGeneration);
+  if (expandedMatch) loadRecentActivity(expandedMatch, renderGeneration);
 }
 
 async function loadFollowerCountsForVisiblePage(matches, renderGeneration) {
@@ -1040,7 +1231,8 @@ el.resultsNextPage.addEventListener('click', () => {
   el.resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
-async function loadRecentActivity(stream, renderGeneration) {
+async function loadRecentActivity(match, renderGeneration) {
+  const stream = match.stream;
   const panel = el.resultsList.querySelector(
     `[data-activity-panel="${stream.user_id}"]`
   );
@@ -1066,7 +1258,7 @@ async function loadRecentActivity(stream, renderGeneration) {
   const history = ChannelHistory.getSummary(stream.user_id);
 
   panel.innerHTML = recentActivityHtml({
-    stream, videos, clips, scheduleContext, profile, history,
+    stream, match, videos, clips, scheduleContext, profile, history,
   });
   panel.querySelectorAll('[data-clip-id]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -1090,7 +1282,7 @@ async function loadRecentActivity(stream, renderGeneration) {
   });
 }
 
-function recentActivityHtml({ stream, videos, clips, scheduleContext, profile, history }) {
+function recentActivityHtml({ stream, match, videos, clips, scheduleContext, profile, history }) {
   const recentVods = videos.slice(0, 3);
   const accountAge = profile?.created_at ? fmtDate(profile.created_at) : 'Unavailable';
   const nextStream = scheduleContext?.next?.start_time
@@ -1138,6 +1330,7 @@ function recentActivityHtml({ stream, videos, clips, scheduleContext, profile, h
 
   return `
     <div class="activity-overview">
+      <div><strong>~${fmtNumber(match.estimatedAverageViewers)}</strong><span>average viewers${match.averageIsHistorical ? '' : ' · early estimate'}</span></div>
       <div><strong>${videos.length}</strong><span>streams in 30 days</span></div>
       <div><strong>${escapeHtml(accountAge)}</strong><span>account created</span></div>
       <div><strong>${escapeHtml(followerGrowth)}</strong><span>local follower growth</span></div>
@@ -1210,7 +1403,7 @@ function resultCardHtml(match, rank) {
     ? `<button class="btn btn--ghost" type="button" data-watch-id="${escapeHtml(s.user_id)}">Close preview</button>`
     : `<button class="btn btn--ghost" type="button" data-watch-id="${escapeHtml(s.user_id)}">Preview stream</button>`;
   const activityExpanded = state.expandedActivityId === s.user_id;
-  const activityButton = `<button class="btn btn--ghost result-card__activity-button" type="button" data-activity-id="${escapeHtml(s.user_id)}" aria-expanded="${activityExpanded}">${activityExpanded ? 'Close recent activity' : 'Recent activity'}</button>`;
+  const activityButton = `<button class="btn btn--ghost result-card__activity-button" type="button" data-activity-id="${escapeHtml(s.user_id)}" aria-expanded="${activityExpanded}">${activityExpanded ? 'Close details' : 'View details'}</button>`;
   const followingText = s.followed_at
     ? `Following since ${fmtDate(s.followed_at, { month: 'short', year: 'numeric' })}`
     : 'Following';
@@ -1219,8 +1412,11 @@ function resultCardHtml(match, rank) {
     <li class="result-card">
       <div class="result-card__header">
         <span class="result-card__rank">${rank}</span>
-        <span class="result-card__name">${escapeHtml(s.user_name)}</span>
-        <div class="meter ${scoreClass(scorePct)}" title="${scorePct}% match">
+        <div class="result-card__identity">
+          <span class="result-card__name">${escapeHtml(s.user_name)}</span>
+          <span class="result-card__match-label">${scoreLabel(scorePct)}</span>
+        </div>
+        <div class="meter ${scoreClass(scorePct)}" title="${scorePct}% match — ${scoreLabel(scorePct)}" aria-label="${scorePct}% match, ${scoreLabel(scorePct)}">
           <div class="meter__arc"></div>
           <div class="meter__needle" style="transform: rotate(${needleDeg}deg)"></div>
           <div class="meter__value">${scorePct}</div>
@@ -1230,9 +1426,9 @@ function resultCardHtml(match, rank) {
       <p class="result-card__title">${escapeHtml(s.title)}</p>
       <p class="result-card__game">${escapeHtml(s.game_name)} · <span class="status-tag status-tag--${s.broadcaster_type ?? 'none'}">${statusLabel}</span>${s.is_followed ? ` · <span class="following-tag">${escapeHtml(followingText)}</span>` : ''}${s.shared_team_names?.length ? ` · <span class="team-tag">${escapeHtml(s.shared_team_names[0])}</span>` : ''}</p>
       ${contentLabelsHtml(s)}
+      <div class="match-reasons" aria-label="Why this channel matches">${matchReasons(match).map((reason) => `<span><span aria-hidden="true">✓</span> ${escapeHtml(reason)}</span>`).join('')}</div>
       <div class="stat-row">
         <span class="stat-chip"><span class="stat-chip__mono">${fmtNumber(s.viewer_count)}</span> live</span>
-        <span class="stat-chip"><span class="stat-chip__mono">~${fmtNumber(match.estimatedAverageViewers)}</span> avg${match.averageIsHistorical ? '' : ' (est.)'}</span>
         <span class="stat-chip"><span class="stat-chip__mono">${fmtDuration(Date.now() - new Date(s.started_at).getTime())}</span> live</span>
         <span class="stat-chip" data-follower-id="${escapeHtml(s.user_id)}">Loading followers…</span>
       </div>
@@ -1240,7 +1436,7 @@ function resultCardHtml(match, rank) {
         <a class="watch-link" href="https://twitch.tv/${escapeHtml(s.user_login)}" target="_blank" rel="noopener noreferrer">Open on Twitch ↗</a>
       </div>
       ${activityButton}
-      ${activityExpanded ? `<section class="recent-activity" data-activity-panel="${escapeHtml(s.user_id)}" aria-label="Recent activity for ${escapeHtml(s.user_name)}"><p class="activity-empty">Loading recent activity…</p></section>` : ''}
+      ${activityExpanded ? `<section class="recent-activity" data-activity-panel="${escapeHtml(s.user_id)}" aria-label="Details for ${escapeHtml(s.user_name)}"><p class="activity-empty"><strong>Estimated average:</strong> ~${fmtNumber(match.estimatedAverageViewers)} viewers${match.averageIsHistorical ? '' : ' (early estimate)'}<br />Loading channel history…</p></section>` : ''}
       <div class="result-card__buttons">
         ${previewButton}
         ${raidButton}
@@ -1262,6 +1458,7 @@ function clearRaidTimers() {
 function clearActiveRaid({ closeDialog = true } = {}) {
   clearRaidTimers();
   state.activeRaid = null;
+  el.raidProgressDialog.classList.remove('raid-progress-dialog--complete');
   if (closeDialog && el.raidProgressDialog.open) el.raidProgressDialog.close();
 }
 
@@ -1280,6 +1477,8 @@ function showRaidCompleted(name = state.activeRaid?.userName) {
   el.raidProgressText.textContent = `Taking you to ${name || 'the raided channel'}…`;
   el.raidCountdownValue.textContent = '0';
   el.raidProgressBar.style.width = '100%';
+  el.raidProgressRing.style.setProperty('--raid-progress', '360deg');
+  el.raidProgressDialog.classList.add('raid-progress-dialog--complete');
   el.raidProgressCancelBtn.disabled = true;
   state.raidRedirectTimer = setTimeout(goToRaidedChannel, 900);
 }
@@ -1289,6 +1488,7 @@ function renderRaidCountdown() {
   const snapshot = getRaidCountdownSnapshot(state.activeRaid);
   el.raidCountdownValue.textContent = String(snapshot.remainingSeconds);
   el.raidProgressBar.style.width = `${snapshot.progressPercent}%`;
+  el.raidProgressRing.style.setProperty('--raid-progress', `${snapshot.progressPercent * 3.6}deg`);
 
   if (snapshot.complete) showRaidCompleted(state.activeRaid.userName);
 }
@@ -1303,6 +1503,13 @@ function beginRaidCountdown(target, createdAt) {
   });
   el.raidProgressTitle.textContent = `Raiding ${target.stream.user_name}`;
   el.raidProgressText.textContent = 'Twitch is preparing your viewers. You can cancel before the timer reaches zero.';
+  const thumbnail = (target.stream.thumbnail_url || '')
+    .replace('{width}', '160')
+    .replace('{height}', '160');
+  el.raidProgressAvatar.src = thumbnail;
+  el.raidProgressAvatar.alt = `${target.stream.user_name} live preview`;
+  el.raidProgressAvatar.classList.toggle('hidden', !thumbnail);
+  el.raidProgressAudience.textContent = `${fmtNumber(state.myStream?.viewer_count ?? 0)} viewers are preparing to travel through the wormhole.`;
   el.raidProgressCancelBtn.disabled = false;
   renderRaidCountdown();
   if (!el.raidProgressDialog.open) el.raidProgressDialog.showModal();

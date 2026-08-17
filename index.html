@@ -86,16 +86,6 @@
         </div>
         <p id="team-hint" class="filter-row__hint"></p>
 
-        <div class="filter-row">
-          <span class="filter-row__label">Following</span>
-          <label class="toggle">
-            <input type="checkbox" id="following-filter" />
-            <span class="toggle__box"></span>
-            <span class="toggle__text">Currently Following</span>
-          </label>
-        </div>
-        <p id="following-hint" class="filter-row__hint"></p>
-
         <div class="filter-row filter-row--stack">
           <div class="filter-row__top">
             <span class="filter-row__label">Tags</span>
@@ -135,6 +125,27 @@
 
       <section id="results-panel" class="panel results-panel hidden">
         <p id="results-status" class="results-status hidden" role="status" aria-live="polite"></p>
+        <div id="results-pagination" class="results-pagination hidden">
+          <label class="results-pagination__limit" for="results-page-size">
+            Results per page
+            <select id="results-page-size" class="results-pagination__select">
+              <option value="12" selected>12</option>
+              <option value="24">24</option>
+              <option value="36">36</option>
+              <option value="48">48</option>
+              <option value="60">60</option>
+              <option value="72">72</option>
+              <option value="84">84</option>
+              <option value="96">96</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+          <span id="results-page-summary" class="results-pagination__summary" aria-live="polite"></span>
+          <div class="results-pagination__buttons">
+            <button id="results-prev-page" class="btn btn--ghost" type="button">Previous</button>
+            <button id="results-next-page" class="btn btn--ghost" type="button">Next</button>
+          </div>
+        </div>
         <ul id="results-list" class="results-list"></ul>
       </section>
     </main>

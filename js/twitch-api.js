@@ -13,6 +13,8 @@ export class TwitchApi {
     this.accessToken = accessToken;
     this.broadcasterTypeCache = new Map();
     this.teamCache = new Map();
+    this.followedBroadcasterIdsCache = new Map();
+    this.followerCountCache = new Map();
   }
 
   get headers() {
@@ -210,29 +212,92 @@ export class TwitchApi {
   }
 
   /**
-   * Currently-live streams among the channels the logged-in user follows.
-   * Requires the user:read:follows scope. Uses Twitch's dedicated
-   * /streams/followed endpoint (rather than fetching the full follow list
-   * and cross-referencing /streams), since Twitch already does that join
-   * server-side and returns only the ones that are live, pre-sorted by
-   * viewer count.
+   * Returns the broadcaster IDs followed by the logged-in user. Twitch caps
+   * each page at 100, so the cursor is followed until the list is complete.
+   * The in-flight promise is cached per user so repeated searches only load
+   * the follow list once during this browser session.
    */
-  async getFollowedLiveStreams(userId, { maxResults = 100 } = {}) {
-    const streams = [];
-    let cursor = null;
-
-    while (streams.length < maxResults) {
-      const query = { user_id: userId, first: 100 };
-      if (cursor) query.after = cursor;
-
-      const json = await this._get('/streams/followed', query);
-      streams.push(...(json.data ?? []));
-
-      cursor = json.pagination?.cursor ?? null;
-      if (!cursor || !json.data?.length) break;
+  async getFollowedBroadcasterIds(userId) {
+    if (this.followedBroadcasterIdsCache.has(userId)) {
+      return this.followedBroadcasterIdsCache.get(userId);
     }
 
-    return streams.slice(0, maxResults);
+    const request = (async () => {
+      const ids = new Set();
+      let cursor = null;
+
+      do {
+        const query = { user_id: userId, first: 100 };
+        if (cursor) query.after = cursor;
+
+        const json = await this._get('/channels/followed', query);
+        for (const follow of json.data ?? []) {
+          if (follow.broadcaster_id) ids.add(follow.broadcaster_id);
+        }
+
+        cursor = json.pagination?.cursor ?? null;
+      } while (cursor);
+
+      return ids;
+    })();
+
+    this.followedBroadcasterIdsCache.set(userId, request);
+    try {
+      return await request;
+    } catch (error) {
+      this.followedBroadcasterIdsCache.delete(userId);
+      throw error;
+    }
+  }
+
+  /**
+   * Returns a channel's public follower total. Twitch may omit individual
+   * follower records when the logged-in user is not that channel's moderator,
+   * but the response still includes the public `total` value.
+   */
+  async getFollowerCount(broadcasterId) {
+    if (this.followerCountCache.has(broadcasterId)) {
+      return this.followerCountCache.get(broadcasterId);
+    }
+
+    const request = this._get('/channels/followers', {
+      broadcaster_id: broadcasterId,
+      first: 1,
+    }).then((json) => {
+      const total = Number(json.total);
+      return Number.isFinite(total) ? total : null;
+    });
+
+    this.followerCountCache.set(broadcasterId, request);
+    try {
+      return await request;
+    } catch (error) {
+      this.followerCountCache.delete(broadcasterId);
+      throw error;
+    }
+  }
+
+  /** Loads follower totals with limited concurrency to protect rate limits. */
+  async getFollowerCountsForUsers(userIds, { concurrency = 8 } = {}) {
+    const results = new Map();
+    const queue = [...new Set(userIds)];
+
+    const worker = async () => {
+      while (queue.length) {
+        const id = queue.shift();
+        try {
+          results.set(id, await this.getFollowerCount(id));
+        } catch (error) {
+          console.error(error);
+          results.set(id, null);
+        }
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, queue.length) }, () => worker())
+    );
+    return results;
   }
 
   /**

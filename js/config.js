@@ -18,8 +18,7 @@ export const TWITCH_CONFIG = {
   },
 
   // channel:manage:raids -> lets the app actually start a raid for you
-  // user:read:follows    -> lets the "Currently Following" filter check
-  //                         which channels you follow are live right now
+  // user:read:follows    -> marks matching channels you already follow
   scopes: ['channel:manage:raids', 'user:read:follows'],
 
   authorizeUrl: 'https://id.twitch.tv/oauth2/authorize',

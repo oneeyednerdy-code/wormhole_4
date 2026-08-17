@@ -5,6 +5,7 @@ import { applyHardFilters, findRaidMatches } from './raid-match.js';
 import { RaidListener } from './raid-listener.js';
 import { ViewerHistory } from './viewer-history.js';
 import { PreviousStreamHistory } from './previous-stream-history.js';
+import { paginate } from './pagination.js';
 
 const state = {
   api: null,
@@ -20,6 +21,9 @@ const state = {
   extraCategories: [], // additional {id, name} categories to include, beyond myStream's own game
   expandedWatchId: null, // user_id of the result card currently showing a live embed, if any
   raidListener: null,
+  followStatusWarningShown: false,
+  resultsPage: 1,
+  resultsPageSize: 12,
 };
 
 const el = {
@@ -37,8 +41,6 @@ const el = {
   statusFilters: document.getElementById('status-filters'),
   sameTeamFilter: document.getElementById('same-team-filter'),
   teamHint: document.getElementById('team-hint'),
-  followingFilter: document.getElementById('following-filter'),
-  followingHint: document.getElementById('following-hint'),
   tagsInput: document.getElementById('tags-input'),
   categorySearchInput: document.getElementById('category-search-input'),
   categorySuggestions: document.getElementById('category-suggestions'),
@@ -46,6 +48,11 @@ const el = {
   resultsPanel: document.getElementById('results-panel'),
   resultsList: document.getElementById('results-list'),
   resultsStatus: document.getElementById('results-status'),
+  resultsPagination: document.getElementById('results-pagination'),
+  resultsPageSize: document.getElementById('results-page-size'),
+  resultsPageSummary: document.getElementById('results-page-summary'),
+  resultsPrevPage: document.getElementById('results-prev-page'),
+  resultsNextPage: document.getElementById('results-next-page'),
   raidDialog: document.getElementById('raid-dialog'),
   raidDialogText: document.getElementById('raid-dialog-text'),
   raidConfirmBtn: document.getElementById('raid-confirm-btn'),
@@ -132,7 +139,6 @@ async function loadCurrentUser() {
   renderStreamPanel();
   renderViewerMatchHint();
   renderTeamHint();
-  renderFollowingHint();
   startRaidListener();
   showView('app');
 }
@@ -477,11 +483,6 @@ function renderTeamHint() {
   }
 }
 
-function renderFollowingHint() {
-  el.followingHint.textContent =
-    'Adds live channels you follow into the search, regardless of category.';
-}
-
 // ---- Raid match search -------------------------------------------------
 
 el.findBtn.addEventListener('click', () => runSearch());
@@ -498,7 +499,6 @@ el.showAllViewersFilter.addEventListener('change', () => {
 });
 el.statusFilters.addEventListener('change', rerunIfResultsVisible);
 el.sameTeamFilter.addEventListener('change', rerunIfResultsVisible);
-el.followingFilter.addEventListener('change', rerunIfResultsVisible);
 el.tagsInput.addEventListener('change', rerunIfResultsVisible);
 
 // Partner/Affiliate are additive toggles on top of the always-included
@@ -637,6 +637,7 @@ function renderSelectedCategories() {
 }
 
 let searchGeneration = 0;
+let resultsRenderGeneration = 0;
 
 async function runSearch() {
   if (!state.myStream) return;
@@ -646,7 +647,6 @@ async function runSearch() {
 
   const selectedStatuses = getSelectedStatuses();
   const wantsSameTeam = el.sameTeamFilter.checked && !el.sameTeamFilter.disabled;
-  const wantsFollowing = el.followingFilter.checked;
   const showAllViewerCounts = el.showAllViewersFilter.checked;
   const tags = getTagsQuery();
 
@@ -682,22 +682,6 @@ async function runSearch() {
     };
     addCandidates(candidateLists.flat());
 
-    if (wantsFollowing) {
-      el.resultsStatus.textContent = 'Checking who you follow…';
-      try {
-        const followingLive = await state.api.getFollowedLiveStreams(state.user.id, {
-          maxResults: 100,
-        });
-        addCandidates(followingLive);
-      } catch (e) {
-        console.error(e);
-        showToast(
-          'Could not load followed channels — you may need to log out and back in to grant the new permission.',
-          true
-        );
-      }
-    }
-
     el.resultsStatus.textContent = 'Scanning the category…';
 
     // broadcaster_type isn't on /streams — look it up in one batched call
@@ -708,6 +692,25 @@ async function runSearch() {
     if (generation !== searchGeneration) return;
     for (const s of candidates) {
       s.broadcaster_type = broadcasterTypes.get(s.user_id) ?? 'none';
+    }
+
+    // Follow status annotates results; it never expands or filters the
+    // candidate pool. If the optional lookup fails, matching continues.
+    el.resultsStatus.textContent = 'Checking channels you follow…';
+    try {
+      const followedIds = await state.api.getFollowedBroadcasterIds(state.user.id);
+      if (generation !== searchGeneration) return;
+      for (const s of candidates) s.is_followed = followedIds.has(s.user_id);
+    } catch (e) {
+      console.error(e);
+      for (const s of candidates) s.is_followed = false;
+      if (!state.followStatusWarningShown) {
+        showToast(
+          'Follow status is unavailable. Log out and back in if Twitch needs the follow permission.',
+          true
+        );
+        state.followStatusWarningShown = true;
+      }
     }
 
     // Team membership has no batch endpoint (one request per channel), so
@@ -743,6 +746,7 @@ async function runSearch() {
       requireSharedTeam: wantsSameTeam,
       requiredTags: tags,
     });
+    state.resultsPage = 1;
     renderResults();
   } catch (e) {
     if (generation !== searchGeneration) return;
@@ -760,18 +764,32 @@ function scoreClass(score) {
 }
 
 function renderResults() {
+  const renderGeneration = ++resultsRenderGeneration;
   if (!state.matches.length) {
     el.resultsStatus.textContent =
       'No matches found. Try showing all viewer counts or loosening the tags and other filters.';
     el.resultsStatus.classList.remove('hidden');
+    el.resultsPagination.classList.add('hidden');
     el.resultsList.innerHTML = '';
     return;
   }
 
   el.resultsStatus.classList.add('hidden');
-  el.resultsList.innerHTML = state.matches
-    .map((m, i) => resultCardHtml(m, i + 1))
+  const page = paginate(state.matches, state.resultsPage, state.resultsPageSize);
+  state.resultsPage = page.page;
+  state.resultsPageSize = page.pageSize;
+  el.resultsPageSize.value = String(page.pageSize);
+  el.resultsPageSummary.textContent =
+    `Showing ${page.startIndex + 1}–${page.endIndex} of ${state.matches.length} · Page ${page.page} of ${page.pageCount}`;
+  el.resultsPrevPage.disabled = page.page === 1;
+  el.resultsNextPage.disabled = page.page === page.pageCount;
+  el.resultsPagination.classList.remove('hidden');
+
+  el.resultsList.innerHTML = page.items
+    .map((m, i) => resultCardHtml(m, page.startIndex + i + 1))
     .join('');
+
+  loadFollowerCountsForVisiblePage(page.items, renderGeneration);
 
   el.resultsList.querySelectorAll('[data-raid-index]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -798,6 +816,41 @@ function renderResults() {
     });
   });
 }
+
+async function loadFollowerCountsForVisiblePage(matches, renderGeneration) {
+  const counts = await state.api.getFollowerCountsForUsers(
+    matches.map((match) => match.stream.user_id)
+  );
+  if (renderGeneration !== resultsRenderGeneration) return;
+
+  el.resultsList.querySelectorAll('[data-follower-id]').forEach((node) => {
+    const count = counts.get(node.dataset.followerId);
+    node.textContent = Number.isFinite(count)
+      ? `${fmtNumber(count)} followers`
+      : 'Followers unavailable';
+  });
+}
+
+el.resultsPageSize.addEventListener('change', () => {
+  state.resultsPageSize = Number(el.resultsPageSize.value);
+  state.resultsPage = 1;
+  state.expandedWatchId = null;
+  renderResults();
+});
+
+el.resultsPrevPage.addEventListener('click', () => {
+  state.resultsPage -= 1;
+  state.expandedWatchId = null;
+  renderResults();
+  el.resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+
+el.resultsNextPage.addEventListener('click', () => {
+  state.resultsPage += 1;
+  state.expandedWatchId = null;
+  renderResults();
+  el.resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
 
 function watchMediaHtml(stream) {
   const isPlaying = state.expandedWatchId === stream.user_id;
@@ -841,6 +894,9 @@ function resultCardHtml(match, rank) {
   const raidButton = state.usingPreviousStream
     ? '<button class="btn btn--outline" disabled title="You must be live to start a raid">Go live to raid</button>'
     : `<button class="btn btn--outline" data-raid-index="${rank - 1}">Raid this channel</button>`;
+  const previewButton = state.expandedWatchId === s.user_id
+    ? `<button class="btn btn--ghost" type="button" data-watch-id="${escapeHtml(s.user_id)}">Close preview</button>`
+    : `<button class="btn btn--ghost" type="button" data-watch-id="${escapeHtml(s.user_id)}">Preview stream</button>`;
 
   return `
     <li class="result-card">
@@ -855,16 +911,20 @@ function resultCardHtml(match, rank) {
       </div>
       ${watchMediaHtml(s)}
       <p class="result-card__title">${escapeHtml(s.title)}</p>
-      <p class="result-card__game">${escapeHtml(s.game_name)} · <span class="status-tag status-tag--${s.broadcaster_type ?? 'none'}">${statusLabel}</span>${s.shared_team_names?.length ? ` · <span class="team-tag">${escapeHtml(s.shared_team_names[0])}</span>` : ''}</p>
+      <p class="result-card__game">${escapeHtml(s.game_name)} · <span class="status-tag status-tag--${s.broadcaster_type ?? 'none'}">${statusLabel}</span>${s.is_followed ? ' · <span class="following-tag">Following</span>' : ''}${s.shared_team_names?.length ? ` · <span class="team-tag">${escapeHtml(s.shared_team_names[0])}</span>` : ''}</p>
       <div class="stat-row">
         <span class="stat-chip"><span class="stat-chip__mono">${fmtNumber(s.viewer_count)}</span> live</span>
         <span class="stat-chip"><span class="stat-chip__mono">~${fmtNumber(match.estimatedAverageViewers)}</span> avg${match.averageIsHistorical ? '' : ' (est.)'}</span>
         <span class="stat-chip"><span class="stat-chip__mono">${fmtDuration(Date.now() - new Date(s.started_at).getTime())}</span> live</span>
+        <span class="stat-chip" data-follower-id="${escapeHtml(s.user_id)}">Loading followers…</span>
       </div>
       <div class="result-card__actions">
         <a class="watch-link" href="https://twitch.tv/${escapeHtml(s.user_login)}" target="_blank" rel="noopener noreferrer">Open on Twitch ↗</a>
       </div>
-      ${raidButton}
+      <div class="result-card__buttons">
+        ${previewButton}
+        ${raidButton}
+      </div>
     </li>`;
 }
 

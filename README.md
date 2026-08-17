@@ -10,14 +10,14 @@ logs in with Twitch and finds you a good channel to raid, matched on:
 - **Channel status** — additive Partner/Affiliate toggles on top of an
   always-included non-affiliate pool
 - **Team** — optionally only show channels sharing one of your Twitch Teams
-- **Following** — optionally include live channels you follow, any category
 - **Tags** — optionally require candidates to have at least one of the tags
   you type in (e.g. "speedrun", "cozy", "english")
 - **Average viewership** — see note below on how this is estimated
 - **Stream duration** — how long the candidate has been live, vs. you
 
 Results render as a grid of cards, each with a click-to-play live preview
-(Twitch's own embedded player) alongside the stats. It can also **start the
+(Twitch's own embedded player) alongside the stats. Results are paginated with
+a selector for 12 through 100 cards per page. It can also **start the
 raid** for you directly, via the Twitch API.
 
 If you are offline, Wormhole offers up to five recent past-broadcast VODs to
@@ -140,20 +140,22 @@ an OAuth Redirect URL on your Twitch app (step 1).
     and channel-status filters have already narrowed the list, and fires
     those requests with limited concurrency. If you're not on a team, this
     filter is disabled with an explanatory note.
-  - **Following** — adds live channels you follow into the candidate pool,
-    regardless of category. Uses Twitch's `/streams/followed` endpoint,
-    which requires the `user:read:follows` scope. If you logged in before
-    this feature was added, your saved token won't have that scope yet —
-    log out and back in to re-grant it (the app will show a toast telling
-    you this if the underlying request fails for that reason).
   - **Tags** — type any number of comma-separated tags (Twitch's free-text
     stream tags, e.g. "Speedrun", "Cozy", "English"); a candidate matches if
     it has *at least one* of the tags you typed, case-insensitively.
   - **Categories** — search box to add other games/categories to the search,
     beyond your own current one. See the IGDB note below for why this uses
     Twitch's own search instead of calling IGDB directly.
+- Each result card marks channels you already follow with a **Following**
+  badge. This annotation uses Twitch's `/channels/followed` endpoint and the
+  `user:read:follows` scope; it does not add channels or filter results. If
+  you logged in before that permission was added, log out and back in once.
+- Each visible result card loads the channel's public follower total from
+  Twitch's `/channels/followers` endpoint. Totals are cached while the app is
+  open, and only the current results page is loaded to limit API requests.
 - Each result card shows a click-to-play live preview using Twitch's own
-  embedded player (`player.twitch.tv`), so you can actually watch a few
+  embedded player (`player.twitch.tv`). A dedicated **Preview stream** button
+  appears beside the raid button, so you can actually watch a few
   seconds of the stream before deciding to raid — plus an "Open on Twitch ↗"
   link as a fallback if the embed doesn't load (ad blockers sometimes catch
   it). The embed only needs a `parent` URL parameter matching whatever

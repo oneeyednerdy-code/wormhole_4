@@ -1,4 +1,4 @@
-import { TWITCH_CONFIG } from './config.js';
+import { TWITCH_CONFIG } from './config.js?v=36';
 
 function normalizeGameName(name) {
   return String(name ?? '')

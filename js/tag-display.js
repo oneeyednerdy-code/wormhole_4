@@ -1,4 +1,4 @@
-import { isLanguageTag } from './language-tags.js';
+import { isLanguageTag } from './language-tags.js?v=36';
 
 /** Creates a compact, deduplicated tag list for result cards. */
 export function prepareTagDisplay(tags, sharedTags = []) {

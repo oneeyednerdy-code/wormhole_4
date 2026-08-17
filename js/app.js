@@ -1,27 +1,27 @@
-import { TWITCH_CONFIG } from './config.js';
-import { TwitchAuth } from './twitch-auth.js';
-import { TwitchApi } from './twitch-api.js';
-import { applyHardFilters, findRaidMatches } from './raid-match.js';
-import { RaidListener } from './raid-listener.js';
-import { ViewerHistory } from './viewer-history.js';
-import { PreviousStreamHistory } from './previous-stream-history.js';
-import { paginate } from './pagination.js';
-import { sortRaidMatches } from './result-sort.js';
-import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js';
+import { TWITCH_CONFIG } from './config.js?v=36';
+import { TwitchAuth } from './twitch-auth.js?v=36';
+import { TwitchApi } from './twitch-api.js?v=36';
+import { applyHardFilters, findRaidMatches } from './raid-match.js?v=36';
+import { RaidListener } from './raid-listener.js?v=36';
+import { ViewerHistory } from './viewer-history.js?v=36';
+import { PreviousStreamHistory } from './previous-stream-history.js?v=36';
+import { paginate } from './pagination.js?v=36';
+import { sortRaidMatches } from './result-sort.js?v=36';
+import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=36';
 import {
   createRaidCountdown,
   getRaidCountdownSnapshot,
   twitchChannelUrl,
-} from './raid-countdown.js';
-import { ChannelHistory } from './channel-history.js';
-import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js';
+} from './raid-countdown.js?v=36';
+import { ChannelHistory } from './channel-history.js?v=36';
+import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=36';
 import {
   getGenreGameNames,
   getGenreLabelsForGame,
-} from './genre-presets.js';
-import { applyLanguageTag, isLanguageTag } from './language-tags.js';
-import { prepareTagDisplay } from './tag-display.js';
-import { normalizeTwitchLogin } from './direct-search.js';
+} from './genre-presets.js?v=36';
+import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=36';
+import { prepareTagDisplay } from './tag-display.js?v=36';
+import { normalizeTwitchLogin } from './direct-search.js?v=36';
 
 const state = {
   api: null,

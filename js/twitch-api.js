@@ -157,6 +157,84 @@ export class TwitchApi {
   }
 
   /**
+   * Currently-live streams among the channels the logged-in user follows.
+   * Requires the user:read:follows scope. Uses Twitch's dedicated
+   * /streams/followed endpoint (rather than fetching the full follow list
+   * and cross-referencing /streams), since Twitch already does that join
+   * server-side and returns only the ones that are live, pre-sorted by
+   * viewer count.
+   */
+  async getFollowedLiveStreams(userId, { maxResults = 100 } = {}) {
+    const streams = [];
+    let cursor = null;
+
+    while (streams.length < maxResults) {
+      const query = { user_id: userId, first: 100 };
+      if (cursor) query.after = cursor;
+
+      const json = await this._get('/streams/followed', query);
+      streams.push(...(json.data ?? []));
+
+      cursor = json.pagination?.cursor ?? null;
+      if (!cursor || !json.data?.length) break;
+    }
+
+    return streams.slice(0, maxResults);
+  }
+
+  /**
+   * Looks up current live-stream data for a specific set of user IDs
+   * (e.g. "are any of the people who've raided me currently live?").
+   * Unlike /teams/channel, /streams *does* support querying by many IDs
+   * at once — up to 100 user_id params per request — so this batches
+   * rather than firing one request per user.
+   */
+  async getStreamsByUserIds(userIds) {
+    const streams = [];
+    const uniqueIds = [...new Set(userIds)];
+
+    for (let i = 0; i < uniqueIds.length; i += 100) {
+      const batch = uniqueIds.slice(i, i + 100);
+      const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/streams');
+      batch.forEach((id) => url.searchParams.append('user_id', id));
+      url.searchParams.set('first', '100');
+      const res = await fetch(url, { headers: this.headers });
+      if (!res.ok) {
+        throw new TwitchApiError(`GET /streams failed (${res.status}): ${await res.text()}`);
+      }
+      const json = await res.json();
+      streams.push(...(json.data ?? []));
+    }
+
+    return streams;
+  }
+
+  /**
+   * Creates an EventSub subscription over an already-open WebSocket
+   * session (see raid-listener.js). channel.raid needs no special scope
+   * beyond a valid user token when using the WebSocket transport.
+   */
+  async createEventSubWebSocketSubscription(type, version, condition, sessionId) {
+    const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/eventsub/subscriptions');
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { ...this.headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type,
+        version,
+        condition,
+        transport: { method: 'websocket', session_id: sessionId },
+      }),
+    });
+    if (!res.ok) {
+      throw new TwitchApiError(
+        `Failed to create EventSub subscription (${res.status}): ${await res.text()}`
+      );
+    }
+    return res.json();
+  }
+
+  /**
    * Starts a raid from the logged-in broadcaster to toBroadcasterId.
    * Requires the channel:manage:raids scope.
    */

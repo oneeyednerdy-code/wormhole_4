@@ -19,7 +19,9 @@ export const TWITCH_CONFIG = {
 
   // user:read:email      -> basic profile info
   // channel:manage:raids -> lets the app actually start a raid for you
-  scopes: ['user:read:email', 'channel:manage:raids'],
+  // user:read:follows    -> lets the "Currently Following" filter check
+  //                         which channels you follow are live right now
+  scopes: ['user:read:email', 'channel:manage:raids', 'user:read:follows'],
 
   authorizeUrl: 'https://id.twitch.tv/oauth2/authorize',
   // This is Twitch's own API root (they call it "Helix") — the path is

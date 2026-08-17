@@ -7,18 +7,23 @@ logs in with Twitch and finds you a good channel to raid, matched on:
   current one
 - **Viewer count** — closeness of live viewer counts, plus an optional
   range slider filter
-- **Channel status** — filter to Partner, Affiliate, and/or Non-affiliate
-  channels
-- **Team** — optionally only show channels on one of your Twitch Teams
+- **Channel status** — additive Partner/Affiliate toggles on top of an
+  always-included non-affiliate pool
+- **Team** — optionally only show channels sharing one of your Twitch Teams
+- **Following** — optionally include live channels you follow, any category
+- **Reciprocity** — optionally include channels that have recently raided you
+- **Tags** — optionally require candidates to have at least one of the tags
+  you type in (e.g. "speedrun", "cozy", "english")
 - **Average viewership** — see note below on how this is estimated
 - **Stream duration** — how long the candidate has been live, vs. you
 
-It can also **start the raid** for you directly, via the Twitch API.
+Results render as a grid of cards, each with a click-to-play live preview
+(Twitch's own embedded player) alongside the stats. It can also **start the
+raid** for you directly, via the Twitch API.
 
 Why plain HTML/JS instead of a framework: Twitch's OAuth flow is designed
 around a browser redirect (`response_type=token`), which a static site
-handles natively — no popups, no custom URL schemes, no build tooling. This
-whole app is ~7 small files you can open in a text editor top to bottom.
+handles natively — no popups, no custom URL schemes, no build tooling.
 
 ---
 
@@ -105,9 +110,13 @@ an OAuth Redirect URL on your Twitch app (step 1).
     streamers are) gets much finer control than the high end, and dragging
     the top handle all the way right means "no upper limit" rather than a
     specific number.
-  - **Channel status** — Partner, Affiliate, Non-affiliate, any combination.
-    Since Twitch's `/streams` endpoint doesn't include this field, the app
-    makes one extra batched call to `/users` per search to look it up.
+  - **Channel status** — Partner and Affiliate are *additive* toggles on
+    top of an always-included non-affiliate pool (most of Twitch). There's
+    no separate "non-affiliate" checkbox — unchecking both Partner and
+    Affiliate just stops adding those tiers on top, it never hides anyone.
+    Since Twitch's `/streams` endpoint doesn't include broadcaster status
+    at all, the app makes one extra batched call to `/users` per search to
+    look it up.
   - **Team** — only show channels sharing one of your Twitch Teams. (Twitch
     doesn't have "guilds" — Teams are the closest equivalent: a named group
     of channels shown on each member's About page.) Twitch has no batch
@@ -116,9 +125,29 @@ an OAuth Redirect URL on your Twitch app (step 1).
     and channel-status filters have already narrowed the list, and fires
     those requests with limited concurrency. If you're not on a team, this
     filter is disabled with an explanatory note.
+  - **Following** — adds live channels you follow into the candidate pool,
+    regardless of category. Uses Twitch's `/streams/followed` endpoint,
+    which requires the `user:read:follows` scope. If you logged in before
+    this feature was added, your saved token won't have that scope yet —
+    log out and back in to re-grant it (the app will show a toast telling
+    you this if the underlying request fails for that reason).
+  - **Reciprocity ("Recently raided into you")** — adds channels that have
+    raided you back into the pool. See the note below on why this only
+    reflects raids that happened while the app was open — there's no way
+    to backfill it from before that.
+  - **Tags** — type any number of comma-separated tags (Twitch's free-text
+    stream tags, e.g. "Speedrun", "Cozy", "English"); a candidate matches if
+    it has *at least one* of the tags you typed, case-insensitively.
   - **Categories** — search box to add other games/categories to the search,
     beyond your own current one. See the IGDB note below for why this uses
     Twitch's own search instead of calling IGDB directly.
+- Each result card shows a click-to-play live preview using Twitch's own
+  embedded player (`player.twitch.tv`), so you can actually watch a few
+  seconds of the stream before deciding to raid — plus an "Open on Twitch ↗"
+  link as a fallback if the embed doesn't load (ad blockers sometimes catch
+  it). The embed only needs a `parent` URL parameter matching whatever
+  domain is serving the page — no extra Twitch app registration required
+  beyond the OAuth redirect URL you already set up.
 
 ### A note on IGDB
 

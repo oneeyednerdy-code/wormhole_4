@@ -48,18 +48,34 @@ function computeScore({ viewerDiffPercent, durationDiffMs }) {
  *   TwitchApi.getTeamMembershipsForUsers). Exported separately so callers
  *   can narrow the candidate list *before* doing the (uncached, one-call-
  *   per-channel) team lookup, rather than fetching teams for everyone.
+ * - requiredTags: array of tag strings (case-insensitive) — a candidate
+ *   must have at least one of these in its own `tags` array (the free-text
+ *   tags Twitch streamers set, e.g. "Speedrun", "Cozy", "English").
  */
 export function applyHardFilters(
   candidates,
-  { minViewers = null, maxViewers = null, allowedBroadcasterTypes = null, requireSharedTeam = false } = {}
+  {
+    minViewers = null,
+    maxViewers = null,
+    allowedBroadcasterTypes = null,
+    requireSharedTeam = false,
+    requiredTags = null,
+  } = {}
 ) {
   const typeFilter = allowedBroadcasterTypes ? new Set(allowedBroadcasterTypes) : null;
+  const tagFilter = requiredTags?.length
+    ? new Set(requiredTags.map((t) => t.toLowerCase()))
+    : null;
 
   return candidates.filter((s) => {
     if (minViewers != null && s.viewer_count < minViewers) return false;
     if (maxViewers != null && s.viewer_count > maxViewers) return false;
     if (typeFilter && !typeFilter.has(s.broadcaster_type ?? 'none')) return false;
     if (requireSharedTeam && !(s.shared_team_names?.length > 0)) return false;
+    if (tagFilter) {
+      const streamTags = (s.tags ?? []).map((t) => t.toLowerCase());
+      if (!streamTags.some((t) => tagFilter.has(t))) return false;
+    }
     return true;
   });
 }
@@ -83,6 +99,7 @@ export function findRaidMatches(
     maxViewers = null,
     allowedBroadcasterTypes = null,
     requireSharedTeam = false,
+    requiredTags = null,
   } = {}
 ) {
   const filtered = applyHardFilters(candidates, {
@@ -90,6 +107,7 @@ export function findRaidMatches(
     maxViewers,
     allowedBroadcasterTypes,
     requireSharedTeam,
+    requiredTags,
   });
 
   // Record fresh samples for everyone we just looked at, so the local

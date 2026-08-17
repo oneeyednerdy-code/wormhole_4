@@ -2,6 +2,8 @@ import { TWITCH_CONFIG } from './config.js';
 import { TwitchAuth } from './twitch-auth.js';
 import { TwitchApi } from './twitch-api.js';
 import { applyHardFilters, findRaidMatches } from './raid-match.js';
+import { RaidHistory } from './raid-history.js';
+import { RaidListener } from './raid-listener.js';
 
 const state = {
   api: null,
@@ -11,6 +13,9 @@ const state = {
   matches: [],
   tolerance: 60,
   extraCategories: [], // additional {id, name} categories to include, beyond myStream's own game
+  expandedWatchId: null, // user_id of the result card currently showing a live embed, if any
+  raidListener: null,
+  raidListenerStatus: 'disconnected',
 };
 
 const el = {
@@ -33,6 +38,11 @@ const el = {
   statusFilters: document.getElementById('status-filters'),
   sameTeamFilter: document.getElementById('same-team-filter'),
   teamHint: document.getElementById('team-hint'),
+  followingFilter: document.getElementById('following-filter'),
+  followingHint: document.getElementById('following-hint'),
+  recentRaidersFilter: document.getElementById('recent-raiders-filter'),
+  recentRaidersHint: document.getElementById('recent-raiders-hint'),
+  tagsInput: document.getElementById('tags-input'),
   categorySearchInput: document.getElementById('category-search-input'),
   categorySuggestions: document.getElementById('category-suggestions'),
   selectedCategories: document.getElementById('selected-categories'),
@@ -89,6 +99,8 @@ el.loginBtn.addEventListener('click', () => {
 
 el.logoutBtn.addEventListener('click', async () => {
   await TwitchAuth.logout();
+  state.raidListener?.stop();
+  state.raidListener = null;
   state.api = null;
   state.user = null;
   state.myStream = null;
@@ -103,7 +115,25 @@ async function loadCurrentUser() {
   renderUser();
   renderStreamPanel();
   renderTeamHint();
+  renderFollowingHint();
+  renderRecentRaidersHint();
+  startRaidListener();
   showView('app');
+}
+
+function startRaidListener() {
+  state.raidListener?.stop();
+  state.raidListener = new RaidListener(state.api, state.user.id, {
+    onRaid: (event) => {
+      showToast(`${event.from_broadcaster_user_name} just raided you with ${event.viewers} viewers!`);
+      renderRecentRaidersHint();
+    },
+    onStatusChange: (status) => {
+      state.raidListenerStatus = status;
+      renderRecentRaidersHint();
+    },
+  });
+  state.raidListener.start();
 }
 
 async function init() {
@@ -186,6 +216,36 @@ function renderTeamHint() {
   }
 }
 
+function renderFollowingHint() {
+  el.followingHint.textContent =
+    'Adds live channels you follow into the search, regardless of category.';
+}
+
+const RAID_LISTENER_STATUS_TEXT = {
+  disconnected: 'not connected',
+  connecting: 'connecting…',
+  connected: 'listening live',
+  error: 'connection issue',
+};
+
+function renderRecentRaidersHint() {
+  const count = RaidHistory.uniqueBroadcasterIds(state.user?.id).length;
+  const statusClass = `raid-listener-status--${state.raidListenerStatus}`;
+  const statusText = RAID_LISTENER_STATUS_TEXT[state.raidListenerStatus] ?? state.raidListenerStatus;
+  const statusBadge = `<span class="raid-listener-status ${statusClass}"><span class="raid-listener-status__dot"></span>${statusText}</span>`;
+
+  if (count === 0) {
+    el.recentRaidersHint.innerHTML =
+      `No raids recorded yet — Wormhole can only see raids that happen while it's open (Twitch has no history API for this), so this fills in as you keep it open during and after your streams. ${statusBadge}`;
+    el.recentRaidersFilter.disabled = true;
+    el.recentRaidersFilter.checked = false;
+  } else {
+    el.recentRaidersHint.innerHTML =
+      `${count} recent raider${count === 1 ? '' : 's'} recorded. ${statusBadge}`;
+    el.recentRaidersFilter.disabled = false;
+  }
+}
+
 // ---- Raid match search -------------------------------------------------
 
 el.toleranceSlider.addEventListener('input', () => {
@@ -204,11 +264,26 @@ function rerunIfResultsVisible() {
 el.toleranceSlider.addEventListener('change', rerunIfResultsVisible);
 el.statusFilters.addEventListener('change', rerunIfResultsVisible);
 el.sameTeamFilter.addEventListener('change', rerunIfResultsVisible);
+el.followingFilter.addEventListener('change', rerunIfResultsVisible);
+el.recentRaidersFilter.addEventListener('change', rerunIfResultsVisible);
+el.tagsInput.addEventListener('change', rerunIfResultsVisible);
 
+// Partner/Affiliate are additive toggles on top of the always-included
+// non-affiliate majority — unchecking both doesn't hide anyone, it just
+// stops adding partners/affiliates on top of everyone else. This avoids
+// the confusing old behavior where unchecking everything showed nothing.
 function getSelectedStatuses() {
-  return [...el.statusFilters.querySelectorAll('input[type="checkbox"]')]
+  const checked = [...el.statusFilters.querySelectorAll('input[type="checkbox"]')]
     .filter((cb) => cb.checked)
     .map((cb) => cb.value);
+  return [...new Set([...checked, 'none'])];
+}
+
+function getTagsQuery() {
+  return el.tagsInput.value
+    .split(',')
+    .map((t) => t.trim())
+    .filter(Boolean);
 }
 
 // ---- Viewer-count dual-range slider ------------------------------------
@@ -375,15 +450,10 @@ async function runSearch() {
   if (!state.myStream) return;
 
   const selectedStatuses = getSelectedStatuses();
-  if (selectedStatuses.length === 0) {
-    el.resultsPanel.classList.remove('hidden');
-    el.resultsList.innerHTML = '';
-    el.resultsStatus.textContent = 'Select at least one channel status above to search.';
-    el.resultsStatus.classList.remove('hidden');
-    return;
-  }
-
   const wantsSameTeam = el.sameTeamFilter.checked && !el.sameTeamFilter.disabled;
+  const wantsFollowing = el.followingFilter.checked;
+  const wantsRecentRaiders = el.recentRaidersFilter.checked && !el.recentRaidersFilter.disabled;
+  const tags = getTagsQuery();
 
   el.resultsPanel.classList.remove('hidden');
   el.resultsList.innerHTML = '';
@@ -396,15 +466,44 @@ async function runSearch() {
     const candidateLists = await Promise.all(
       gameIds.map((id) => state.api.getLiveStreamsByGame(id, { maxResults: 100 }))
     );
-    // Dedupe in case a channel somehow shows up under two selected
-    // categories (shouldn't normally happen — a stream has one game_id
-    // at a time — but keeps the list honest either way).
+
     const seen = new Set();
-    const candidates = candidateLists.flat().filter((s) => {
-      if (seen.has(s.user_id)) return false;
-      seen.add(s.user_id);
-      return true;
-    });
+    const candidates = [];
+    const addCandidates = (list) => {
+      for (const s of list) {
+        if (seen.has(s.user_id)) continue;
+        seen.add(s.user_id);
+        candidates.push(s);
+      }
+    };
+    addCandidates(candidateLists.flat());
+
+    if (wantsFollowing) {
+      el.resultsStatus.textContent = 'Checking who you follow…';
+      try {
+        const followingLive = await state.api.getFollowedLiveStreams(state.user.id, {
+          maxResults: 100,
+        });
+        addCandidates(followingLive);
+      } catch (e) {
+        console.error(e);
+        showToast(
+          'Could not load followed channels — you may need to log out and back in to grant the new permission.',
+          true
+        );
+      }
+    }
+
+    if (wantsRecentRaiders) {
+      const raiderIds = RaidHistory.uniqueBroadcasterIds(state.user.id);
+      if (raiderIds.length) {
+        el.resultsStatus.textContent = 'Checking who raided you…';
+        const raiderStreams = await state.api.getStreamsByUserIds(raiderIds);
+        addCandidates(raiderStreams);
+      }
+    }
+
+    el.resultsStatus.textContent = 'Scanning the category…';
 
     // broadcaster_type isn't on /streams — look it up in one batched call
     // and attach it to each candidate before filtering/scoring.
@@ -428,6 +527,7 @@ async function runSearch() {
         minViewers: min,
         maxViewers: max,
         allowedBroadcasterTypes: selectedStatuses,
+        requiredTags: tags,
       });
 
       const myTeamIds = new Set(state.myTeams.map((t) => t.id));
@@ -449,6 +549,7 @@ async function runSearch() {
       maxViewers: max,
       allowedBroadcasterTypes: selectedStatuses,
       requireSharedTeam: wantsSameTeam,
+      requiredTags: tags,
     });
     renderResults();
   } catch (e) {
@@ -466,7 +567,7 @@ function scoreClass(score) {
 function renderResults() {
   if (!state.matches.length) {
     el.resultsStatus.textContent =
-      'No matches found. Try widening the tolerance, viewer range, channel status, or team filters above.';
+      'No matches found. Try loosening the tolerance, viewer range, tags, or other filters above.';
     el.resultsStatus.classList.remove('hidden');
     el.resultsList.innerHTML = '';
     return;
@@ -483,6 +584,57 @@ function renderResults() {
       openRaidDialog(state.matches[idx]);
     });
   });
+
+  // Click a thumbnail to load a live embedded preview in place — only one
+  // plays at a time (re-rendering collapses whichever was open before).
+  el.resultsList.querySelectorAll('[data-watch-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.watchId;
+      state.expandedWatchId = state.expandedWatchId === id ? null : id;
+      renderResults();
+    });
+  });
+
+  el.resultsList.querySelectorAll('[data-close-watch]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      state.expandedWatchId = null;
+      renderResults();
+    });
+  });
+}
+
+function watchMediaHtml(stream) {
+  const isPlaying = state.expandedWatchId === stream.user_id;
+
+  if (isPlaying) {
+    // Twitch's player just needs a `parent` matching the hosting domain —
+    // no extra app registration required beyond the OAuth redirect URL.
+    const embedSrc = `https://player.twitch.tv/?channel=${encodeURIComponent(
+      stream.user_login
+    )}&parent=${encodeURIComponent(window.location.hostname)}&muted=true`;
+    return `
+      <div class="card-media card-media--playing">
+        <button type="button" class="card-media__close" data-close-watch aria-label="Close preview">✕</button>
+        <iframe
+          src="${embedSrc}"
+          allowfullscreen
+          scrolling="no"
+          frameborder="0"
+          title="Live preview of ${escapeHtml(stream.user_name)}"
+        ></iframe>
+      </div>`;
+  }
+
+  const thumb = (stream.thumbnail_url || '')
+    .replace('{width}', '440')
+    .replace('{height}', '248');
+  return `
+    <button type="button" class="card-media card-media--preview" data-watch-id="${escapeHtml(stream.user_id)}" aria-label="Watch ${escapeHtml(stream.user_name)} live">
+      ${thumb ? `<img src="${escapeHtml(thumb)}" alt="" loading="lazy" />` : ''}
+      <span class="card-media__live-badge"><span class="card-media__live-dot"></span>LIVE</span>
+      <span class="card-media__play">▶</span>
+    </button>`;
 }
 
 function resultCardHtml(match, rank) {
@@ -503,12 +655,16 @@ function resultCardHtml(match, rank) {
           <div class="meter__value">${scorePct}</div>
         </div>
       </div>
+      ${watchMediaHtml(s)}
       <p class="result-card__title">${escapeHtml(s.title)}</p>
       <p class="result-card__game">${escapeHtml(s.game_name)} · <span class="status-tag status-tag--${s.broadcaster_type ?? 'none'}">${statusLabel}</span>${s.shared_team_names?.length ? ` · <span class="team-tag">${escapeHtml(s.shared_team_names[0])}</span>` : ''}</p>
       <div class="stat-row">
         <span class="stat-chip"><span class="stat-chip__mono">${fmtNumber(s.viewer_count)}</span> live</span>
         <span class="stat-chip"><span class="stat-chip__mono">~${fmtNumber(match.estimatedAverageViewers)}</span> avg${match.averageIsHistorical ? '' : ' (est.)'}</span>
         <span class="stat-chip"><span class="stat-chip__mono">${fmtDuration(Date.now() - new Date(s.started_at).getTime())}</span> live</span>
+      </div>
+      <div class="result-card__actions">
+        <a class="watch-link" href="https://twitch.tv/${escapeHtml(s.user_login)}" target="_blank" rel="noopener noreferrer">Open on Twitch ↗</a>
       </div>
       <button class="btn btn--outline" data-raid-index="${rank - 1}">Raid this channel</button>
     </li>`;

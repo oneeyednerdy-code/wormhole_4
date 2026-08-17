@@ -87,26 +87,3 @@ test('viewer history ignores rapid duplicate samples', () => {
   assert.equal(ViewerHistory.getAverage('channel').sampleCount, 1);
   assert.equal(ViewerHistory.getAverage('channel').average, 25);
 });
-
-test('offline reference searches do not record synthetic viewer samples', () => {
-  localStorage.clear();
-  const historical = { ...stream('mine', 42), isHistoricalReference: true };
-  findRaidMatches(historical, [stream('candidate', 40)]);
-  assert.equal(ViewerHistory.getAverage('mine'), null);
-  assert.equal(ViewerHistory.getAverage('candidate').sampleCount, 1);
-});
-
-test('a manually entered offline baseline overrides older saved averages', () => {
-  localStorage.clear();
-  const now = new Date().toISOString();
-  localStorage.setItem('wormhole_viewer_history_v2', JSON.stringify({
-    mine: [100, 100, 100].map((viewerCount) => ({ viewerCount, sampledAt: now })),
-  }));
-  const historical = { ...stream('mine', 40), isHistoricalReference: true };
-  const matches = findRaidMatches(
-    historical,
-    [stream('entered-baseline', 40), stream('old-saved-average', 100)],
-    { ignoreViewerTolerance: true }
-  );
-  assert.equal(matches[0].stream.user_id, 'entered-baseline');
-});

@@ -50,23 +50,6 @@ export class TwitchApi {
     return json.data?.[0] ?? null;
   }
 
-  /** Channel metadata, including the broadcaster's current or last-played category. */
-  async getChannelInformation(broadcasterId) {
-    const json = await this._get('/channels', { broadcaster_id: broadcasterId });
-    return json.data?.[0] ?? null;
-  }
-
-  /** The broadcaster's newest published past-broadcast VOD, if one exists. */
-  async getLatestArchive(userId) {
-    const json = await this._get('/videos', {
-      user_id: userId,
-      type: 'archive',
-      sort: 'time',
-      first: 1,
-    });
-    return json.data?.[0] ?? null;
-  }
-
   /**
    * Looks up broadcaster_type ('partner', 'affiliate', or '' for
    * non-affiliate) for a batch of user IDs. Streams returned by

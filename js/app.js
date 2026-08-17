@@ -4,15 +4,11 @@ import { TwitchApi } from './twitch-api.js';
 import { applyHardFilters, findRaidMatches } from './raid-match.js';
 import { RaidHistory } from './raid-history.js';
 import { RaidListener } from './raid-listener.js';
-import { ViewerHistory } from './viewer-history.js';
 
 const state = {
   api: null,
   user: null,
   myStream: null,
-  channelInfo: null,
-  latestVod: null,
-  usingPreviousStream: false,
   myTeams: [], // Twitch Teams the logged-in user belongs to
   matches: [],
   extraCategories: [], // additional {id, name} categories to include, beyond myStream's own game
@@ -109,18 +105,13 @@ el.logoutBtn.addEventListener('click', async () => {
 
 async function loadCurrentUser() {
   state.user = await state.api.getCurrentUser();
-  const [streamResult, teamsResult, channelResult, vodResult] = await Promise.allSettled([
-    state.api.getLiveStreamForUser(state.user.id),
-    state.api.getChannelTeams(state.user.id),
-    state.api.getChannelInformation(state.user.id),
-    state.api.getLatestArchive(state.user.id),
-  ]);
-  if (streamResult.status === 'rejected') throw streamResult.reason;
-  state.myStream = streamResult.value;
-  state.myTeams = teamsResult.status === 'fulfilled' ? teamsResult.value : [];
-  state.channelInfo = channelResult.status === 'fulfilled' ? channelResult.value : null;
-  state.latestVod = vodResult.status === 'fulfilled' ? vodResult.value : null;
-  state.usingPreviousStream = false;
+  state.myStream = await state.api.getLiveStreamForUser(state.user.id);
+  try {
+    state.myTeams = await state.api.getChannelTeams(state.user.id);
+  } catch (error) {
+    console.error('Could not load Twitch teams:', error);
+    state.myTeams = [];
+  }
   renderUser();
   renderStreamPanel();
   renderViewerMatchHint();
@@ -190,71 +181,24 @@ function renderUser() {
   el.userAvatar.alt = state.user.display_name;
 }
 
-async function refreshLiveStatus() {
-  try {
-    state.myStream = await state.api.getLiveStreamForUser(state.user.id);
-    state.usingPreviousStream = false;
-    renderStreamPanel();
-  } catch (error) {
-    console.error(error);
-    showToast('Could not refresh your Twitch stream. Please try again.', true);
-  }
-}
-
 function renderStreamPanel() {
   const s = state.myStream;
   if (!s) {
-    const average = ViewerHistory.getAverage(state.user.id);
-    const categoryAvailable = Boolean(state.channelInfo?.game_id);
-    const previousTitle = state.latestVod?.title || state.channelInfo?.title || 'Previous stream';
-    const previousDate = state.latestVod?.created_at
-      ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(
-          new Date(state.latestVod.created_at)
-        )
-      : null;
-    const baselineValue = average ? Math.round(average.average) : '';
     el.streamPanel.innerHTML = `
       <div class="offline-card">
         <div class="offline-card__dot"></div>
         <p class="offline-card__title">You're not live right now.</p>
-        ${categoryAvailable ? `
-          <div class="offline-reference">
-            <p class="offline-reference__eyebrow">Previous stream</p>
-            <p class="offline-reference__title">${escapeHtml(previousTitle)}</p>
-            <p class="offline-card__hint">${escapeHtml(state.channelInfo.game_name)}${previousDate ? ` · ${escapeHtml(previousDate)}` : ''}</p>
-            <label class="offline-reference__viewer-label" for="offline-viewers-input">
-              Average viewers for that stream
-            </label>
-            <input
-              id="offline-viewers-input"
-              class="text-input offline-reference__viewer-input"
-              type="number"
-              min="0"
-              step="1"
-              value="${baselineValue}"
-              placeholder="Enter an average"
-            />
-            <p class="offline-card__hint">${average
-              ? `Pre-filled from ${average.sampleCount} locally saved Wormhole sample${average.sampleCount === 1 ? '' : 's'}.`
-              : 'Twitch does not expose past concurrent viewers, so enter your previous average once.'}</p>
-            <button class="btn btn--primary" id="use-previous-stream-btn">Find using previous stream</button>
-          </div>` : `
-          <p class="offline-card__hint">No previous Twitch category was available. Go live once, then Wormhole can save a reference.</p>`}
-        <button class="btn btn--ghost offline-card__refresh" id="refresh-stream-btn">Refresh live status</button>
+        <p class="offline-card__hint">Go live on Twitch, then refresh to load your stream stats.</p>
+        <button class="btn btn--ghost" id="refresh-stream-btn">Refresh</button>
       </div>`;
-    document.getElementById('refresh-stream-btn').addEventListener('click', refreshLiveStatus);
-    document.getElementById('use-previous-stream-btn')?.addEventListener('click', () => {
-      const input = document.getElementById('offline-viewers-input');
-      const viewerCount = Number(input.value);
-      if (!Number.isFinite(viewerCount) || viewerCount < 0 || input.value.trim() === '') {
-        showToast('Enter the average viewers from your previous stream.', true);
-        input.focus();
-        return;
+    document.getElementById('refresh-stream-btn').addEventListener('click', async () => {
+      try {
+        state.myStream = await state.api.getLiveStreamForUser(state.user.id);
+        renderStreamPanel();
+      } catch (error) {
+        console.error(error);
+        showToast('Could not refresh your Twitch stream. Please try again.', true);
       }
-      state.myStream = buildPreviousStreamReference(viewerCount);
-      state.usingPreviousStream = true;
-      renderStreamPanel();
-      showToast('Using your previous stream as the match baseline.');
     });
     el.findBtn.disabled = true;
     renderViewerMatchHint();
@@ -263,64 +207,32 @@ function renderStreamPanel() {
   }
 
   el.findBtn.disabled = false;
-  const historical = state.usingPreviousStream;
   el.streamPanel.innerHTML = `
     <div class="tally">
       <span class="tally__light"></span>
-      <span class="tally__label">${historical ? 'PREVIOUS STREAM' : 'ON AIR'}</span>
+      <span class="tally__label">ON AIR</span>
     </div>
     <h2 class="stream-title">${escapeHtml(s.title)}</h2>
     <p class="stream-game">${escapeHtml(s.game_name)}</p>
     <div class="stat-row">
-      <span class="stat-chip"><span class="stat-chip__mono">${fmtNumber(s.viewer_count)}</span> ${historical ? 'viewer baseline' : 'viewers'}</span>
-      <span class="stat-chip"><span class="stat-chip__mono">${fmtDuration(Date.now() - new Date(s.started_at).getTime())}</span> ${historical ? 'previous duration' : 'live'}</span>
-    </div>
-    ${historical ? '<button class="btn btn--ghost historical-refresh" id="refresh-historical-btn">Check live status</button>' : ''}`;
-  document.getElementById('refresh-historical-btn')?.addEventListener('click', refreshLiveStatus);
+      <span class="stat-chip"><span class="stat-chip__mono">${fmtNumber(s.viewer_count)}</span> viewers</span>
+      <span class="stat-chip"><span class="stat-chip__mono">${fmtDuration(Date.now() - new Date(s.started_at).getTime())}</span> live</span>
+    </div>`;
   renderSelectedCategories();
   renderViewerMatchHint();
 }
 
 function renderViewerMatchHint() {
   if (!state.myStream) {
-    el.viewerMatchHint.textContent = 'Go live or choose your previous stream to calculate a ±50% viewer range.';
+    el.viewerMatchHint.textContent = 'Go live to calculate your ±50% viewer range.';
     return;
   }
   const viewers = state.myStream.viewer_count;
   const min = Math.max(0, Math.floor(viewers * 0.5));
   const max = Math.ceil(viewers * 1.5);
-  const source = state.usingPreviousStream ? 'previous-stream baseline' : `your ${fmtNumber(viewers)}`;
   el.viewerMatchHint.textContent = el.showAllViewersFilter.checked
     ? 'Showing channels regardless of viewer count.'
-    : `Default match: ${fmtNumber(min)}–${fmtNumber(max)} viewers (±50% of ${source}).`;
-}
-
-function parseTwitchDuration(duration) {
-  const match = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/.exec(duration ?? '');
-  if (!match) return null;
-  return ((Number(match[1] ?? 0) * 60 + Number(match[2] ?? 0)) * 60 + Number(match[3] ?? 0)) * 1000;
-}
-
-function buildPreviousStreamReference(viewerCount) {
-  const latestSample = ViewerHistory.getLatestSample(state.user.id);
-  const vodDuration = parseTwitchDuration(state.latestVod?.duration);
-  const sampledDuration = latestSample?.streamStartedAt && latestSample?.sampledAt
-    ? new Date(latestSample.sampledAt).getTime() - new Date(latestSample.streamStartedAt).getTime()
-    : null;
-  const durationMs = vodDuration || (sampledDuration > 0 ? sampledDuration : 4 * 60 * 60 * 1000);
-
-  return {
-    user_id: state.user.id,
-    user_login: state.user.login,
-    user_name: state.user.display_name,
-    game_id: state.channelInfo.game_id,
-    game_name: state.channelInfo.game_name,
-    title: state.latestVod?.title || state.channelInfo.title || 'Previous stream',
-    viewer_count: viewerCount,
-    started_at: new Date(Date.now() - durationMs).toISOString(),
-    tags: [],
-    isHistoricalReference: true,
-  };
+    : `Default match: ${fmtNumber(min)}–${fmtNumber(max)} viewers (±50% of your ${fmtNumber(viewers)}).`;
 }
 
 function renderTeamHint() {
@@ -731,9 +643,6 @@ function resultCardHtml(match, rank) {
   // Analog meter needle: -90deg (0%) to +90deg (100%).
   const needleDeg = -90 + (scorePct / 100) * 180;
   const statusLabel = STATUS_LABELS[s.broadcaster_type ?? 'none'];
-  const raidButton = state.usingPreviousStream
-    ? '<button class="btn btn--outline" disabled title="You must be live to start a raid">Go live to raid</button>'
-    : `<button class="btn btn--outline" data-raid-index="${rank - 1}">Raid this channel</button>`;
 
   return `
     <li class="result-card">
@@ -757,7 +666,7 @@ function resultCardHtml(match, rank) {
       <div class="result-card__actions">
         <a class="watch-link" href="https://twitch.tv/${escapeHtml(s.user_login)}" target="_blank" rel="noopener noreferrer">Open on Twitch ↗</a>
       </div>
-      ${raidButton}
+      <button class="btn btn--outline" data-raid-index="${rank - 1}">Raid this channel</button>
     </li>`;
 }
 

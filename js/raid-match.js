@@ -110,21 +110,18 @@ export function findRaidMatches(
 
   // Record fresh samples for everyone we just looked at, so the local
   // average-viewership estimate keeps improving over time.
-  const samples = {};
-  if (!myStream.isHistoricalReference) {
-    samples[myStream.user_id] = {
+  const samples = {
+    [myStream.user_id]: {
       viewerCount: myStream.viewer_count,
       streamStartedAt: myStream.started_at,
-    };
-  }
+    },
+  };
   for (const s of filtered) {
     samples[s.user_id] = { viewerCount: s.viewer_count, streamStartedAt: s.started_at };
   }
   ViewerHistory.recordSamples(samples);
 
-  const myAvgRecord = myStream.isHistoricalReference
-    ? null
-    : ViewerHistory.getAverage(myStream.user_id);
+  const myAvgRecord = ViewerHistory.getAverage(myStream.user_id);
   const myEstimatedAverage = myAvgRecord?.average ?? myStream.viewer_count;
 
   const results = [];

@@ -21,14 +21,6 @@ Results render as a grid of cards, each with a click-to-play live preview
 (Twitch's own embedded player) alongside the stats. It can also **start the
 raid** for you directly, via the Twitch API.
 
-If you are offline, Wormhole can also build a search reference from your
-previous stream. Twitch supplies the channel's last-played category and the
-newest published past-broadcast title/date/duration. Wormhole uses its locally
-sampled viewer average when available, or asks you to enter the previous
-average. Twitch's VOD `view_count` is deliberately not used because it counts
-total VOD plays, not concurrent live viewers. Offline results are discovery
-only; you must be live before Wormhole enables the raid action.
-
 Why plain HTML/JS instead of a framework: Twitch's OAuth flow is designed
 around a browser redirect (`response_type=token`), which a static site
 handles natively — no popups, no custom URL schemes, no build tooling.
@@ -103,8 +95,6 @@ an OAuth Redirect URL on your Twitch app (step 1).
 
 - Pulls your current live stream (game, viewer count, start time) via the
   Twitch Helix API.
-- When offline, optionally uses the last-played category, newest VOD metadata,
-  and a locally saved or manually entered viewer baseline.
 - Paginates through live streams for each selected category until it reaches
   channels below your ±50% range (up to 1,000 candidates per category). When
   "Show all viewer counts" is enabled, it retrieves up to 500 per category.

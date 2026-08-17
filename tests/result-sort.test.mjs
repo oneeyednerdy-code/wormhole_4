@@ -17,8 +17,20 @@ const matches = [
 
 test('publishes every results sorting option', () => {
   assert.deepEqual(RESULT_SORT_OPTIONS, [
-    'recommended', 'viewers-high', 'viewers-low', 'ending-soon', 'just-started',
+    'recommended', 'following-first', 'viewers-high', 'viewers-low', 'ending-soon', 'just-started',
   ]);
+});
+
+test('sorts followed channels first and recommendations within each group', () => {
+  const source = [
+    { ...matches[0], stream: { ...matches[0].stream, is_followed: false } },
+    { ...matches[1], stream: { ...matches[1].stream, is_followed: true } },
+    { ...matches[2], stream: { ...matches[2].stream, is_followed: true } },
+  ];
+  assert.deepEqual(
+    sortRaidMatches(source, 'following-first').map((m) => m.stream.user_id),
+    ['newest', 'oldest', 'middle']
+  );
 });
 
 test('sorts by recommendation and viewer count in both directions', () => {

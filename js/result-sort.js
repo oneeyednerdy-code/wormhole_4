@@ -1,5 +1,6 @@
 export const RESULT_SORT_OPTIONS = [
   'recommended',
+  'following-first',
   'viewers-high',
   'viewers-low',
   'ending-soon',
@@ -38,6 +39,11 @@ export function sortRaidMatches(matches, mode = 'recommended') {
   const sorted = Array.isArray(matches) ? [...matches] : [];
 
   switch (mode) {
+    case 'following-first':
+      return sorted.sort((a, b) =>
+        Number(Boolean(b?.stream?.is_followed)) - Number(Boolean(a?.stream?.is_followed)) ||
+        recommendedFirst(a, b)
+      );
     case 'viewers-high':
       return sorted.sort((a, b) => viewers(b) - viewers(a) || recommendedFirst(a, b));
     case 'viewers-low':

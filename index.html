@@ -63,16 +63,30 @@
         <div id="filters-content" class="filters-panel__content">
 
         <h3 class="filter-section-title">Audience</h3>
-        <div class="filter-row">
-          <div>
+        <div class="filter-row filter-row--stack">
+          <div class="filter-row__top">
             <span class="filter-row__label">Viewer count</span>
             <p id="viewer-match-hint" class="filter-row__hint filter-row__hint--inline"></p>
           </div>
-          <label class="toggle">
-            <input type="checkbox" id="show-all-viewers-filter" />
-            <span class="toggle__box"></span>
-            <span class="toggle__text">Show all viewer counts</span>
-          </label>
+          <fieldset id="viewer-tolerance-filter" class="viewer-range-options">
+            <legend class="sr-only">Viewer-count matching range</legend>
+            <label class="viewer-range-option">
+              <input type="radio" name="viewer-tolerance" value="50" checked />
+              <span>±50%</span><small>Recommended</small>
+            </label>
+            <label class="viewer-range-option">
+              <input type="radio" name="viewer-tolerance" value="75" />
+              <span>±75%</span><small>Wider</small>
+            </label>
+            <label class="viewer-range-option">
+              <input type="radio" name="viewer-tolerance" value="100" />
+              <span>±100%</span><small>Broad</small>
+            </label>
+            <label class="viewer-range-option">
+              <input type="radio" name="viewer-tolerance" value="all" />
+              <span>All</span><small>No limit</small>
+            </label>
+          </fieldset>
         </div>
 
         <h3 class="filter-section-title">Community</h3>

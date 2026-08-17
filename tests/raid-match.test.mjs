@@ -61,6 +61,26 @@ test('show-all mode bypasses viewer tolerance', () => {
   assert.equal(matches.length, 1);
 });
 
+test('custom 75% and 100% viewer bands include their exact boundaries', () => {
+  localStorage.clear();
+  const mine = stream('mine', 100);
+  const candidates = [
+    stream('quarter', 25),
+    stream('double', 200),
+    stream('too-high-for-75', 176),
+  ];
+  const seventyFive = findRaidMatches(mine, candidates, { viewerTolerancePercent: 75 });
+  const oneHundred = findRaidMatches(mine, candidates, { viewerTolerancePercent: 100 });
+  assert.deepEqual(
+    new Set(seventyFive.map((match) => match.stream.user_id)),
+    new Set(['quarter'])
+  );
+  assert.deepEqual(
+    new Set(oneHundred.map((match) => match.stream.user_id)),
+    new Set(['quarter', 'double', 'too-high-for-75'])
+  );
+});
+
 test('live and historical viewer similarity contribute independently', () => {
   localStorage.clear();
   const now = new Date().toISOString();

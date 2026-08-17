@@ -8,8 +8,8 @@ logs in with Twitch and finds you a good channel to raid, matched on:
 - **Genre groups** — add curated RPG, MMO, Shooter, Strategy, Horror,
   Survival, Simulation, or Adventure game groups, then remove individual
   categories you do not want
-- **Viewer count** — defaults to channels within ±50% of your current live
-  viewers, with an option to show every viewer count
+- **Viewer count** — choose channels within ±50%, ±75%, or ±100% of your
+  current live viewers, or show every viewer count; ±50% remains the default
 - **Channel status** — additive Partner/Affiliate toggles on top of an
   always-included non-affiliate pool
 - **Team** — optionally only show channels sharing one of your Twitch Teams
@@ -133,18 +133,20 @@ an OAuth Redirect URL on your Twitch app (step 1).
 - When offline, offers up to five recent VODs and combines them with locally
   captured stream-specific category/viewer data or editable fallbacks.
 - Paginates through live streams for each selected category until it reaches
-  channels below your ±50% range (up to 1,000 candidates per category). When
-  "Show all viewer counts" is enabled, it retrieves up to 500 per category.
+  channels below your selected ±50%, ±75%, or ±100% range (up to 1,000
+  candidates per category). When **All** is selected, it retrieves up to 500
+  per category.
 - Scores each by: viewer-count closeness (50%), estimated-average-viewers
   closeness (30%), and stream-duration closeness (20%) — see
   `js/raid-match.js` to tune these weights.
 - By default, only channels from 50% to 150% of your current live viewer count
-  qualify. **Show all viewer counts** removes that limit while retaining viewer
-  similarity as part of the ranking score.
+  qualify. The wider options expand that band to 25%–175% or 0%–200%.
+  **All** removes the hard limit while retaining viewer similarity in ranking.
 - The **Filters** panel adds several hard filters (candidates outside these
   are excluded entirely, not just scored lower):
-  - **Viewer count** — automatically shows the ±50% range calculated from your
-    current audience. A checkbox can include channels outside that range.
+  - **Viewer count** — automatically shows the selected ±50%, ±75%, or ±100%
+    range calculated from your audience, with an **All** option. The active
+    range also appears as a removable filter chip.
   - **Channel status** — Partner and Affiliate are *additive* toggles on
     top of an always-included non-affiliate pool (most of Twitch). There's
     no separate "non-affiliate" checkbox — unchecking both Partner and

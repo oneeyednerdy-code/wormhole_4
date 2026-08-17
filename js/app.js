@@ -7,6 +7,7 @@ import { ViewerHistory } from './viewer-history.js';
 import { PreviousStreamHistory } from './previous-stream-history.js';
 import { paginate } from './pagination.js';
 import { sortRaidMatches } from './result-sort.js';
+import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js';
 import {
   createRaidCountdown,
   getRaidCountdownSnapshot,
@@ -61,7 +62,7 @@ const el = {
   clearAllFilters: document.getElementById('clear-all-filters'),
   findBtn: document.getElementById('find-btn'),
   viewerMatchHint: document.getElementById('viewer-match-hint'),
-  showAllViewersFilter: document.getElementById('show-all-viewers-filter'),
+  viewerToleranceFilter: document.getElementById('viewer-tolerance-filter'),
   statusFilters: document.getElementById('status-filters'),
   sameTeamFilter: document.getElementById('same-team-filter'),
   teamHint: document.getElementById('team-hint'),
@@ -379,17 +380,19 @@ function renderStreamPanel() {
 }
 
 function renderViewerMatchHint() {
+  const tolerance = getViewerTolerancePercent();
   if (!state.myStream) {
-    el.viewerMatchHint.textContent = 'Go live or choose your previous stream to calculate a ±50% viewer range.';
+    el.viewerMatchHint.textContent = tolerance === null
+      ? 'Viewer-count matching is currently unlimited.'
+      : `Go live or choose a previous stream to calculate a ±${tolerance}% viewer range.`;
     return;
   }
   const viewers = state.myStream.viewer_count;
-  const min = Math.max(0, Math.floor(viewers * 0.5));
-  const max = Math.ceil(viewers * 1.5);
+  const range = calculateViewerRange(viewers, tolerance);
   const source = state.usingPreviousStream ? 'previous-stream baseline' : `your ${fmtNumber(viewers)}`;
-  el.viewerMatchHint.textContent = el.showAllViewersFilter.checked
+  el.viewerMatchHint.textContent = tolerance === null
     ? 'Showing channels regardless of viewer count.'
-    : `Default match: ${fmtNumber(min)}–${fmtNumber(max)} viewers (±50% of ${source}).`;
+    : `Active range: ${fmtNumber(range.min)}–${fmtNumber(range.max)} viewers (±${tolerance}% of ${source}).`;
 }
 
 function formatPreviousVodLabel(vod) {
@@ -548,7 +551,7 @@ function onFilterChanged() {
   rerunIfResultsVisible();
 }
 
-el.showAllViewersFilter.addEventListener('change', () => {
+el.viewerToleranceFilter.addEventListener('change', () => {
   renderViewerMatchHint();
   onFilterChanged();
 });
@@ -580,10 +583,16 @@ function getSelectedGenreIds() {
     .map((checkbox) => checkbox.value);
 }
 
+function getViewerTolerancePercent() {
+  const selected = el.viewerToleranceFilter.querySelector('input:checked')?.value ?? '50';
+  return parseViewerTolerance(selected);
+}
+
 function renderActiveFilters() {
   const filters = [];
-  if (!el.showAllViewersFilter.checked) {
-    filters.push({ key: 'viewer-range', label: 'Audience ±50%' });
+  const viewerTolerance = getViewerTolerancePercent();
+  if (viewerTolerance !== null) {
+    filters.push({ key: 'viewer-range', label: `Audience ±${viewerTolerance}%` });
   }
   el.statusFilters.querySelectorAll('input[type="checkbox"]:not(:checked)').forEach((checkbox) => {
     filters.push({ key: `status:${checkbox.value}`, label: `Hide ${STATUS_LABELS[checkbox.value]}` });
@@ -622,7 +631,8 @@ function renderActiveFilters() {
 
 function clearFilter(key) {
   if (key === 'viewer-range') {
-    el.showAllViewersFilter.checked = true;
+    const allViewers = el.viewerToleranceFilter.querySelector('input[value="all"]');
+    if (allViewers) allViewers.checked = true;
     renderViewerMatchHint();
   } else if (key === 'same-team') {
     el.sameTeamFilter.checked = false;
@@ -655,7 +665,8 @@ function clearFilter(key) {
 el.clearAllFilters.addEventListener('click', () => {
   genreApplyGeneration += 1;
   clearTimeout(genreApplyDebounce);
-  el.showAllViewersFilter.checked = true;
+  const allViewers = el.viewerToleranceFilter.querySelector('input[value="all"]');
+  if (allViewers) allViewers.checked = true;
   el.statusFilters.querySelectorAll('input').forEach((input) => { input.checked = true; });
   el.sameTeamFilter.checked = false;
   el.tagsInput.value = '';
@@ -921,7 +932,8 @@ async function runSearch() {
 
   const selectedStatuses = getSelectedStatuses();
   const wantsSameTeam = el.sameTeamFilter.checked && !el.sameTeamFilter.disabled;
-  const showAllViewerCounts = el.showAllViewersFilter.checked;
+  const viewerTolerancePercent = getViewerTolerancePercent();
+  const showAllViewerCounts = viewerTolerancePercent === null;
   const tags = getTagsQuery();
 
   el.findBtn.disabled = true;
@@ -943,9 +955,8 @@ async function runSearch() {
       .filter((category) => category.source === 'genre')
       .map((category) => category.id);
 
-    const minimumMatchedViewers = showAllViewerCounts
-      ? null
-      : Math.max(0, Math.floor(state.myStream.viewer_count * 0.5));
+    const viewerRange = calculateViewerRange(state.myStream.viewer_count, viewerTolerancePercent);
+    const minimumMatchedViewers = viewerRange?.min ?? null;
     const candidateRequests = individualGameIds.map(
       (id) => state.api.getLiveStreamsByGame(id, {
         maxResults: showAllViewerCounts ? 500 : 1000,
@@ -1033,7 +1044,7 @@ async function runSearch() {
     }
 
     state.matches = findRaidMatches(state.myStream, candidates, {
-      viewerTolerancePercent: 50,
+      viewerTolerancePercent: viewerTolerancePercent ?? 50,
       ignoreViewerTolerance: showAllViewerCounts,
       allowedBroadcasterTypes: selectedStatuses,
       requireSharedTeam: wantsSameTeam,

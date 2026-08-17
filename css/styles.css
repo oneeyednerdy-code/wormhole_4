@@ -97,6 +97,18 @@ body {
   display: none !important;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Custom scrollbar so the theme holds up even where the browser chrome
    would otherwise show through */
 ::-webkit-scrollbar {
@@ -617,6 +629,64 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.viewer-range-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.viewer-range-option {
+  position: relative;
+  min-height: 58px;
+  padding: 9px 12px;
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  background: var(--panel-raised);
+  cursor: pointer;
+  text-align: center;
+}
+
+.viewer-range-option input {
+  position: absolute;
+  opacity: 0;
+}
+
+.viewer-range-option span,
+.viewer-range-option small {
+  display: block;
+}
+
+.viewer-range-option span {
+  color: var(--text);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.viewer-range-option small {
+  margin-top: 2px;
+  color: var(--text-dim);
+  font-size: 0.68rem;
+}
+
+.viewer-range-option:has(input:checked) {
+  border-color: var(--violet-bright);
+  background: rgba(139, 92, 246, 0.2);
+  box-shadow: inset 0 0 0 1px var(--violet), 0 0 18px -10px var(--violet-bright);
+}
+
+.viewer-range-option:has(input:checked) span {
+  color: var(--violet-bright);
+}
+
+.viewer-range-option:has(input:focus-visible) {
+  outline: 2px solid var(--violet-bright);
+  outline-offset: 2px;
 }
 
 .filter-row__hint-inline {
@@ -1846,6 +1916,10 @@ a:focus-visible {
   }
 
   .genre-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .viewer-range-options {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

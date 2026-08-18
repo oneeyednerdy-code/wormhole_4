@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const app = await readFile(new URL('../js/wormhole-app-v64.js', import.meta.url), 'utf8');
+const app = await readFile(new URL('../js/wormhole-app-v65.js', import.meta.url), 'utf8');
 const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
 
 function luminance(hex) {

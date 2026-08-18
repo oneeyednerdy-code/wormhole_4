@@ -1,4 +1,4 @@
-import { StorageConsent } from './storage-consent.js?v=64';
+import { StorageConsent } from './storage-consent.js?v=65';
 
 const STORAGE_KEY = 'wormhole_channel_history_v1';
 const MAX_CHANNELS = 300;

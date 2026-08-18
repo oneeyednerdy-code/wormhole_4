@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const app = await readFile(new URL('../js/wormhole-app-v64.js', import.meta.url), 'utf8');
+const app = await readFile(new URL('../js/wormhole-app-v65.js', import.meta.url), 'utf8');
 const logo = await readFile(new URL('../assets/wormhole-logo.svg', import.meta.url), 'utf8');
 const favicon = await readFile(new URL('../assets/favicon.ico', import.meta.url));
 
 test('the login screen identifies the current release as a beta', () => {
-  assert.match(html, /<p class="build-version">Beta-0\.0\.64<\/p>/);
+  assert.match(html, /<p class="build-version">Beta-0\.0\.65<\/p>/);
 });
 
 test('unfollowed result cards offer a safe Twitch follow action', () => {
@@ -49,7 +49,7 @@ test('Following Only bypasses categories, keeps typed tags, and works offline', 
 
 test('branding uses the full page title, single-color logo, and ICO bookmark icon', () => {
   assert.match(html, /<title>Wormhole Networking Tool by OneEyedNerdy<\/title>/);
-  assert.match(html, /<link rel="icon" href="assets\/favicon\.ico\?v=64" sizes="any" \/>/);
+  assert.match(html, /<link rel="icon" href="assets\/favicon\.ico\?v=65" sizes="any" \/>/);
   const colors = new Set([...logo.matchAll(/#[0-9a-f]{6}/gi)].map((match) => match[0].toUpperCase()));
   assert.deepEqual([...colors], ['#8B5CF6']);
   assert.deepEqual([...favicon.subarray(0, 4)], [0, 0, 1, 0]);
@@ -60,7 +60,8 @@ test('result tags distinguish shared, searched, and combined matches accessibly'
   assert.match(app, /stream-tag--shared-searched/);
   assert.match(app, /stream-tag--searched/);
   assert.match(app, /shared with your stream and matches your tag search/);
-  assert.match(app, /state\.resultsMode === 'matches' \? getTagsQuery\(\) : \[\]/);
+  assert.match(app, /\['matches', 'followed-live'\]\.includes\(state\.resultsMode\)/);
+  assert.match(app, /followedTagHighlightDebounce = setTimeout\(\(\) => renderResults\(\), 150\)/);
 });
 
 test('match cards enrich and display Twitch content classification labels', () => {

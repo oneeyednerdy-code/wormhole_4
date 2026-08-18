@@ -1,5 +1,5 @@
-import { TWITCH_CONFIG } from './twitch-config-v51.js?v=51';
-import { RequestError, RequestManager } from './browser-request-v51.js?v=51';
+import { TWITCH_CONFIG } from './twitch-config-v52.js?v=52';
+import { RequestError, RequestManager } from './browser-request-v52.js?v=52';
 
 function normalizeGameName(name) {
   return String(name ?? '')
@@ -26,6 +26,7 @@ export class TwitchApi {
     this.followedBroadcasterIdsCache = new Map();
     this.followedAtCache = new Map();
     this.followerCountCache = new Map();
+    this.followsBroadcasterCache = new Map();
     this.userProfileCache = new Map();
     this.broadcastHistoryCache = new Map();
     this.clipHistoryCache = new Map();
@@ -521,6 +522,55 @@ export class TwitchApi {
         const id = queue.shift();
         try {
           results.set(id, await this.getFollowerCount(id));
+        } catch (error) {
+          console.error(error);
+          results.set(id, null);
+        }
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, queue.length) }, () => worker())
+    );
+    return results;
+  }
+
+  /**
+   * Checks whether one specific Twitch user follows the logged-in broadcaster.
+   * Twitch requires moderator:read:followers and only permits this lookup when
+   * the token belongs to the broadcaster (or one of their moderators).
+   */
+  async userFollowsBroadcaster(broadcasterId, userId, { signal } = {}) {
+    const cacheKey = `${broadcasterId}:${userId}`;
+    if (this.followsBroadcasterCache.has(cacheKey)) {
+      return this.followsBroadcasterCache.get(cacheKey);
+    }
+
+    const request = this._get('/channels/followers', {
+      broadcaster_id: broadcasterId,
+      user_id: userId,
+      first: 1,
+    }, { signal }).then((json) => (json.data?.length ?? 0) > 0);
+    this.followsBroadcasterCache.set(cacheKey, request);
+
+    try {
+      return await request;
+    } catch (error) {
+      this.followsBroadcasterCache.delete(cacheKey);
+      throw error;
+    }
+  }
+
+  /** Checks visible result channels with limited concurrency. */
+  async getUsersFollowingBroadcaster(broadcasterId, userIds, { concurrency = 6, signal } = {}) {
+    const results = new Map();
+    const queue = [...new Set(userIds)];
+
+    const worker = async () => {
+      while (queue.length) {
+        const id = queue.shift();
+        try {
+          results.set(id, await this.userFollowsBroadcaster(broadcasterId, id, { signal }));
         } catch (error) {
           console.error(error);
           results.set(id, null);

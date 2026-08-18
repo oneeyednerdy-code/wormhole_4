@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const app = await readFile(new URL('../js/wormhole-app-v51.js', import.meta.url), 'utf8');
+const app = await readFile(new URL('../js/wormhole-app-v52.js', import.meta.url), 'utf8');
 
 test('the interface exposes comparison, matching goal, presets, and layout controls', () => {
   for (const id of [
@@ -25,4 +25,11 @@ test('Twitch data failure exposes retry controls and stops confirmation startup'
   assert.match(app, /Authorize again/);
   assert.match(app, /state\.eventSubStatus = 'data-error'/);
   assert.match(app, /else if \(!state\.myStream\)/);
+});
+
+test('match cards expose follow-back status without confusing unavailable data with no follow', () => {
+  assert.match(app, /data-follows-you-id=/);
+  assert.match(app, /Mutual follow/);
+  assert.match(app, /Follows you/);
+  assert.match(app, /Follow-back unavailable/);
 });

@@ -207,6 +207,29 @@ test('follower totals use the public total and are cached per channel', async ()
   assert.equal(requestedUrls[0].searchParams.get('first'), '1');
 });
 
+test('follow-back status checks whether a candidate follows the logged-in broadcaster and caches it', async () => {
+  const requestedUrls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    requestedUrls.push(parsed);
+    return {
+      ok: true,
+      async json() {
+        return { data: parsed.searchParams.get('user_id') === 'candidate-1' ? [{ user_id: 'candidate-1' }] : [] };
+      },
+    };
+  };
+
+  const api = new TwitchApi('test-token');
+  assert.equal(await api.userFollowsBroadcaster('my-channel', 'candidate-1'), true);
+  assert.equal(await api.userFollowsBroadcaster('my-channel', 'candidate-1'), true);
+  assert.equal(requestedUrls.length, 1);
+  assert.equal(requestedUrls[0].pathname, '/helix/channels/followers');
+  assert.equal(requestedUrls[0].searchParams.get('broadcaster_id'), 'my-channel');
+  assert.equal(requestedUrls[0].searchParams.get('user_id'), 'candidate-1');
+  assert.equal(requestedUrls[0].searchParams.get('first'), '1');
+});
+
 test('activity history calls request broadcasts, clips, schedule, and profile data', async () => {
   const requestedUrls = [];
   const futureStart = new Date(Date.now() + 60 * 60 * 1000).toISOString();

@@ -730,6 +730,11 @@ body.light-theme .btn--primary:hover:not(:disabled) {
   color: var(--text-dim);
 }
 
+.stat-chip--positive {
+  border-color: rgba(56, 189, 148, 0.55);
+  color: var(--success, #38bd94);
+}
+
 .stat-chip__mono {
   font-family: 'IBM Plex Mono', monospace;
   font-weight: 600;

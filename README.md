@@ -108,7 +108,7 @@ handles natively — no popups, no custom URL schemes, no build tooling.
    generated client secret in Wormhole or any frontend file.
 5. Save, then copy the **Client ID**.
 
-Open `js/twitch-config-v50.js` and paste it in:
+Open `js/twitch-config-v51.js` and paste it in:
 
 ```js
 clientId: 'YOUR_TWITCH_CLIENT_ID',
@@ -125,7 +125,7 @@ URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
 match, including HTTPS, hostname, path, and trailing slash.
 
 If your host exposes the app through several aliases or rewrites, set
-`redirectUriOverride` in `js/twitch-config-v50.js` to the one production callback you
+`redirectUriOverride` in `js/twitch-config-v51.js` to the one production callback you
 registered with Twitch. Production and preview hostnames are different origins
 and must not be treated as interchangeable.
 
@@ -401,7 +401,7 @@ index.html          # Page shell, both views (login + app)
 privacy.html        # Storage and privacy policy
 css/styles.css       # All styling
 js/
-  twitch-config-v50.js # Client ID, scopes, redirect URI
+  twitch-config-v51.js # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   direct-search.js    # Normalizes exact streamer usernames and URLs
@@ -412,7 +412,7 @@ js/
   appearance-boot.js   # Applies saved theme before first paint
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
-  wormhole-app-v50.js # Wires everything together, renders the UI
+  wormhole-app-v51.js # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
   twitch-auth.test.mjs # Twitch login security and redirect tests

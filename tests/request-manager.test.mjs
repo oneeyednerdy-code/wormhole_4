@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RequestManager, RequestError } from '../js/request-manager.js';
+import { RequestManager, RequestError } from '../js/browser-request-v51.js';
 
 function response(status, headers = {}) {
   return {
@@ -55,4 +55,20 @@ test('reports timeouts as request failures instead of user cancellations', async
     manager.request('https://example.test'),
     (error) => error instanceof RequestError && error.status === 408
   );
+});
+
+test('binds browser fetch to the global receiver', async () => {
+  const originalFetch = globalThis.fetch;
+  let receiver;
+  globalThis.fetch = function () {
+    receiver = this;
+    return Promise.resolve(response(200));
+  };
+  try {
+    const manager = new RequestManager();
+    await manager.request('https://example.test');
+    assert.equal(receiver, globalThis);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });

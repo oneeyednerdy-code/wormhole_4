@@ -62,23 +62,23 @@ test('an old page clears outdated Wormhole caches and reloads with the latest ve
       keys: async () => ['wormhole-58', 'wormhole-59', 'unrelated-cache', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63'],
       delete: async (name) => { deleted.push(name); return true; },
     },
-    fetchImpl: async () => manifestResponse('0.0.66', '66'),
+    fetchImpl: async () => manifestResponse('0.0.67', '67'),
   });
   assert.equal(result.reloading, true);
   assert.deepEqual(deleted.sort(), ['wormhole-58', 'wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63']);
   const next = new URL(replaced);
-  assert.equal(next.searchParams.get('wormhole_version'), '0.0.66');
+  assert.equal(next.searchParams.get('wormhole_version'), '0.0.67');
   assert.equal(next.hash, '#access_token=preserved');
 });
 
 test('cache cleanup never removes unrelated or current caches', async () => {
   const deleted = [];
   const cleared = await clearOutdatedWormholeCaches({
-    keys: async () => ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65', 'another-app'],
+    keys: async () => ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65', 'wormhole-66', 'another-app'],
     delete: async (name) => { deleted.push(name); return true; },
   });
-  assert.deepEqual(cleared, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65']);
-  assert.deepEqual(deleted, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65']);
+  assert.deepEqual(cleared, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65', 'wormhole-66']);
+  assert.deepEqual(deleted, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65', 'wormhole-66']);
 });
 
 test('offline version checks safely use the version already loaded', async () => {

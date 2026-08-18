@@ -1,4 +1,4 @@
-import { TWITCH_CONFIG } from './config.js?v=39';
+import { TWITCH_CONFIG } from './config.js?v=42';
 
 function normalizeGameName(name) {
   return String(name ?? '')
@@ -664,6 +664,28 @@ export class TwitchApi {
     }
     const json = await res.json();
     return json.data?.[0] ?? null;
+  }
+
+  /** Sends a chat message as the logged-in user. Requires user:write:chat. */
+  async sendChatMessage(broadcasterId, senderId, message) {
+    const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/chat/messages');
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { ...this.headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        broadcaster_id: broadcasterId,
+        sender_id: senderId,
+        message,
+      }),
+    });
+    if (!res.ok) {
+      throw new TwitchApiError(
+        `Failed to send chat message (${res.status}): ${await res.text()}`,
+        res.status
+      );
+    }
+    const json = await res.json();
+    return json.data?.[0] ?? { is_sent: false, drop_reason: { message: 'Twitch did not return a delivery result.' } };
   }
 
   /** Cancels a pending raid initiated by the logged-in broadcaster. */

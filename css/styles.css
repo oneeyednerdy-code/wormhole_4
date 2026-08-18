@@ -528,6 +528,96 @@ body.light-theme .btn--primary:hover:not(:disabled) {
   font-size: 0.78rem;
 }
 
+/* ---------- Completed raid destination ---------- */
+
+.raid-destination-view {
+  width: min(1500px, calc(100% - 36px));
+  margin: 22px auto 40px;
+}
+
+.raid-destination__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.raid-destination__header h1 {
+  margin: 4px 0 6px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: clamp(1.45rem, 3vw, 2.3rem);
+}
+
+.raid-destination__status,
+.raid-destination__note {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+.raid-destination__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.raid-destination__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  min-height: 620px;
+  overflow: hidden;
+  border: 1px solid var(--panel-line);
+  border-radius: var(--radius);
+  background: #000;
+  box-shadow: var(--glow);
+}
+
+.raid-destination__video,
+.raid-destination__chat {
+  min-width: 0;
+  min-height: 0;
+}
+
+.raid-destination__chat {
+  border-left: 1px solid var(--panel-line);
+  background: var(--panel);
+}
+
+.raid-destination__video iframe,
+.raid-destination__chat iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.raid-destination__note {
+  margin-top: 10px;
+}
+
+@media (max-width: 900px) {
+  .raid-destination__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .raid-destination__grid {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .raid-destination__video {
+    aspect-ratio: 16 / 9;
+  }
+
+  .raid-destination__chat {
+    height: 520px;
+    border-top: 1px solid var(--panel-line);
+    border-left: 0;
+  }
+}
+
 /* ---------- Own stream panel ---------- */
 
 .tally {
@@ -1865,6 +1955,49 @@ body.light-theme .btn--primary:hover:not(:disabled) {
   margin: 0 0 20px;
   font-size: 0.95rem;
   line-height: 1.5;
+}
+
+.raid-message-choice {
+  margin: 0 0 20px;
+  padding: 14px;
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  background: var(--panel-raised);
+}
+
+.raid-message-choice__toggle {
+  align-items: flex-start;
+}
+
+.raid-message-preview {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid var(--violet);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.raid-message-preview span {
+  color: var(--text-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.raid-message-preview q {
+  overflow-wrap: anywhere;
+}
+
+.raid-message-choice__note {
+  margin: 10px 0 0;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  line-height: 1.4;
 }
 
 .dialog__actions {

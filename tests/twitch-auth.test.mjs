@@ -54,6 +54,7 @@ test('login creates a valid Twitch authorization URL and durable verifier', () =
   const state = url.searchParams.get('state');
   assert.equal(url.origin, 'https://id.twitch.tv');
   assert.equal(url.searchParams.get('response_type'), 'token');
+  assert.ok(url.searchParams.get('scope').split(' ').includes('user:write:chat'));
   assert.ok(state);
   assert.equal(sessionStorage.getItem('wormhole_oauth_state'), state);
   assert.equal(localStorage.getItem('wormhole_oauth_state'), state);

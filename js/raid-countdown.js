@@ -1,12 +1,21 @@
 export const RAID_COUNTDOWN_MS = 90_000;
 
-export function createRaidCountdown({ userId, userName, userLogin, createdAt }) {
+export function createRaidCountdown({
+  userId,
+  userName,
+  userLogin,
+  createdAt,
+  sendCompletionMessage = false,
+  completionMessage = '',
+}) {
   const requestedAt = new Date(createdAt).getTime();
   const startedAt = Number.isFinite(requestedAt) ? requestedAt : Date.now();
   return {
     userId,
     userName,
     userLogin,
+    sendCompletionMessage: Boolean(sendCompletionMessage),
+    completionMessage: String(completionMessage),
     startedAt,
     deadline: startedAt + RAID_COUNTDOWN_MS,
   };

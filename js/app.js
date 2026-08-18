@@ -1,28 +1,33 @@
-import { TWITCH_CONFIG } from './config.js?v=39';
-import { TwitchAuth } from './twitch-auth.js?v=39';
-import { TwitchApi } from './twitch-api.js?v=39';
-import { applyHardFilters, findRaidMatches } from './raid-match.js?v=39';
-import { RaidListener } from './raid-listener.js?v=39';
-import { ViewerHistory } from './viewer-history.js?v=39';
-import { PreviousStreamHistory } from './previous-stream-history.js?v=39';
-import { paginate } from './pagination.js?v=39';
-import { sortRaidMatches } from './result-sort.js?v=39';
-import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=39';
+import { TWITCH_CONFIG } from './config.js?v=42';
+import { TwitchAuth } from './twitch-auth.js?v=42';
+import { TwitchApi } from './twitch-api.js?v=42';
+import { applyHardFilters, findRaidMatches } from './raid-match.js?v=42';
+import { RaidListener } from './raid-listener.js?v=42';
+import { ViewerHistory } from './viewer-history.js?v=42';
+import { PreviousStreamHistory } from './previous-stream-history.js?v=42';
+import { paginate } from './pagination.js?v=42';
+import { sortRaidMatches } from './result-sort.js?v=42';
+import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=42';
 import {
   createRaidCountdown,
   getRaidCountdownSnapshot,
-  twitchChannelUrl,
-} from './raid-countdown.js?v=39';
-import { ChannelHistory } from './channel-history.js?v=39';
-import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=39';
+} from './raid-countdown.js?v=42';
+import { ChannelHistory } from './channel-history.js?v=42';
+import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=42';
 import {
   getGenreGameNames,
   getGenreLabelsForGame,
-} from './genre-presets.js?v=39';
-import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=39';
-import { prepareTagDisplay } from './tag-display.js?v=39';
-import { normalizeTwitchLogin } from './direct-search.js?v=39';
-import { buildFollowedDirectoryMatches } from './followed-directory.js?v=39';
+} from './genre-presets.js?v=42';
+import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=42';
+import { prepareTagDisplay } from './tag-display.js?v=42';
+import { normalizeTwitchLogin } from './direct-search.js?v=42';
+import { buildFollowedDirectoryMatches } from './followed-directory.js?v=42';
+import {
+  buildRaidCompletionMessage,
+  getRaidDestinationEmbedUrls,
+  getTwitchRaidControlsUrl,
+  isMatchingRaidConfirmation,
+} from './raid-completion.js?v=42';
 
 const state = {
   api: null,
@@ -47,7 +52,7 @@ const state = {
   resultsMode: 'matches',
   activeRaid: null,
   raidCountdownTimer: null,
-  raidRedirectTimer: null,
+  raidCompletionInProgress: false,
 };
 
 const el = {
@@ -102,6 +107,8 @@ const el = {
   resultsNextPage: document.getElementById('results-next-page'),
   raidDialog: document.getElementById('raid-dialog'),
   raidDialogText: document.getElementById('raid-dialog-text'),
+  raidMessageOptIn: document.getElementById('raid-message-opt-in'),
+  raidMessagePreview: document.getElementById('raid-message-preview'),
   raidConfirmBtn: document.getElementById('raid-confirm-btn'),
   raidCancelBtn: document.getElementById('raid-cancel-btn'),
   raidProgressDialog: document.getElementById('raid-progress-dialog'),
@@ -113,6 +120,15 @@ const el = {
   raidCountdownValue: document.getElementById('raid-countdown-value'),
   raidProgressBar: document.getElementById('raid-progress-bar'),
   raidProgressCancelBtn: document.getElementById('raid-progress-cancel-btn'),
+  raidControlsLink: document.getElementById('raid-controls-link'),
+  discoveryView: document.getElementById('discovery-view'),
+  raidDestinationView: document.getElementById('raid-destination-view'),
+  raidDestinationTitle: document.getElementById('raid-destination-title'),
+  raidDestinationStatus: document.getElementById('raid-destination-status'),
+  raidDestinationPlayer: document.getElementById('raid-destination-player'),
+  raidDestinationChat: document.getElementById('raid-destination-chat'),
+  raidDestinationOpenLink: document.getElementById('raid-destination-open-link'),
+  raidDestinationBackBtn: document.getElementById('raid-destination-back-btn'),
   toast: document.getElementById('toast'),
 };
 
@@ -1763,37 +1779,28 @@ let pendingRaid = null;
 
 function clearRaidTimers() {
   clearInterval(state.raidCountdownTimer);
-  clearTimeout(state.raidRedirectTimer);
   state.raidCountdownTimer = null;
-  state.raidRedirectTimer = null;
 }
 
 function clearActiveRaid({ closeDialog = true } = {}) {
   clearRaidTimers();
   state.activeRaid = null;
+  state.raidCompletionInProgress = false;
   el.raidProgressDialog.classList.remove('raid-progress-dialog--complete');
   if (closeDialog && el.raidProgressDialog.open) el.raidProgressDialog.close();
 }
 
-function goToRaidedChannel() {
-  const activeRaid = state.activeRaid;
-  if (!activeRaid) return;
-  const destination = twitchChannelUrl(activeRaid.userLogin);
-  clearActiveRaid();
-  window.location.assign(destination);
-}
-
-function showRaidCompleted(name = state.activeRaid?.userName) {
+function showRaidAwaitingConfirmation() {
   if (!state.activeRaid) return;
   clearRaidTimers();
-  el.raidProgressTitle.textContent = 'Raid complete!';
-  el.raidProgressText.textContent = `Taking you to ${name || 'the raided channel'}…`;
+  el.raidProgressTitle.textContent = 'Waiting for Twitch confirmation…';
+  el.raidProgressText.textContent = state.activeRaid.sendCompletionMessage
+    ? 'The countdown ended. Your approved message will only be sent after Twitch confirms this exact destination through EventSub.'
+    : 'The countdown ended. Waiting for Twitch to confirm the raid; no chat message will be sent.';
   el.raidCountdownValue.textContent = '0';
   el.raidProgressBar.style.width = '100%';
   el.raidProgressRing.style.setProperty('--raid-progress', '360deg');
-  el.raidProgressDialog.classList.add('raid-progress-dialog--complete');
   el.raidProgressCancelBtn.disabled = true;
-  state.raidRedirectTimer = setTimeout(goToRaidedChannel, 900);
 }
 
 function renderRaidCountdown() {
@@ -1803,19 +1810,24 @@ function renderRaidCountdown() {
   el.raidProgressBar.style.width = `${snapshot.progressPercent}%`;
   el.raidProgressRing.style.setProperty('--raid-progress', `${snapshot.progressPercent * 3.6}deg`);
 
-  if (snapshot.complete) showRaidCompleted(state.activeRaid.userName);
+  if (snapshot.complete) showRaidAwaitingConfirmation();
 }
 
-function beginRaidCountdown(target, createdAt) {
+function beginRaidCountdown(target, createdAt, { sendCompletionMessage, completionMessage }) {
   clearActiveRaid();
   state.activeRaid = createRaidCountdown({
     userId: target.stream.user_id,
     userName: target.stream.user_name,
     userLogin: target.stream.user_login,
     createdAt,
+    sendCompletionMessage,
+    completionMessage,
   });
+  state.raidCompletionInProgress = false;
   el.raidProgressTitle.textContent = `Raiding ${target.stream.user_name}`;
-  el.raidProgressText.textContent = 'Twitch is preparing your viewers. You can cancel before the timer reaches zero.';
+  el.raidProgressText.textContent = sendCompletionMessage
+    ? 'Twitch is preparing your viewers. Your approved message will only be sent after EventSub confirms this destination.'
+    : 'Twitch is preparing your viewers. No completion message will be sent.';
   const thumbnail = (target.stream.thumbnail_url || '')
     .replace('{width}', '160')
     .replace('{height}', '160');
@@ -1823,31 +1835,109 @@ function beginRaidCountdown(target, createdAt) {
   el.raidProgressAvatar.alt = `${target.stream.user_name} live preview`;
   el.raidProgressAvatar.classList.toggle('hidden', !thumbnail);
   el.raidProgressAudience.textContent = `${fmtNumber(state.myStream?.viewer_count ?? 0)} viewers are preparing to travel through the wormhole.`;
+  el.raidControlsLink.href = getTwitchRaidControlsUrl(state.user.login);
   el.raidProgressCancelBtn.disabled = false;
   renderRaidCountdown();
   if (!el.raidProgressDialog.open) el.raidProgressDialog.showModal();
   state.raidCountdownTimer = setInterval(renderRaidCountdown, 250);
 }
 
-function handleRaidCompleted(event) {
+async function handleRaidCompleted(event) {
   if (!state.activeRaid) {
     showToast(`Raid completed to ${event.to_broadcaster_user_name}!`);
     return;
   }
-  if (
-    event.to_broadcaster_user_id &&
-    event.to_broadcaster_user_id !== state.activeRaid.userId
-  ) return;
+  if (!isMatchingRaidConfirmation(state.activeRaid, event)) return;
+
+  if (state.raidCompletionInProgress) return;
+  state.raidCompletionInProgress = true;
 
   if (event.to_broadcaster_user_login) {
     state.activeRaid.userLogin = event.to_broadcaster_user_login;
   }
-  showRaidCompleted(event.to_broadcaster_user_name);
+  const target = {
+    userId: state.activeRaid.userId,
+    userLogin: state.activeRaid.userLogin,
+    userName: event.to_broadcaster_user_name || state.activeRaid.userName,
+  };
+
+  clearRaidTimers();
+  el.raidProgressTitle.textContent = 'Raid confirmed!';
+  const shouldSendMessage = Boolean(state.activeRaid.sendCompletionMessage);
+  const completionMessage = state.activeRaid.completionMessage;
+  el.raidProgressText.textContent = shouldSendMessage
+    ? `Twitch confirmed the raid to ${target.userName}. Sending your approved completion message…`
+    : `Twitch confirmed the raid to ${target.userName}. No chat message was requested.`;
+  el.raidProgressCancelBtn.disabled = true;
+
+  let delivery = null;
+  let deliveryError = null;
+  if (shouldSendMessage) {
+    try {
+      delivery = await state.api.sendChatMessage(
+        target.userId,
+        state.user.id,
+        completionMessage
+      );
+    } catch (error) {
+      console.error(error);
+      deliveryError = error;
+    }
+  }
+
+  if (!state.activeRaid || state.activeRaid.userId !== target.userId) return;
+  showRaidDestination(target, {
+    delivery,
+    deliveryError,
+    messageRequested: shouldSendMessage,
+    completionMessage,
+  });
 }
+
+function showRaidDestination(target, {
+  delivery,
+  deliveryError,
+  messageRequested = false,
+  completionMessage = '',
+} = {}) {
+  const embeds = getRaidDestinationEmbedUrls(target.userLogin, window.location.hostname);
+  const messageStatus = !messageRequested
+    ? 'Raid complete. You chose not to send a completion message.'
+    : deliveryError
+    ? 'The raid completed, but Twitch could not send the Wormhole completion message.'
+    : delivery?.is_sent
+      ? `Raid complete. “${completionMessage}” was sent to chat.`
+      : `Raid complete, but Twitch did not send the completion message${delivery?.drop_reason?.message ? `: ${delivery.drop_reason.message}` : '.'}`;
+
+  el.raidDestinationTitle.textContent = `Now watching ${target.userName}`;
+  el.raidDestinationStatus.textContent = messageStatus;
+  el.raidDestinationPlayer.src = embeds.video;
+  el.raidDestinationPlayer.title = `${target.userName} live on Twitch`;
+  el.raidDestinationChat.src = embeds.chat;
+  el.raidDestinationChat.title = `${target.userName} Twitch chat`;
+  el.raidDestinationOpenLink.href = `https://www.twitch.tv/${encodeURIComponent(target.userLogin)}`;
+  el.discoveryView.classList.add('hidden');
+  el.raidDestinationView.classList.remove('hidden');
+  if (el.raidProgressDialog.open) el.raidProgressDialog.close();
+  clearRaidTimers();
+  state.activeRaid = null;
+  state.raidCompletionInProgress = false;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+el.raidDestinationBackBtn.addEventListener('click', () => {
+  el.raidDestinationPlayer.src = 'about:blank';
+  el.raidDestinationChat.src = 'about:blank';
+  el.raidDestinationView.classList.add('hidden');
+  el.discoveryView.classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
 
 function openRaidDialog(match) {
   pendingRaid = match;
   el.raidDialogText.textContent = `Raid ${match.stream.user_name} with your viewers right now?`;
+  el.raidMessageOptIn.checked = false;
+  el.raidMessagePreview.textContent = buildRaidCompletionMessage(match.stream.user_login);
   el.raidDialog.showModal();
 }
 
@@ -1859,10 +1949,15 @@ el.raidCancelBtn.addEventListener('click', () => {
 el.raidConfirmBtn.addEventListener('click', async () => {
   if (!pendingRaid) return;
   const target = pendingRaid;
+  const completionMessage = buildRaidCompletionMessage(target.stream.user_login);
+  const sendCompletionMessage = el.raidMessageOptIn.checked;
   el.raidDialog.close();
   try {
     const raid = await state.api.startRaid(state.user.id, target.stream.user_id);
-    beginRaidCountdown(target, raid?.created_at);
+    beginRaidCountdown(target, raid?.created_at, {
+      sendCompletionMessage,
+      completionMessage,
+    });
   } catch (e) {
     console.error(e);
     const messages = {

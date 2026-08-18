@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv https://www.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
   <title>Wormhole</title>
-  <script src="js/appearance-boot.js?v=39"></script>
+  <script src="js/appearance-boot.js?v=42"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=39" />
+  <link rel="stylesheet" href="css/styles.css?v=42" />
 </head>
 <body>
 
@@ -57,7 +57,7 @@
       </div>
     </header>
 
-    <main class="main">
+    <main id="discovery-view" class="main">
       <section id="stream-panel" class="panel stream-panel"></section>
 
       <section class="panel direct-search-panel" aria-labelledby="direct-search-title">
@@ -304,11 +304,46 @@
         <ul id="results-list" class="results-list"></ul>
       </section>
     </main>
+
+    <section id="raid-destination-view" class="raid-destination-view hidden" aria-labelledby="raid-destination-title">
+      <header class="raid-destination__header">
+        <div>
+          <p class="section-eyebrow">Raid confirmed by Twitch</p>
+          <h1 id="raid-destination-title">Welcome to the raided channel</h1>
+          <p id="raid-destination-status" class="raid-destination__status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="raid-destination__actions">
+          <button id="raid-destination-back-btn" class="btn btn--ghost" type="button">Back to Wormhole</button>
+          <a id="raid-destination-open-link" class="btn btn--outline" href="https://twitch.tv" target="_blank" rel="noopener noreferrer">Open on Twitch ↗</a>
+        </div>
+      </header>
+      <div class="raid-destination__grid">
+        <div class="raid-destination__video">
+          <iframe id="raid-destination-player" title="Raided Twitch channel" allow="autoplay; fullscreen" allowfullscreen></iframe>
+        </div>
+        <div class="raid-destination__chat">
+          <iframe id="raid-destination-chat" title="Raided Twitch channel chat"></iframe>
+        </div>
+      </div>
+      <p class="raid-destination__note">The player and chat are official Twitch embeds. Your browser may ask you to sign in to Twitch inside chat.</p>
+    </section>
   </div>
 
   <!-- RAID CONFIRM DIALOG -->
   <dialog id="raid-dialog" class="dialog">
     <p id="raid-dialog-text" class="dialog__text"></p>
+    <div class="raid-message-choice">
+      <label class="toggle raid-message-choice__toggle" for="raid-message-opt-in">
+        <input id="raid-message-opt-in" type="checkbox" />
+        <span class="toggle__box" aria-hidden="true"></span>
+        <span class="toggle__text">Send a Raid Completed message after Twitch confirms the raid</span>
+      </label>
+      <div class="raid-message-preview" aria-labelledby="raid-message-preview-label">
+        <span id="raid-message-preview-label">Message preview</span>
+        <q id="raid-message-preview"></q>
+      </div>
+      <p class="raid-message-choice__note">This is off by default. EventSub confirmation must match this destination before Wormhole can send the message.</p>
+    </div>
     <div class="dialog__actions">
       <button id="raid-cancel-btn" class="btn btn--ghost">Cancel</button>
       <button id="raid-confirm-btn" class="btn btn--primary">Raid!</button>
@@ -331,9 +366,10 @@
     <div class="raid-progress__track" aria-hidden="true">
       <div id="raid-progress-bar" class="raid-progress__bar"></div>
     </div>
-    <p class="raid-progress__note">When Twitch completes the raid, Wormhole will take you to the raided channel.</p>
+    <p class="raid-progress__note">After Twitch confirms the completed raid, Wormhole will open the channel and chat here without leaving the app.</p>
     <div class="dialog__actions">
       <button id="raid-progress-cancel-btn" class="btn btn--ghost" type="button">Cancel raid</button>
+      <a id="raid-controls-link" class="btn btn--primary" href="https://dashboard.twitch.tv" target="_blank" rel="noopener noreferrer">Open Twitch Raid Controls ↗</a>
     </div>
   </dialog>
 
@@ -373,8 +409,8 @@
     </p>
   </footer>
 
-  <script type="module" src="js/storage-consent-ui.js?v=39"></script>
-  <script type="module" src="js/ui-controls.js?v=39"></script>
-  <script type="module" src="js/app.js?v=39"></script>
+  <script type="module" src="js/storage-consent-ui.js?v=42"></script>
+  <script type="module" src="js/ui-controls.js?v=42"></script>
+  <script type="module" src="js/app.js?v=42"></script>
 </body>
 </html>

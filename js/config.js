@@ -30,7 +30,8 @@ export const TWITCH_CONFIG = {
 
   // channel:manage:raids -> lets the app actually start a raid for you
   // user:read:follows    -> marks matching channels you already follow
-  scopes: ['channel:manage:raids', 'user:read:follows'],
+  // user:write:chat      -> sends the completion message after Twitch confirms a raid
+  scopes: ['channel:manage:raids', 'user:read:follows', 'user:write:chat'],
 
   authorizeUrl: 'https://id.twitch.tv/oauth2/authorize',
   // This is Twitch's own API root (they call it "Helix") — the path is

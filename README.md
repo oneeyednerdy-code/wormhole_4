@@ -32,8 +32,10 @@ match, followed channels first, viewers high-to-low or low-to-high, longest
 live (the best available "ending soon" proxy), or most recently started. It
 can also **start the raid** for you directly, via the Twitch API. After a raid
 starts, Wormhole displays Twitch's 90-second countdown with a cancel option.
-When Twitch confirms completion (or the countdown finishes), the same tab
-navigates to the raided channel.
+When the countdown finishes, Wormhole waits for Twitch's actual `channel.raid`
+EventSub confirmation. Only that confirmation sends the completion chat
+message and opens an in-app destination view containing the raided channel's
+official Twitch player and chat embeds.
 
 The interface uses a responsive raid-control-room layout with collapsible
 discovery controls, removable active-filter chips, a sticky results toolbar,
@@ -322,7 +324,22 @@ storage policy.
 The **Raid this channel** button calls `POST /helix/raids`, which requires
 your login to have granted the `channel:manage:raids` scope (already
 requested at login). It asks for confirmation first, then Twitch shows the
-usual raid countdown in your dashboard/chat.
+usual raid countdown in your dashboard/chat. The local countdown never sends
+a message by itself. Wormhole waits for the outgoing `channel.raid` EventSub
+notification for the exact selected destination. Before accepting a raid, the
+streamer can preview **“Wormhole Networking Tool has completed the Raid to
+@destination”** and explicitly opt in to sending it through
+`POST /helix/chat/messages`. The choice is off by default and applies only to
+that raid.
+This requires the `user:write:chat` scope, so existing users must log out and
+authorize the updated permission once. A failed or dropped message does not
+undo the raid; the in-app destination view reports the delivery result and
+still loads Twitch's official live player and chat. Wormhole no longer
+redirects the browser away from the app after a raid.
+During the pending countdown, **Open Twitch Raid Controls** opens the logged-in
+streamer's official Twitch Stream Manager in a new tab. The streamer may use
+Twitch's own **Raid Now** control there to complete immediately; Wormhole does
+not attempt to imitate or bypass that protected Twitch action.
 
 ---
 

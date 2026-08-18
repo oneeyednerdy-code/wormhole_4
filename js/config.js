@@ -18,7 +18,7 @@ export function getOAuthRedirectUri(location = window.location) {
 }
 
 export const TWITCH_CONFIG = {
-  clientId: '15d6s3tdyd3p7o3owf1ugx6zorpgfw',
+  clientId: 'wigwgqcieffev63tiiwq6j3dozv4o5',
   // Usually leave blank. If your host serves the same app through aliases or
   // rewrites, set this to the one exact production callback registered in the
   // Twitch Developer Console, including its trailing slash.

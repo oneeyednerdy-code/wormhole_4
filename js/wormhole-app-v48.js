@@ -1,33 +1,34 @@
-import { TWITCH_CONFIG } from './config.js?v=42';
-import { TwitchAuth } from './twitch-auth.js?v=42';
-import { TwitchApi } from './twitch-api.js?v=42';
-import { applyHardFilters, findRaidMatches } from './raid-match.js?v=42';
-import { RaidListener } from './raid-listener.js?v=42';
-import { ViewerHistory } from './viewer-history.js?v=42';
-import { PreviousStreamHistory } from './previous-stream-history.js?v=42';
-import { paginate } from './pagination.js?v=42';
-import { sortRaidMatches } from './result-sort.js?v=42';
-import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=42';
+import { TWITCH_CONFIG } from './twitch-config-v48.js?v=48';
+import { TwitchAuth } from './twitch-auth.js?v=48';
+import { TwitchApi } from './twitch-api.js?v=48';
+import { applyHardFilters, findRaidMatches } from './raid-match.js?v=48';
+import { RaidListener } from './raid-listener.js?v=48';
+import { ViewerHistory } from './viewer-history.js?v=48';
+import { PreviousStreamHistory } from './previous-stream-history.js?v=48';
+import { paginate } from './pagination.js?v=48';
+import { sortRaidMatches } from './result-sort.js?v=48';
+import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=48';
 import {
   createRaidCountdown,
   getRaidCountdownSnapshot,
-} from './raid-countdown.js?v=42';
-import { ChannelHistory } from './channel-history.js?v=42';
-import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=42';
+} from './raid-countdown.js?v=48';
+import { ChannelHistory } from './channel-history.js?v=48';
+import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=48';
 import {
   getGenreGameNames,
   getGenreLabelsForGame,
-} from './genre-presets.js?v=42';
-import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=42';
-import { prepareTagDisplay } from './tag-display.js?v=42';
-import { normalizeTwitchLogin } from './direct-search.js?v=42';
-import { buildFollowedDirectoryMatches } from './followed-directory.js?v=42';
+} from './genre-presets.js?v=48';
+import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=48';
+import { prepareTagDisplay } from './tag-display.js?v=48';
+import { normalizeTwitchLogin } from './direct-search.js?v=48';
+import { buildFollowedDirectoryMatches } from './followed-directory.js?v=48';
+import { loadFilterPreset, saveFilterPreset } from './filter-preset-storage.js?v=48';
 import {
   buildRaidCompletionMessage,
   getRaidDestinationEmbedUrls,
   getTwitchRaidControlsUrl,
   isMatchingRaidConfirmation,
-} from './raid-completion.js?v=42';
+} from './raid-completion.js?v=48';
 
 const state = {
   api: null,
@@ -53,6 +54,12 @@ const state = {
   activeRaid: null,
   raidCountdownTimer: null,
   raidCompletionInProgress: false,
+  searchAbortController: null,
+  eventSubStatus: 'disconnected',
+  shortlistedIds: new Set(),
+  hiddenResultIds: new Set(),
+  resultsFetchedAt: null,
+  searchCandidateCount: null,
 };
 
 const el = {
@@ -63,6 +70,7 @@ const el = {
   oauthRedirectUri: document.getElementById('oauth-redirect-uri'),
   logoutBtn: document.getElementById('logout-btn'),
   contrastToggle: document.getElementById('contrast-toggle'),
+  eventSubStatus: document.getElementById('eventsub-status'),
   userName: document.getElementById('user-name'),
   userAvatar: document.getElementById('user-avatar'),
   streamPanel: document.getElementById('stream-panel'),
@@ -81,6 +89,9 @@ const el = {
   followedLiveStatus: document.getElementById('followed-live-status'),
   viewerMatchHint: document.getElementById('viewer-match-hint'),
   viewerToleranceFilter: document.getElementById('viewer-tolerance-filter'),
+  matchPreset: document.getElementById('match-preset'),
+  saveFilterPreset: document.getElementById('save-filter-preset'),
+  loadFilterPreset: document.getElementById('load-filter-preset'),
   statusFilters: document.getElementById('status-filters'),
   onlyFollowingFilter: document.getElementById('only-following-filter'),
   sameTeamFilter: document.getElementById('same-team-filter'),
@@ -105,6 +116,10 @@ const el = {
   resultsPageSummary: document.getElementById('results-page-summary'),
   resultsPrevPage: document.getElementById('results-prev-page'),
   resultsNextPage: document.getElementById('results-next-page'),
+  compareShortlistBtn: document.getElementById('compare-shortlist-btn'),
+  compareDialog: document.getElementById('compare-dialog'),
+  compareDialogContent: document.getElementById('compare-dialog-content'),
+  compareDialogClose: document.getElementById('compare-dialog-close'),
   raidDialog: document.getElementById('raid-dialog'),
   raidDialogText: document.getElementById('raid-dialog-text'),
   raidMessageOptIn: document.getElementById('raid-message-opt-in'),
@@ -183,7 +198,7 @@ function showView(view) {
 el.loginBtn.addEventListener('click', () => {
   if (TWITCH_CONFIG.clientId === 'YOUR_TWITCH_CLIENT_ID') {
     el.loginError.textContent =
-      'Set your Twitch Client ID in js/config.js before logging in.';
+      'Set your Twitch Client ID in js/twitch-config-v48.js before logging in.';
     return;
   }
   try {
@@ -210,19 +225,31 @@ el.logoutBtn.addEventListener('click', async () => {
   showView('login');
 });
 
-async function loadCurrentUser() {
-  state.user = await state.api.getCurrentUser();
+async function loadCurrentUser(validation) {
+  const startupWarnings = [];
+  try {
+    state.user = await state.api.getCurrentUser();
+  } catch (error) {
+    const fallbackUser = TwitchAuth.userFromValidation(validation);
+    if (!fallbackUser) throw error;
+    state.user = fallbackUser;
+    startupWarnings.push('Twitch authorized the account, but its full profile is temporarily unavailable. Wormhole opened with the validated account identity.');
+    console.error('Full Twitch profile unavailable; using validated identity:', error);
+  }
   const [streamResult, teamsResult, channelResult, vodResult] = await Promise.allSettled([
     state.api.getLiveStreamForUser(state.user.id),
     state.api.getChannelTeams(state.user.id),
     state.api.getChannelInformation(state.user.id),
     state.api.getRecentArchives(state.user.id, { maxResults: 5 }),
   ]);
-  if (streamResult.status === 'rejected') throw streamResult.reason;
-  state.myStream = streamResult.value;
+  state.myStream = streamResult.status === 'fulfilled' ? streamResult.value : null;
   state.myTeams = teamsResult.status === 'fulfilled' ? teamsResult.value : [];
   state.channelInfo = channelResult.status === 'fulfilled' ? channelResult.value : null;
   state.recentVods = vodResult.status === 'fulfilled' ? vodResult.value : [];
+  if (streamResult.status === 'rejected') {
+    startupWarnings.push('Live status could not be loaded. Offline discovery remains available; refresh live status after Twitch recovers.');
+    console.error('Live status unavailable during startup:', streamResult.reason);
+  }
   state.selectedPreviousVodId = state.recentVods[0]?.id ?? null;
   state.usingPreviousStream = false;
   el.showFollowedLiveBtn.disabled = false;
@@ -233,8 +260,16 @@ async function loadCurrentUser() {
   renderViewerMatchHint();
   renderTeamHint();
   renderActiveFilters();
-  startRaidListener();
+  try {
+    startRaidListener();
+  } catch (error) {
+    state.eventSubStatus = 'error';
+    renderEventSubStatus();
+    startupWarnings.push('Raid confirmation could not connect. Discovery still works, but confirmed-raid messaging is unavailable.');
+    console.error('Raid confirmation listener could not start:', error);
+  }
   showView('app');
+  if (startupWarnings.length) showToast(startupWarnings[0], true);
 }
 
 function startRaidListener() {
@@ -243,8 +278,27 @@ function startRaidListener() {
     onRaidSent: (event) => {
       handleRaidCompleted(event);
     },
+    onStatusChange: (status) => {
+      state.eventSubStatus = status;
+      renderEventSubStatus();
+    },
   });
   state.raidListener.start();
+}
+
+function renderEventSubStatus() {
+  if (!el.eventSubStatus) return;
+  const labels = {
+    connected: 'Confirmation connected',
+    connecting: 'Confirmation connecting',
+    reconnecting: 'Confirmation reconnecting',
+    disconnected: 'Confirmation offline',
+    error: 'Confirmation unavailable',
+  };
+  el.eventSubStatus.dataset.status = state.eventSubStatus;
+  el.eventSubStatus.textContent = labels[state.eventSubStatus] ?? labels.disconnected;
+  el.raidMessageOptIn.disabled = state.eventSubStatus !== 'connected';
+  if (el.raidMessageOptIn.disabled) el.raidMessageOptIn.checked = false;
 }
 
 async function init() {
@@ -274,7 +328,7 @@ async function init() {
   if (!tokenStatus.valid && tokenStatus.reason !== 'unavailable') {
     await TwitchAuth.logout();
     el.loginError.textContent = tokenStatus.reason === 'missing_scopes'
-      ? 'Twitch permissions changed. Log in again and approve the requested permissions.'
+      ? `Twitch permissions changed. Log in again and approve every requested permission${tokenStatus.missingScopes?.length ? ` (${tokenStatus.missingScopes.join(', ')})` : ''}.`
       : tokenStatus.reason === 'wrong_client'
         ? 'This login token belongs to a different Twitch application. Log in again.'
         : 'Your Twitch login expired. Please log in again.';
@@ -289,10 +343,17 @@ async function init() {
 
   state.api = new TwitchApi(token);
   try {
-    await loadCurrentUser();
+    await loadCurrentUser(tokenStatus.validation);
   } catch (e) {
     console.error(e);
-    el.loginError.textContent = 'Could not load your Twitch profile. Try logging in again.';
+    const status = Number(e?.status);
+    el.loginError.textContent = status === 401
+      ? 'Twitch accepted the login callback but rejected the API session (401). Log in again and approve every permission.'
+      : status === 403
+        ? 'Twitch authenticated you but blocked profile access (403). Check the application Client ID and permissions.'
+        : status === 429
+          ? 'Twitch is rate-limiting profile requests. Wait a minute, then refresh; you do not need to authorize again.'
+          : `Could not finish loading Wormhole after Twitch login${status ? ` (API ${status})` : ''}. Refresh once; if it continues, check the browser console for the exact startup error.`;
     showView('login');
   }
 }
@@ -640,6 +701,8 @@ el.directStreamerForm.addEventListener('submit', async (event) => {
   }
 
   const generation = ++directSearchGeneration;
+  state.shortlistedIds.clear();
+  state.hiddenResultIds.clear();
   state.matches = [];
   el.resultsPanel.classList.add('hidden');
   el.directStreamerBtn.disabled = true;
@@ -690,6 +753,9 @@ el.directStreamerForm.addEventListener('submit', async (event) => {
         state.myStream.game_id && state.myStream.game_id === stream.game_id
       ),
     });
+    state.hiddenResultIds.clear();
+    state.resultsFetchedAt = Date.now();
+    state.searchCandidateCount = null;
     state.resultsPage = 1;
     state.resultsSort = 'recommended';
     state.resultsMode = 'direct';
@@ -712,6 +778,8 @@ el.showFollowedLiveBtn.addEventListener('click', async () => {
   if (!state.api || !state.user) return;
 
   const generation = ++followedLiveGeneration;
+  state.shortlistedIds.clear();
+  state.hiddenResultIds.clear();
   searchGeneration += 1;
   directSearchGeneration += 1;
   if (state.myStream) {
@@ -743,6 +811,9 @@ el.showFollowedLiveBtn.addEventListener('click', async () => {
     }
 
     state.matches = buildFollowedDirectoryMatches(streams);
+    state.hiddenResultIds.clear();
+    state.resultsFetchedAt = Date.now();
+    state.searchCandidateCount = null;
     state.resultsPage = 1;
     state.resultsSort = 'viewers-high';
     state.resultsMode = 'followed-live';
@@ -851,6 +922,12 @@ function getViewerTolerancePercent() {
 function renderActiveFilters() {
   const filters = [];
   const viewerTolerance = getViewerTolerancePercent();
+  if (el.matchPreset.value !== 'similar') {
+    filters.push({
+      key: 'match-preset',
+      label: el.matchPreset.options[el.matchPreset.selectedIndex].text,
+    });
+  }
   if (viewerTolerance !== null) {
     filters.push({ key: 'viewer-range', label: `Audience ±${viewerTolerance}%` });
   }
@@ -903,6 +980,8 @@ function clearFilter(key) {
     const allViewers = el.viewerToleranceFilter.querySelector('input[value="all"]');
     if (allViewers) allViewers.checked = true;
     renderViewerMatchHint();
+  } else if (key === 'match-preset') {
+    el.matchPreset.value = 'similar';
   } else if (key === 'same-team') {
     el.sameTeamFilter.checked = false;
   } else if (key === 'only-following') {
@@ -947,6 +1026,7 @@ el.clearAllFilters.addEventListener('click', () => {
   el.onlyFollowingFilter.checked = false;
   el.sameTeamFilter.checked = false;
   el.matchStreamTags.checked = false;
+  el.matchPreset.value = 'similar';
   el.languageSelect.value = '';
   el.tagsInput.value = '';
   el.genreFilters.querySelectorAll('input').forEach((input) => { input.checked = false; });
@@ -1215,6 +1295,11 @@ function showResultNotice({ title, message, retry = false }) {
 
 async function runSearch() {
   if (!state.myStream) return;
+  state.shortlistedIds.clear();
+  state.hiddenResultIds.clear();
+  state.searchAbortController?.abort();
+  state.searchAbortController = new AbortController();
+  const searchSignal = state.searchAbortController.signal;
   followedLiveGeneration += 1;
   state.resultsMode = 'matches';
   if (!state.usingPreviousStream) PreviousStreamHistory.record(state.myStream);
@@ -1258,24 +1343,27 @@ async function runSearch() {
 
     if (usingFollowedStreamsEndpoint) {
       showSearchStatus('Loading every channel you follow that is currently live…');
-      candidateRequests.push(state.api.getFollowedLiveStreams(state.user.id));
+      candidateRequests.push(state.api.getFollowedLiveStreams(state.user.id, { signal: searchSignal }));
     } else {
       candidateRequests.push(...individualGameIds.map(
         (id) => state.api.getLiveStreamsByGame(id, {
           maxResults: showAllViewerCounts ? 500 : 1000,
           stopBelowViewers: minimumMatchedViewers,
+          signal: searchSignal,
         })
       ));
       if (genreGameIds.length) {
         candidateRequests.push(state.api.getLiveStreamsByGames(genreGameIds, {
           maxResults: showAllViewerCounts ? 500 : 1000,
           stopBelowViewers: minimumMatchedViewers,
+          signal: searchSignal,
         }));
       }
       if (!categoryMatchApplied) {
         candidateRequests.push(state.api.getLiveStreams({
           maxResults: showAllViewerCounts ? 500 : 1000,
           stopBelowViewers: minimumMatchedViewers,
+          signal: searchSignal,
         }));
       }
     }
@@ -1292,16 +1380,24 @@ async function runSearch() {
       }
     };
     addCandidates(candidateLists.flat());
+    state.searchCandidateCount = candidates.length;
 
-    showSearchStatus('Comparing channel status and audience size…');
+    const candidatesToEnrich = applyHardFilters(candidates, {
+      minViewers: showAllViewerCounts ? null : viewerRange.min,
+      maxViewers: showAllViewerCounts ? null : viewerRange.max,
+      requiredTags: tags,
+    });
+
+    showSearchStatus(`Comparing ${candidatesToEnrich.length} compatible live channel${candidatesToEnrich.length === 1 ? '' : 's'}…`);
 
     // broadcaster_type isn't on /streams — look it up in one batched call
     // and attach it to each candidate before filtering/scoring.
     const broadcasterTypes = await state.api.getBroadcasterTypes(
-      candidates.map((s) => s.user_id)
+      candidatesToEnrich.map((s) => s.user_id),
+      { signal: searchSignal }
     );
     if (generation !== searchGeneration) return;
-    for (const s of candidates) {
+    for (const s of candidatesToEnrich) {
       s.broadcaster_type = broadcasterTypes.get(s.user_id) ?? 'none';
     }
 
@@ -1312,15 +1408,15 @@ async function runSearch() {
     try {
       const followedIds = usingFollowedStreamsEndpoint
         ? new Set(candidates.map((stream) => stream.user_id))
-        : await state.api.getFollowedBroadcasterIds(state.user.id);
+        : await state.api.getFollowedBroadcasterIds(state.user.id, { signal: searchSignal });
       if (generation !== searchGeneration) return;
-      for (const s of candidates) {
+      for (const s of candidatesToEnrich) {
         s.is_followed = followedIds.has(s.user_id);
         s.followed_at = s.is_followed ? state.api.getFollowedAt(s.user_id) : null;
       }
     } catch (e) {
       console.error(e);
-      for (const s of candidates) s.is_followed = false;
+      for (const s of candidatesToEnrich) s.is_followed = false;
       if (wantsOnlyFollowing) {
         el.resultsList.innerHTML = '';
         state.matches = [];
@@ -1347,7 +1443,7 @@ async function runSearch() {
     if (wantsSameTeam) {
       showSearchStatus('Checking shared Twitch teams…');
 
-      const preFiltered = applyHardFilters(candidates, {
+      const preFiltered = applyHardFilters(candidatesToEnrich, {
         allowedBroadcasterTypes: selectedStatuses,
         requireFollowed: wantsOnlyFollowing,
         requiredTags: tags,
@@ -1355,7 +1451,8 @@ async function runSearch() {
 
       const myTeamIds = new Set(state.myTeams.map((t) => t.id));
       const memberships = await state.api.getTeamMembershipsForUsers(
-        preFiltered.map((s) => s.user_id)
+        preFiltered.map((s) => s.user_id),
+        { signal: searchSignal }
       );
       if (generation !== searchGeneration) return;
 
@@ -1367,7 +1464,7 @@ async function runSearch() {
       }
     }
 
-    state.matches = findRaidMatches(state.myStream, candidates, {
+    state.matches = findRaidMatches(state.myStream, candidatesToEnrich, {
       viewerTolerancePercent: viewerTolerancePercent ?? 50,
       ignoreViewerTolerance: showAllViewerCounts,
       allowedBroadcasterTypes: selectedStatuses,
@@ -1376,11 +1473,15 @@ async function runSearch() {
       requiredTags: tags,
       compareTags: el.matchStreamTags.checked,
       categoryMatchApplied,
+      primaryCategoryId: state.myStream.game_id,
+      matchPreset: el.matchPreset.value,
     });
+    state.resultsFetchedAt = Date.now();
     state.resultsPage = 1;
     renderResults();
   } catch (e) {
     if (generation !== searchGeneration) return;
+    if (e?.name === 'AbortError') return;
     console.error(e);
     el.resultsList.innerHTML = '';
     showResultNotice({
@@ -1449,17 +1550,25 @@ function renderResults() {
   }
 
   el.resultsStatus.classList.add('hidden');
-  const sortedMatches = sortRaidMatches(state.matches, state.resultsSort);
+  const visibleMatches = state.matches.filter((match) => !state.hiddenResultIds.has(match.stream.user_id));
+  if (!visibleMatches.length) {
+    showResultNotice({ title: 'All results hidden', message: 'Run the search again to restore hidden channels.' });
+    el.resultsPagination.classList.add('hidden');
+    el.resultsList.innerHTML = '';
+    return;
+  }
+  const sortedMatches = sortRaidMatches(visibleMatches, state.resultsSort);
   const page = paginate(sortedMatches, state.resultsPage, state.resultsPageSize);
   state.resultsPage = page.page;
   state.resultsPageSize = page.pageSize;
   el.resultsSort.value = state.resultsSort;
   el.resultsPageSize.value = String(page.pageSize);
   el.resultsPageSummary.textContent =
-    `Showing ${page.startIndex + 1}–${page.endIndex} of ${state.matches.length} · Page ${page.page} of ${page.pageCount}`;
+    `Showing ${page.startIndex + 1}–${page.endIndex} of ${visibleMatches.length} · Page ${page.page} of ${page.pageCount}${Number.isFinite(state.searchCandidateCount) ? ` · ${Math.max(0, state.searchCandidateCount - state.matches.length)} filtered out` : ''}${state.resultsFetchedAt ? ` · Updated ${fmtDuration(Date.now() - state.resultsFetchedAt)} ago` : ''}`;
   el.resultsPrevPage.disabled = page.page === 1;
   el.resultsNextPage.disabled = page.page === page.pageCount;
   el.resultsPagination.classList.remove('hidden');
+  updateShortlistButton();
 
   el.resultsList.innerHTML = page.items
     .map((m, i) => resultCardHtml(m, page.startIndex + i + 1))
@@ -1499,6 +1608,49 @@ function renderResults() {
       const id = btn.dataset.activityId;
       state.expandedActivityId = state.expandedActivityId === id ? null : id;
       renderResults();
+    });
+  });
+
+  el.resultsList.querySelectorAll('[data-shortlist-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.shortlistId;
+      if (state.shortlistedIds.has(id)) state.shortlistedIds.delete(id);
+      else if (state.shortlistedIds.size < 3) state.shortlistedIds.add(id);
+      else return showToast('You can compare up to three channels.');
+      renderResults();
+    });
+  });
+
+  el.resultsList.querySelectorAll('[data-hide-id]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.hiddenResultIds.add(btn.dataset.hideId);
+      state.shortlistedIds.delete(btn.dataset.hideId);
+      renderResults();
+    });
+  });
+
+  el.resultsList.querySelectorAll('[data-refresh-id]').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = 'Refreshing…';
+      const id = btn.dataset.refreshId;
+      try {
+        const stream = await state.api.getLiveStreamForUser(id);
+        if (!stream) {
+          state.matches = state.matches.filter((match) => match.stream.user_id !== id);
+          state.shortlistedIds.delete(id);
+          showToast('That channel is no longer live.');
+        } else {
+          const match = state.matches.find((candidate) => candidate.stream.user_id === id);
+          if (match) match.stream = { ...match.stream, ...stream };
+          state.resultsFetchedAt = Date.now();
+        }
+        renderResults();
+      } catch (error) {
+        btn.disabled = false;
+        btn.textContent = 'Refresh';
+        showToast(error.message || 'Could not refresh this channel.');
+      }
     });
   });
 
@@ -1557,6 +1709,87 @@ el.resultsNextPage.addEventListener('click', () => {
   renderResults();
   el.resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
+
+function currentFilterPreset() {
+  return {
+    viewerTolerance: el.viewerToleranceFilter.querySelector('input:checked')?.value ?? '50',
+    matchPreset: el.matchPreset.value,
+    statuses: [...el.statusFilters.querySelectorAll('input:checked')].map((input) => input.value),
+    onlyFollowing: el.onlyFollowingFilter.checked,
+    sameTeam: el.sameTeamFilter.checked,
+    matchStreamTags: el.matchStreamTags.checked,
+    language: el.languageSelect.value,
+    tags: el.tagsInput.value,
+    genres: getSelectedGenreIds(),
+    categories: state.extraCategories,
+  };
+}
+
+el.saveFilterPreset.addEventListener('click', () => {
+  saveFilterPreset(currentFilterPreset());
+  showToast('Current filters saved on this device.');
+});
+
+el.loadFilterPreset.addEventListener('click', () => {
+  const preset = loadFilterPreset();
+  if (!preset) return showToast('No saved filter preset was found.');
+  const tolerance = el.viewerToleranceFilter.querySelector(`[value="${preset.viewerTolerance}"]`);
+  if (tolerance) tolerance.checked = true;
+  el.matchPreset.value = preset.matchPreset;
+  el.statusFilters.querySelectorAll('input').forEach((input) => { input.checked = preset.statuses.includes(input.value); });
+  el.onlyFollowingFilter.checked = preset.onlyFollowing;
+  el.sameTeamFilter.checked = preset.sameTeam;
+  el.matchStreamTags.checked = preset.matchStreamTags;
+  el.languageSelect.value = preset.language;
+  el.tagsInput.value = preset.tags;
+  el.genreFilters.querySelectorAll('input').forEach((input) => { input.checked = preset.genres.includes(input.value); });
+  state.extraCategories = preset.categories;
+  renderSelectedCategories();
+  renderActiveFilters();
+  updateViewerHint();
+  showToast('Saved filters loaded.');
+});
+
+el.matchPreset.addEventListener('change', renderActiveFilters);
+
+function updateShortlistButton() {
+  const count = state.shortlistedIds.size;
+  el.compareShortlistBtn.textContent = `Compare shortlist (${count})`;
+  el.compareShortlistBtn.disabled = count < 2;
+}
+
+function renderComparison() {
+  const matches = state.matches.filter((match) => state.shortlistedIds.has(match.stream.user_id));
+  el.compareDialogContent.innerHTML = matches.map((match) => {
+    const stream = match.stream;
+    return `<article class="compare-card">
+      <h3>${escapeHtml(stream.user_name)}</h3>
+      <p>${escapeHtml(stream.game_name || 'No category')}</p>
+      <dl>
+        <div><dt>Match</dt><dd>${Math.round(match.matchScore)}%</dd></div>
+        <div><dt>Live viewers</dt><dd>${fmtNumber(stream.viewer_count)}</dd></div>
+        <div><dt>Estimated average</dt><dd>~${fmtNumber(match.estimatedAverageViewers)} · ${escapeHtml(match.historyConfidence)}</dd></div>
+        <div><dt>Live for</dt><dd>${fmtDuration(Date.now() - new Date(stream.started_at).getTime())}</dd></div>
+        <div><dt>Shared tags</dt><dd>${match.meaningfulSharedTags?.length ?? 0}</dd></div>
+        <div><dt>Relationship</dt><dd>${stream.is_followed ? 'Following' : 'Not followed'}</dd></div>
+      </dl>
+      <button class="btn btn--outline" type="button" data-compare-raid="${escapeHtml(stream.user_id)}"${!state.myStream || state.usingPreviousStream ? ' disabled' : ''}>Raid this channel</button>
+    </article>`;
+  }).join('');
+  el.compareDialogContent.querySelectorAll('[data-compare-raid]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const match = state.matches.find((candidate) => candidate.stream.user_id === button.dataset.compareRaid);
+      el.compareDialog.close();
+      if (match) openRaidDialog(match);
+    });
+  });
+}
+
+el.compareShortlistBtn.addEventListener('click', () => {
+  renderComparison();
+  el.compareDialog.showModal();
+});
+el.compareDialogClose.addEventListener('click', () => el.compareDialog.close());
 
 async function loadRecentActivity(match, renderGeneration) {
   const stream = match.stream;
@@ -1758,6 +1991,7 @@ function resultCardHtml(match, rank) {
       <div class="match-reasons" aria-label="Why this channel matches">${matchReasons(match).map((reason) => `<span><span aria-hidden="true">✓</span> ${escapeHtml(reason)}</span>`).join('')}</div>
       <div class="stat-row">
         <span class="stat-chip"><span class="stat-chip__mono">${fmtNumber(s.viewer_count)}</span> live</span>
+        <span class="stat-chip" title="${escapeHtml(match.historyConfidence)}"><span class="stat-chip__mono">~${fmtNumber(match.estimatedAverageViewers)}</span> average · ${escapeHtml(match.historyConfidence)}</span>
         <span class="stat-chip"><span class="stat-chip__mono">${fmtDuration(Date.now() - new Date(s.started_at).getTime())}</span> live</span>
         <span class="stat-chip" data-follower-id="${escapeHtml(s.user_id)}">Loading followers…</span>
       </div>
@@ -1767,6 +2001,9 @@ function resultCardHtml(match, rank) {
       ${activityButton}
       ${activityExpanded ? `<section class="recent-activity" data-activity-panel="${escapeHtml(s.user_id)}" aria-label="Details for ${escapeHtml(s.user_name)}"><p class="activity-empty"><strong>Estimated average:</strong> ~${fmtNumber(match.estimatedAverageViewers)} viewers${match.averageIsHistorical ? '' : ' (early estimate)'}<br />Loading channel history…</p></section>` : ''}
       <div class="result-card__buttons">
+        <button class="btn btn--ghost" type="button" data-shortlist-id="${escapeHtml(s.user_id)}">${state.shortlistedIds.has(s.user_id) ? 'Remove shortlist' : 'Shortlist'}</button>
+        <button class="btn btn--ghost" type="button" data-refresh-id="${escapeHtml(s.user_id)}">Refresh</button>
+        <button class="btn btn--ghost" type="button" data-hide-id="${escapeHtml(s.user_id)}">Hide</button>
         ${previewButton}
         ${raidButton}
       </div>
@@ -1937,6 +2174,7 @@ function openRaidDialog(match) {
   pendingRaid = match;
   el.raidDialogText.textContent = `Raid ${match.stream.user_name} with your viewers right now?`;
   el.raidMessageOptIn.checked = false;
+  el.raidMessageOptIn.disabled = state.eventSubStatus !== 'connected';
   el.raidMessagePreview.textContent = buildRaidCompletionMessage(match.stream.user_login);
   el.raidDialog.showModal();
 }
@@ -1953,6 +2191,13 @@ el.raidConfirmBtn.addEventListener('click', async () => {
   const sendCompletionMessage = el.raidMessageOptIn.checked;
   el.raidDialog.close();
   try {
+    const currentTargetStream = await state.api.getLiveStreamForUser(target.stream.user_id);
+    if (!currentTargetStream) {
+      showToast(`${target.stream.user_name} is no longer live. The raid was not started.`, true);
+      pendingRaid = null;
+      return;
+    }
+    target.stream = { ...target.stream, ...currentTargetStream };
     const raid = await state.api.startRaid(state.user.id, target.stream.user_id);
     beginRaidCountdown(target, raid?.created_at, {
       sendCompletionMessage,

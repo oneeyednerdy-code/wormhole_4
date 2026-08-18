@@ -30,8 +30,8 @@ globalThis.window = {
   history: { replaceState() {} },
 };
 
-const { getOAuthRedirectUri } = await import('../js/config.js');
-const { TWITCH_CONFIG } = await import('../js/config.js');
+const { getOAuthRedirectUri } = await import('../js/twitch-config-v48.js');
+const { TWITCH_CONFIG } = await import('../js/twitch-config-v48.js');
 const { TwitchAuth } = await import('../js/twitch-auth.js');
 
 test('normalizes index.html to a stable OAuth callback directory', () => {

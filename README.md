@@ -108,7 +108,7 @@ handles natively — no popups, no custom URL schemes, no build tooling.
    generated client secret in Wormhole or any frontend file.
 5. Save, then copy the **Client ID**.
 
-Open `js/config.js` and paste it in:
+Open `js/twitch-config-v48.js` and paste it in:
 
 ```js
 clientId: 'YOUR_TWITCH_CLIENT_ID',
@@ -125,7 +125,7 @@ URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
 match, including HTTPS, hostname, path, and trailing slash.
 
 If your host exposes the app through several aliases or rewrites, set
-`redirectUriOverride` in `js/config.js` to the one production callback you
+`redirectUriOverride` in `js/twitch-config-v48.js` to the one production callback you
 registered with Twitch. Netlify production, branch-deploy, and deploy-preview
 hostnames are different origins and must not be treated as interchangeable.
 
@@ -174,10 +174,10 @@ rejects cross-origin requests, limits accepted fields, and never retries a
 mutation automatically.
 
 1. In Netlify, set `TWITCH_CLIENT_ID` to the same public Client ID used in
-   `js/config.js`.
+   `js/twitch-config-v48.js`.
 2. Set `WORMHOLE_ALLOWED_ORIGIN` to the exact production origin, such as
    `https://wormhole.netlify.app` (no trailing slash).
-3. Change `backendActions` to `true` in `js/config.js`.
+3. Change `backendActions` to `true` in `js/twitch-config-v48.js`.
 4. Deploy the folder. The included `netlify.toml` publishes the site, exposes
    `/api/raid-action`, applies security headers, and configures safe asset
    caching.
@@ -420,7 +420,7 @@ index.html          # Page shell, both views (login + app)
 privacy.html        # Storage and privacy policy
 css/styles.css       # All styling
 js/
-  config.js          # Client ID, scopes, redirect URI
+  twitch-config-v48.js # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   direct-search.js    # Normalizes exact streamer usernames and URLs
@@ -431,7 +431,7 @@ js/
   appearance-boot.js   # Applies saved theme before first paint
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
-  app.js              # Wires everything together, renders the UI
+  wormhole-app-v48.js # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
   twitch-auth.test.mjs # Twitch login security and redirect tests

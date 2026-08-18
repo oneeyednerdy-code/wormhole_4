@@ -338,6 +338,14 @@ body.light-theme .btn--primary:hover:not(:disabled) {
   margin: 0 0 12px;
 }
 
+.build-version {
+  margin: -8px 0 14px;
+  color: var(--text-dim);
+  font: 600 0.72rem/1 var(--font-mono, monospace);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .login-card__subtitle {
   color: var(--text-dim);
   font-size: 0.92rem;

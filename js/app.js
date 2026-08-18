@@ -1,34 +1,34 @@
-import { TWITCH_CONFIG } from './config.js?v=45';
-import { TwitchAuth } from './twitch-auth.js?v=45';
-import { TwitchApi } from './twitch-api.js?v=45';
-import { applyHardFilters, findRaidMatches } from './raid-match.js?v=45';
-import { RaidListener } from './raid-listener.js?v=45';
-import { ViewerHistory } from './viewer-history.js?v=45';
-import { PreviousStreamHistory } from './previous-stream-history.js?v=45';
-import { paginate } from './pagination.js?v=45';
-import { sortRaidMatches } from './result-sort.js?v=45';
-import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=45';
+import { TWITCH_CONFIG } from './config.js?v=46';
+import { TwitchAuth } from './twitch-auth.js?v=46';
+import { TwitchApi } from './twitch-api.js?v=46';
+import { applyHardFilters, findRaidMatches } from './raid-match.js?v=46';
+import { RaidListener } from './raid-listener.js?v=46';
+import { ViewerHistory } from './viewer-history.js?v=46';
+import { PreviousStreamHistory } from './previous-stream-history.js?v=46';
+import { paginate } from './pagination.js?v=46';
+import { sortRaidMatches } from './result-sort.js?v=46';
+import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=46';
 import {
   createRaidCountdown,
   getRaidCountdownSnapshot,
-} from './raid-countdown.js?v=45';
-import { ChannelHistory } from './channel-history.js?v=45';
-import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=45';
+} from './raid-countdown.js?v=46';
+import { ChannelHistory } from './channel-history.js?v=46';
+import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=46';
 import {
   getGenreGameNames,
   getGenreLabelsForGame,
-} from './genre-presets.js?v=45';
-import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=45';
-import { prepareTagDisplay } from './tag-display.js?v=45';
-import { normalizeTwitchLogin } from './direct-search.js?v=45';
-import { buildFollowedDirectoryMatches } from './followed-directory.js?v=45';
-import { loadFilterPreset, saveFilterPreset } from './filter-preset-storage.js?v=45';
+} from './genre-presets.js?v=46';
+import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=46';
+import { prepareTagDisplay } from './tag-display.js?v=46';
+import { normalizeTwitchLogin } from './direct-search.js?v=46';
+import { buildFollowedDirectoryMatches } from './followed-directory.js?v=46';
+import { loadFilterPreset, saveFilterPreset } from './filter-preset-storage.js?v=46';
 import {
   buildRaidCompletionMessage,
   getRaidDestinationEmbedUrls,
   getTwitchRaidControlsUrl,
   isMatchingRaidConfirmation,
-} from './raid-completion.js?v=45';
+} from './raid-completion.js?v=46';
 
 const state = {
   api: null,
@@ -225,19 +225,31 @@ el.logoutBtn.addEventListener('click', async () => {
   showView('login');
 });
 
-async function loadCurrentUser() {
-  state.user = await state.api.getCurrentUser();
+async function loadCurrentUser(validation) {
+  const startupWarnings = [];
+  try {
+    state.user = await state.api.getCurrentUser();
+  } catch (error) {
+    const fallbackUser = TwitchAuth.userFromValidation(validation);
+    if (!fallbackUser) throw error;
+    state.user = fallbackUser;
+    startupWarnings.push('Twitch authorized the account, but its full profile is temporarily unavailable. Wormhole opened with the validated account identity.');
+    console.error('Full Twitch profile unavailable; using validated identity:', error);
+  }
   const [streamResult, teamsResult, channelResult, vodResult] = await Promise.allSettled([
     state.api.getLiveStreamForUser(state.user.id),
     state.api.getChannelTeams(state.user.id),
     state.api.getChannelInformation(state.user.id),
     state.api.getRecentArchives(state.user.id, { maxResults: 5 }),
   ]);
-  if (streamResult.status === 'rejected') throw streamResult.reason;
-  state.myStream = streamResult.value;
+  state.myStream = streamResult.status === 'fulfilled' ? streamResult.value : null;
   state.myTeams = teamsResult.status === 'fulfilled' ? teamsResult.value : [];
   state.channelInfo = channelResult.status === 'fulfilled' ? channelResult.value : null;
   state.recentVods = vodResult.status === 'fulfilled' ? vodResult.value : [];
+  if (streamResult.status === 'rejected') {
+    startupWarnings.push('Live status could not be loaded. Offline discovery remains available; refresh live status after Twitch recovers.');
+    console.error('Live status unavailable during startup:', streamResult.reason);
+  }
   state.selectedPreviousVodId = state.recentVods[0]?.id ?? null;
   state.usingPreviousStream = false;
   el.showFollowedLiveBtn.disabled = false;
@@ -248,8 +260,16 @@ async function loadCurrentUser() {
   renderViewerMatchHint();
   renderTeamHint();
   renderActiveFilters();
-  startRaidListener();
+  try {
+    startRaidListener();
+  } catch (error) {
+    state.eventSubStatus = 'error';
+    renderEventSubStatus();
+    startupWarnings.push('Raid confirmation could not connect. Discovery still works, but confirmed-raid messaging is unavailable.');
+    console.error('Raid confirmation listener could not start:', error);
+  }
   showView('app');
+  if (startupWarnings.length) showToast(startupWarnings[0], true);
 }
 
 function startRaidListener() {
@@ -323,10 +343,17 @@ async function init() {
 
   state.api = new TwitchApi(token);
   try {
-    await loadCurrentUser();
+    await loadCurrentUser(tokenStatus.validation);
   } catch (e) {
     console.error(e);
-    el.loginError.textContent = 'Could not load your Twitch profile. Try logging in again.';
+    const status = Number(e?.status);
+    el.loginError.textContent = status === 401
+      ? 'Twitch accepted the login callback but rejected the API session (401). Log in again and approve every permission.'
+      : status === 403
+        ? 'Twitch authenticated you but blocked profile access (403). Check the application Client ID and permissions.'
+        : status === 429
+          ? 'Twitch is rate-limiting profile requests. Wait a minute, then refresh; you do not need to authorize again.'
+          : `Could not finish loading Wormhole after Twitch login${status ? ` (API ${status})` : ''}. Refresh once; if it continues, check the browser console for the exact startup error.`;
     showView('login');
   }
 }

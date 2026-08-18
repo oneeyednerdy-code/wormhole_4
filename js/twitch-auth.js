@@ -1,4 +1,4 @@
-import { TWITCH_CONFIG } from './config.js?v=45';
+import { TWITCH_CONFIG } from './config.js?v=46';
 
 const TOKEN_KEY = 'wormhole_access_token';
 const LEGACY_TOKEN_KEY = 'raid_finder_token';
@@ -201,6 +201,7 @@ export const TwitchAuth = {
     try {
       const res = await fetch(TWITCH_CONFIG.validateUrl, {
         headers: { Authorization: `OAuth ${token}` },
+        cache: 'no-store',
       });
       if (!res.ok) return { valid: false, reason: 'invalid' };
       const validation = await res.json();
@@ -223,6 +224,19 @@ export const TwitchAuth = {
 
   async isTokenValid(token) {
     return (await this.validateToken(token)).valid;
+  },
+
+  userFromValidation(validation) {
+    const id = String(validation?.user_id ?? '').trim();
+    const login = String(validation?.login ?? '').trim();
+    if (!id || !login) return null;
+    return {
+      id,
+      login,
+      display_name: login,
+      profile_image_url: '',
+      _limitedProfile: true,
+    };
   },
 
   async logout() {

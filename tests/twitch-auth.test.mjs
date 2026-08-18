@@ -163,3 +163,17 @@ test('temporary validation outages preserve the session for retry', async () => 
   globalThis.fetch = async () => { throw new Error('offline'); };
   assert.equal((await TwitchAuth.validateToken('token')).reason, 'unavailable');
 });
+
+test('validated Twitch identity can provide a limited profile fallback', () => {
+  assert.deepEqual(
+    TwitchAuth.userFromValidation({ user_id: '123', login: 'oneeyednerdy' }),
+    {
+      id: '123',
+      login: 'oneeyednerdy',
+      display_name: 'oneeyednerdy',
+      profile_image_url: '',
+      _limitedProfile: true,
+    }
+  );
+  assert.equal(TwitchAuth.userFromValidation({ user_id: '123' }), null);
+});

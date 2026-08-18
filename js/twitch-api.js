@@ -1,5 +1,5 @@
-import { TWITCH_CONFIG } from './config.js?v=45';
-import { RequestError, RequestManager } from './request-manager.js?v=45';
+import { TWITCH_CONFIG } from './config.js?v=46';
+import { RequestError, RequestManager } from './request-manager.js?v=46';
 
 function normalizeGameName(name) {
   return String(name ?? '')
@@ -67,7 +67,7 @@ export class TwitchApi {
     for (const [k, v] of Object.entries(query)) {
       if (v !== undefined && v !== null) url.searchParams.set(k, v);
     }
-    const res = await this._request(url, { headers: this.headers }, { signal });
+    const res = await this._request(url, { headers: this.headers, cache: 'no-store' }, { signal });
     return res.json();
   }
 

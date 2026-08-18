@@ -1,4 +1,4 @@
-import { StorageConsent } from './storage-consent.js?v=45';
+import { StorageConsent } from './storage-consent.js?v=46';
 
 export function initializeStorageConsent(documentRef = document, storage = localStorage) {
   const panel = documentRef.getElementById('storage-choice-panel');

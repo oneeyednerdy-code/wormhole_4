@@ -196,7 +196,13 @@ be required to move Twitch tokens completely into HttpOnly cookies.
 - The EventSub connection exposes its current state. Completion-message opt-in
   is unavailable unless confirmation is connected; Twitch reconnect
   instructions are honored and duplicate messages are ignored.
-- OAuth state expires after ten minutes to narrow the callback replay window.
+- OAuth state expires after thirty minutes to allow time for Twitch login and
+  two-factor authentication while still narrowing the callback replay window.
+- A successful Twitch login no longer depends on every optional startup call.
+  Live status, teams, channel details, VODs, and EventSub degrade separately.
+  If Twitch validates the token but briefly fails to return the full `/users`
+  profile, Wormhole can open with the validated user ID and login while clearly
+  marking the reduced startup state.
 - `netlify.toml` adds clickjacking, MIME-sniffing, referrer, permissions, and
   opener protections.
 

@@ -3,7 +3,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const app = await readFile(new URL('../js/wormhole-app-v52.js', import.meta.url), 'utf8');
+const app = await readFile(new URL('../js/wormhole-app-v53.js', import.meta.url), 'utf8');
+
+test('the login screen identifies the current release as a beta', () => {
+  assert.match(html, /<p class="build-version">Beta Version v53<\/p>/);
+});
 
 test('the interface exposes comparison, matching goal, presets, and layout controls', () => {
   for (const id of [

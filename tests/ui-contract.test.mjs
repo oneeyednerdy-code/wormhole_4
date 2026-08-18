@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const app = await readFile(new URL('../js/wormhole-app-v67.js', import.meta.url), 'utf8');
+const app = await readFile(new URL('../js/wormhole-app-v69.js', import.meta.url), 'utf8');
 const logo = await readFile(new URL('../assets/wormhole-logo.svg', import.meta.url), 'utf8');
 const favicon = await readFile(new URL('../assets/favicon.ico', import.meta.url));
 
 test('the login screen identifies the current release as a beta', () => {
-  assert.match(html, /<p class="build-version">Beta-0\.0\.67<\/p>/);
+  assert.match(html, /<p class="build-version">Beta-0\.0\.69<\/p>/);
 });
 
 test('result cards use one Twitch channel link without a duplicate follow link', () => {
@@ -50,7 +50,7 @@ test('Following Only bypasses categories, keeps typed tags, and works offline', 
 
 test('branding uses the full page title, single-color logo, and ICO bookmark icon', () => {
   assert.match(html, /<title>Wormhole Networking Tool by OneEyedNerdy<\/title>/);
-  assert.match(html, /<link rel="icon" href="assets\/favicon\.ico\?v=67" sizes="any" \/>/);
+  assert.match(html, /<link rel="icon" href="assets\/favicon\.ico\?v=69" sizes="any" \/>/);
   const colors = new Set([...logo.matchAll(/#[0-9a-f]{6}/gi)].map((match) => match[0].toUpperCase()));
   assert.deepEqual([...colors], ['#8B5CF6']);
   assert.deepEqual([...favicon.subarray(0, 4)], [0, 0, 1, 0]);
@@ -70,6 +70,17 @@ test('match cards enrich and display Twitch content classification labels', () =
   assert.match(app, /DebatedSocialIssuesAndPolitics: 'Politics and sensitive social issues'/);
   assert.match(app, /aria-label="Content warnings"/);
   assert.match(app, /contentLabelsHtml\(s\)/);
+});
+
+test('chat access is displayed and restricted-chat channels can be excluded', () => {
+  assert.match(html, /id="open-chat-only-filter" checked/);
+  assert.match(html, /Exclude restricted chat/);
+  assert.match(html, /followers-only, subscribers-only, or emote-only chat/);
+  assert.match(app, /getChatSettingsForUsers/);
+  assert.match(app, /requireOpenChat: wantsOpenChatOnly/);
+  assert.match(app, /Followers-only chat/);
+  assert.match(app, /Subscribers-only chat/);
+  assert.match(app, /Chat modes unavailable/);
 });
 
 test('the interface exposes comparison, matching goal, presets, and layout controls', () => {

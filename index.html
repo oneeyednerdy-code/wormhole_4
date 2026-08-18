@@ -6,19 +6,19 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv https://www.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
   <title>Wormhole Networking Tool by OneEyedNerdy</title>
   <meta name="application-name" content="Wormhole Networking Tool by OneEyedNerdy" />
-  <meta name="wormhole-release" content="0.0.67" />
-  <meta name="wormhole-cache-version" content="67" />
-  <link rel="icon" href="assets/favicon.ico?v=67" sizes="any" />
-  <script src="js/appearance-boot.js?v=67"></script>
-  <script type="module" src="js/version-check.js?v=67"></script>
+  <meta name="wormhole-release" content="0.0.69" />
+  <meta name="wormhole-cache-version" content="69" />
+  <link rel="icon" href="assets/favicon.ico?v=69" sizes="any" />
+  <script src="js/appearance-boot.js?v=69"></script>
+  <script type="module" src="js/version-check.js?v=69"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=67" />
-  <link rel="stylesheet" href="css/mobile.css?v=67" />
+  <link rel="stylesheet" href="css/styles.css?v=69" />
+  <link rel="stylesheet" href="css/mobile.css?v=69" />
 </head>
 <body>
 
@@ -26,10 +26,10 @@
   <main id="login-view" class="login-view">
     <div class="login-card">
       <div class="login-card__mark">
-        <img src="assets/wormhole-logo.svg?v=67" alt="" aria-hidden="true" />
+        <img src="assets/wormhole-logo.svg?v=69" alt="" aria-hidden="true" />
       </div>
       <h1 class="login-card__title">Wormhole</h1>
-      <p class="build-version">Beta-0.0.67</p>
+      <p class="build-version">Beta-0.0.69</p>
       <p class="login-card__subtitle">
         Sign off with a raid that actually fits — matched by game,
         viewer count, and how long you've both been live.
@@ -56,7 +56,7 @@
     <a class="skip-link" href="#discovery-view">Skip to main content</a>
     <header class="topbar">
       <a class="topbar__brand" href="./" aria-label="Wormhole home">
-        <img class="topbar__brand-logo" src="assets/wormhole-logo.svg?v=67" alt="" aria-hidden="true" />
+        <img class="topbar__brand-logo" src="assets/wormhole-logo.svg?v=69" alt="" aria-hidden="true" />
         <span>Wormhole</span>
       </a>
       <div class="topbar__account">
@@ -176,6 +176,16 @@
           </label>
         </div>
         <p class="filter-row__hint filter-row__hint--left">Following Only ignores game categories and considers every followed channel currently live. Tags you type and other active filters still apply.</p>
+
+        <div class="filter-row">
+          <span class="filter-row__label">Chat access</span>
+          <label class="toggle">
+            <input type="checkbox" id="open-chat-only-filter" checked />
+            <span class="toggle__box"></span>
+            <span class="toggle__text">Exclude restricted chat</span>
+          </label>
+        </div>
+        <p class="filter-row__hint filter-row__hint--left">Excludes channels using followers-only, subscribers-only, or emote-only chat. Twitch checks each compatible channel separately, so searches may take longer.</p>
 
         <div class="filter-row">
           <span class="filter-row__label">Team</span>
@@ -527,9 +537,9 @@
     </label>
   </footer>
 
-  <script type="module" src="js/device-layout.js?v=67"></script>
-  <script type="module" src="js/storage-consent-ui.js?v=67"></script>
-  <script type="module" src="js/ui-controls.js?v=67"></script>
-  <script type="module" src="js/wormhole-app-v67.js?v=67"></script>
+  <script type="module" src="js/device-layout.js?v=69"></script>
+  <script type="module" src="js/storage-consent-ui.js?v=69"></script>
+  <script type="module" src="js/ui-controls.js?v=69"></script>
+  <script type="module" src="js/wormhole-app-v69.js?v=69"></script>
 </body>
 </html>

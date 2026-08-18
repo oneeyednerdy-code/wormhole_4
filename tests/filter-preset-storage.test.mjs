@@ -11,12 +11,18 @@ test('normalizes unsafe or unsupported filter settings', () => {
   assert.equal(preset.matchPreset, 'similar');
   assert.deepEqual(preset.statuses, ['partner']);
   assert.deepEqual(preset.categories, [{ id: '1', name: 'Game', source: 'manual' }]);
+  assert.equal(preset.openChatOnly, true);
+});
+
+test('an explicitly disabled restricted-chat filter remains disabled', () => {
+  assert.equal(normalizeFilterPreset({ openChatOnly: false }).openChatOnly, false);
 });
 
 test('saves and reloads one explicit local filter preset', () => {
   const data = new Map();
   const storage = { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) };
-  saveFilterPreset({ viewerTolerance: '75', matchPreset: 'growth' }, storage);
+  saveFilterPreset({ viewerTolerance: '75', matchPreset: 'growth', openChatOnly: true }, storage);
   assert.equal(loadFilterPreset(storage).viewerTolerance, '75');
   assert.equal(loadFilterPreset(storage).matchPreset, 'growth');
+  assert.equal(loadFilterPreset(storage).openChatOnly, true);
 });

@@ -1,7 +1,7 @@
 # Wormhole (web)
 
-Current release: **Beta-0.0.67**. During beta development, each feature build
-increments the patch number (`Beta-0.0.67`, `Beta-0.0.67`, and so on).
+Current release: **Beta-0.0.69**. During beta development, each feature build
+increments the patch number (`Beta-0.0.68`, `Beta-0.0.69`, and so on).
 
 Wormhole checks `version.json` with `cache: no-store` on every page load. If a
 browser serves an older page, the app removes obsolete Wormhole-managed Cache
@@ -30,12 +30,14 @@ logs in with Twitch and finds you a good channel to raid, matched on:
   current live viewers, or show every viewer count; ±50% remains the default
 - **Channel status** — additive Partner/Affiliate toggles on top of an
   always-included non-affiliate pool
+- **Chat access** — display current chat modes and, by default, exclude channels
+  using followers-only, subscribers-only, or emote-only chat
 - **Team** — optionally only show channels sharing one of your Twitch Teams
 - **Tags** — optionally require candidates to have at least one of the tags
   you type in (e.g. "speedrun", "cozy", "english")
 - **Language** — defaults to English and offers popular language choices;
-  selecting one adds it to the existing Twitch-tags filter, while **Any
-  language** removes language tags without deleting your other tag choices
+  it is applied independently from custom tags, while **Any language** removes
+  the language restriction without deleting your other tag choices
 - **Automatic tag matching** — compares the logged-in stream's Twitch tags
   with every candidate, shows shared tags on result cards, and uses meaningful
   overlap in the recommendation score; language tags are shown but scored
@@ -131,7 +133,7 @@ handles natively — no popups, no custom URL schemes, no build tooling.
    generated client secret in Wormhole or any frontend file.
 5. Save, then copy the **Client ID**.
 
-Open `js/twitch-config-v67.js` and paste it in:
+Open `js/twitch-config-v69.js` and paste it in:
 
 ```js
 clientId: 'YOUR_TWITCH_CLIENT_ID',
@@ -148,7 +150,7 @@ URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
 match, including HTTPS, hostname, path, and trailing slash.
 
 If your host exposes the app through several aliases or rewrites, set
-`redirectUriOverride` in `js/twitch-config-v67.js` to the one production callback you
+`redirectUriOverride` in `js/twitch-config-v69.js` to the one production callback you
 registered with Twitch. Production and preview hostnames are different origins
 and must not be treated as interchangeable.
 
@@ -268,6 +270,12 @@ an OAuth Redirect URL on your Twitch app (step 1).
     logged-in channel is offline and no previous-stream baseline is selected,
     Following Only remains available; category and viewer-range matching are
     skipped while typed tags and the remaining usable filters continue to work.
+  - **Exclude restricted chat** — enabled by default; checks current public
+    chat settings and removes channels using followers-only, subscribers-only,
+    or emote-only chat. Cards also
+    show followers-only duration, subscribers-only, emote-only, slow, unique,
+    open, or unavailable chat status. Twitch exposes one channel per request,
+    so Wormhole caches these lookups and runs them with limited concurrency.
   - **Team** — only show channels sharing one of your Twitch Teams. (Twitch
     doesn't have "guilds" — Teams are the closest equivalent: a named group
     of channels shown on each member's About page.) Twitch has no batch
@@ -453,7 +461,7 @@ assets/
   favicon.ico        # 16, 32, and 48 px browser/bookmark icon
 css/styles.css       # All styling
 js/
-  twitch-config-v67.js # Client ID, scopes, redirect URI
+  twitch-config-v69.js # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   direct-search.js    # Normalizes exact streamer usernames and URLs
@@ -464,7 +472,7 @@ js/
   appearance-boot.js   # Applies saved theme before first paint
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
-  wormhole-app-v67.js # Wires everything together, renders the UI
+  wormhole-app-v69.js # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
   twitch-auth.test.mjs # Twitch login security and redirect tests

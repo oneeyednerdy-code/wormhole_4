@@ -60,6 +60,41 @@ test('loads content classification labels from channel information in batches', 
   ]);
 });
 
+test('loads and caches public chat settings with limited-concurrency results', async () => {
+  const requestedUrls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    requestedUrls.push(parsed);
+    const id = parsed.searchParams.get('broadcaster_id');
+    return {
+      ok: true,
+      async json() {
+        return {
+          data: [{
+            broadcaster_id: id,
+            follower_mode: id === 'channel-1',
+            follower_mode_duration: id === 'channel-1' ? 10 : null,
+            subscriber_mode: id === 'channel-2',
+            emote_mode: false,
+            slow_mode: false,
+            unique_chat_mode: false,
+          }],
+        };
+      },
+    };
+  };
+
+  const api = new TwitchApi('test-token');
+  const first = await api.getChatSettingsForUsers(['channel-1', 'channel-2']);
+  const second = await api.getChatSettingsForUsers(['channel-1']);
+
+  assert.equal(first.get('channel-1').follower_mode, true);
+  assert.equal(first.get('channel-2').subscriber_mode, true);
+  assert.equal(second.get('channel-1').follower_mode_duration, 10);
+  assert.equal(requestedUrls.length, 2);
+  assert.equal(requestedUrls[0].pathname, '/helix/chat/settings');
+});
+
 test('starts a raid and returns Twitch\'s countdown timestamp', async () => {
   let requestedUrl;
   let requestedMethod;

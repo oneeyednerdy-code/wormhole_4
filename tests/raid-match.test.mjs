@@ -105,6 +105,21 @@ test('following-only excludes channels the user does not follow', () => {
   assert.deepEqual(matches.map((match) => match.stream.user_id), ['followed']);
 });
 
+test('open-chat filter excludes follower-only, subscriber-only, and emote-only channels', () => {
+  localStorage.clear();
+  const open = { ...stream('open', 100), chat_settings: { follower_mode: false, subscriber_mode: false } };
+  const followers = { ...stream('followers', 100), chat_settings: { follower_mode: true, subscriber_mode: false } };
+  const subscribers = { ...stream('subscribers', 100), chat_settings: { follower_mode: false, subscriber_mode: true } };
+  const emoteOnly = { ...stream('emote-only', 100), chat_settings: { follower_mode: false, subscriber_mode: false, emote_mode: true } };
+  const unavailable = { ...stream('unavailable', 100), chat_settings: null };
+  const matches = findRaidMatches(
+    stream('mine', 100),
+    [followers, subscribers, emoteOnly, unavailable, open],
+    { requireOpenChat: true }
+  );
+  assert.deepEqual(matches.map((match) => match.stream.user_id), ['open']);
+});
+
 test('growth goal prioritizes a channel near 150% of the current audience', () => {
   localStorage.clear();
   const mine = stream('mine', 100);

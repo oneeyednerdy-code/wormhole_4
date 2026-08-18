@@ -1,5 +1,5 @@
-import { ViewerHistory } from './viewer-history.js?v=67';
-import { isLanguageTag } from './language-tags.js?v=67';
+import { ViewerHistory } from './viewer-history.js?v=69';
+import { isLanguageTag } from './language-tags.js?v=69';
 
 // Base weights are used when automatic tag comparison is disabled or the
 // logged-in stream has no meaningful non-language tags. When tags are
@@ -99,6 +99,8 @@ function combinedScore(scores, tagSimilarityPercent) {
  *   tags Twitch streamers set, e.g. "Speedrun", "Cozy", "English").
  * - requiredLanguageTag: an independently required language tag. This keeps
  *   a broad default such as English from satisfying a custom tag search.
+ * - requireOpenChat: only keep candidates whose current chat settings confirm
+ *   that followers-only, subscribers-only, and emote-only chat are inactive.
  */
 export function applyHardFilters(
   candidates,
@@ -110,6 +112,7 @@ export function applyHardFilters(
     requireSharedTeam = false,
     requiredTags = null,
     requiredLanguageTag = null,
+    requireOpenChat = false,
   } = {}
 ) {
   const typeFilter = allowedBroadcasterTypes ? new Set(allowedBroadcasterTypes) : null;
@@ -132,6 +135,15 @@ export function applyHardFilters(
       const streamTags = (s.tags ?? []).map((t) => String(t).trim().toLowerCase());
       if (!streamTags.includes(languageKey)) return false;
     }
+    if (
+      requireOpenChat
+      && (
+        !s.chat_settings
+        || s.chat_settings.follower_mode === true
+        || s.chat_settings.subscriber_mode === true
+        || s.chat_settings.emote_mode === true
+      )
+    ) return false;
     return true;
   });
 }
@@ -159,6 +171,7 @@ export function findRaidMatches(
     requireSharedTeam = false,
     requiredTags = null,
     requiredLanguageTag = null,
+    requireOpenChat = false,
     compareTags = true,
     categoryMatchApplied = true,
     primaryCategoryId = myStream.game_id,
@@ -173,6 +186,7 @@ export function findRaidMatches(
     requireSharedTeam,
     requiredTags,
     requiredLanguageTag,
+    requireOpenChat,
   });
 
   // Record fresh samples for everyone we just looked at, so the local

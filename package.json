@@ -1,6 +1,6 @@
 {
   "name": "wormhole-twitch-raid-matcher",
-  "version": "0.0.67",
+  "version": "0.0.69",
   "private": true,
   "type": "module",
   "scripts": {

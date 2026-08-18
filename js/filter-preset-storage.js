@@ -11,6 +11,7 @@ export function normalizeFilterPreset(value) {
       ? value.statuses.filter((status) => ['partner', 'affiliate'].includes(status))
       : ['partner', 'affiliate'],
     onlyFollowing: Boolean(value.onlyFollowing),
+    openChatOnly: value.openChatOnly !== false,
     sameTeam: Boolean(value.sameTeam),
     matchStreamTags: value.matchStreamTags !== false,
     language: String(value.language ?? ''),

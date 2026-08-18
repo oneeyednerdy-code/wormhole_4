@@ -1,5 +1,7 @@
-import { TWITCH_CONFIG } from './twitch-config-v67.js?v=67';
-import { RequestError, RequestManager } from './browser-request-v67.js?v=67';
+import { TWITCH_CONFIG } from './twitch-config-v69.js?v=69';
+import { RequestError, RequestManager } from './browser-request-v69.js?v=69';
+
+const CHAT_SETTINGS_CACHE_TTL_MS = 60 * 1000;
 
 function normalizeGameName(name) {
   return String(name ?? '')
@@ -27,6 +29,8 @@ export class TwitchApi {
     this.followedAtCache = new Map();
     this.followerCountCache = new Map();
     this.followsBroadcasterCache = new Map();
+    this.chatSettingsCache = new Map();
+    this.chatSettingsCacheTimestamps = new Map();
     this.userProfileCache = new Map();
     this.broadcastHistoryCache = new Map();
     this.clipHistoryCache = new Map();
@@ -230,6 +234,57 @@ export class TwitchApi {
     };
 
     await Promise.all(Array.from({ length: concurrency }, () => worker()));
+    return results;
+  }
+
+  /** Returns the broadcaster's current public chat-mode settings. */
+  async getChatSettings(broadcasterId, { signal } = {}) {
+    const cachedAt = this.chatSettingsCacheTimestamps.get(broadcasterId) ?? 0;
+    if (
+      this.chatSettingsCache.has(broadcasterId)
+      && Date.now() - cachedAt < CHAT_SETTINGS_CACHE_TTL_MS
+    ) {
+      return this.chatSettingsCache.get(broadcasterId);
+    }
+    this.chatSettingsCache.delete(broadcasterId);
+    this.chatSettingsCacheTimestamps.delete(broadcasterId);
+
+    const request = this._get('/chat/settings', {
+      broadcaster_id: broadcasterId,
+    }, { signal }).then((json) => json.data?.[0] ?? null);
+
+    this.chatSettingsCache.set(broadcasterId, request);
+    this.chatSettingsCacheTimestamps.set(broadcasterId, Date.now());
+    try {
+      return await request;
+    } catch (error) {
+      this.chatSettingsCache.delete(broadcasterId);
+      this.chatSettingsCacheTimestamps.delete(broadcasterId);
+      throw error;
+    }
+  }
+
+  /** Loads unbatchable chat settings with limited concurrency. */
+  async getChatSettingsForUsers(userIds, { concurrency = 6, signal } = {}) {
+    const results = new Map();
+    const queue = [...new Set(userIds)].filter(Boolean);
+
+    const worker = async () => {
+      while (queue.length) {
+        const id = queue.shift();
+        try {
+          results.set(id, await this.getChatSettings(id, { signal }));
+        } catch (error) {
+          if (error?.name === 'AbortError') throw error;
+          console.error(error);
+          results.set(id, null);
+        }
+      }
+    };
+
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, queue.length) }, () => worker())
+    );
     return results;
   }
 

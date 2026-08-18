@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 
-test('v44 exposes comparison, matching goal, presets, and layout controls', () => {
+test('the interface exposes comparison, matching goal, presets, and layout controls', () => {
   for (const id of [
     'match-preset', 'save-filter-preset', 'load-filter-preset',
     'compare-shortlist-btn', 'compare-dialog', 'layout-override',

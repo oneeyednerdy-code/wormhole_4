@@ -19,6 +19,10 @@ export function getOAuthRedirectUri(location = window.location) {
 
 export const TWITCH_CONFIG = {
   clientId: '15d6s3tdyd3p7o3owf1ugx6zorpgfw',
+  // Usually leave blank. If your host serves the same app through aliases or
+  // rewrites, set this to the one exact production callback registered in the
+  // Twitch Developer Console, including its trailing slash.
+  redirectUriOverride: '',
   // Set to true on Netlify after configuring TWITCH_CLIENT_ID and
   // WORMHOLE_ALLOWED_ORIGIN. Raid and completion-message mutations will then
   // be identity-checked by the bundled serverless function.
@@ -29,7 +33,7 @@ export const TWITCH_CONFIG = {
   // unchanged on localhost, GitHub Pages, Netlify, etc. — just make sure
   // the URL you register in the Twitch console matches this at runtime.
   get redirectUri() {
-    return getOAuthRedirectUri();
+    return this.redirectUriOverride || getOAuthRedirectUri();
   },
 
   // channel:manage:raids -> lets the app actually start a raid for you

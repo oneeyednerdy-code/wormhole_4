@@ -1,5 +1,5 @@
-import { TWITCH_CONFIG } from './config.js?v=44';
-import { RequestError, RequestManager } from './request-manager.js?v=44';
+import { TWITCH_CONFIG } from './config.js?v=45';
+import { RequestError, RequestManager } from './request-manager.js?v=45';
 
 function normalizeGameName(name) {
   return String(name ?? '')

@@ -1,34 +1,34 @@
-import { TWITCH_CONFIG } from './config.js?v=44';
-import { TwitchAuth } from './twitch-auth.js?v=44';
-import { TwitchApi } from './twitch-api.js?v=44';
-import { applyHardFilters, findRaidMatches } from './raid-match.js?v=44';
-import { RaidListener } from './raid-listener.js?v=44';
-import { ViewerHistory } from './viewer-history.js?v=44';
-import { PreviousStreamHistory } from './previous-stream-history.js?v=44';
-import { paginate } from './pagination.js?v=44';
-import { sortRaidMatches } from './result-sort.js?v=44';
-import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=44';
+import { TWITCH_CONFIG } from './config.js?v=45';
+import { TwitchAuth } from './twitch-auth.js?v=45';
+import { TwitchApi } from './twitch-api.js?v=45';
+import { applyHardFilters, findRaidMatches } from './raid-match.js?v=45';
+import { RaidListener } from './raid-listener.js?v=45';
+import { ViewerHistory } from './viewer-history.js?v=45';
+import { PreviousStreamHistory } from './previous-stream-history.js?v=45';
+import { paginate } from './pagination.js?v=45';
+import { sortRaidMatches } from './result-sort.js?v=45';
+import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=45';
 import {
   createRaidCountdown,
   getRaidCountdownSnapshot,
-} from './raid-countdown.js?v=44';
-import { ChannelHistory } from './channel-history.js?v=44';
-import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=44';
+} from './raid-countdown.js?v=45';
+import { ChannelHistory } from './channel-history.js?v=45';
+import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=45';
 import {
   getGenreGameNames,
   getGenreLabelsForGame,
-} from './genre-presets.js?v=44';
-import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=44';
-import { prepareTagDisplay } from './tag-display.js?v=44';
-import { normalizeTwitchLogin } from './direct-search.js?v=44';
-import { buildFollowedDirectoryMatches } from './followed-directory.js?v=44';
-import { loadFilterPreset, saveFilterPreset } from './filter-preset-storage.js?v=44';
+} from './genre-presets.js?v=45';
+import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=45';
+import { prepareTagDisplay } from './tag-display.js?v=45';
+import { normalizeTwitchLogin } from './direct-search.js?v=45';
+import { buildFollowedDirectoryMatches } from './followed-directory.js?v=45';
+import { loadFilterPreset, saveFilterPreset } from './filter-preset-storage.js?v=45';
 import {
   buildRaidCompletionMessage,
   getRaidDestinationEmbedUrls,
   getTwitchRaidControlsUrl,
   isMatchingRaidConfirmation,
-} from './raid-completion.js?v=44';
+} from './raid-completion.js?v=45';
 
 const state = {
   api: null,
@@ -308,7 +308,7 @@ async function init() {
   if (!tokenStatus.valid && tokenStatus.reason !== 'unavailable') {
     await TwitchAuth.logout();
     el.loginError.textContent = tokenStatus.reason === 'missing_scopes'
-      ? 'Twitch permissions changed. Log in again and approve the requested permissions.'
+      ? `Twitch permissions changed. Log in again and approve every requested permission${tokenStatus.missingScopes?.length ? ` (${tokenStatus.missingScopes.join(', ')})` : ''}.`
       : tokenStatus.reason === 'wrong_client'
         ? 'This login token belongs to a different Twitch application. Log in again.'
         : 'Your Twitch login expired. Please log in again.';

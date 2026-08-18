@@ -124,6 +124,16 @@ is stable. Expand **Login setup help** on the login screen and copy the exact
 URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
 match, including HTTPS, hostname, path, and trailing slash.
 
+If your host exposes the app through several aliases or rewrites, set
+`redirectUriOverride` in `js/config.js` to the one production callback you
+registered with Twitch. Netlify production, branch-deploy, and deploy-preview
+hostnames are different origins and must not be treated as interchangeable.
+
+Login requests force a fresh Twitch approval screen so newly added permissions
+cannot be skipped by an older authorization. The CSRF verifier is retained for
+up to 30 minutes in session storage, local storage, and a short-lived SameSite
+cookie fallback; the access token itself remains in session storage only.
+
 ---
 
 ## 2. Run it locally

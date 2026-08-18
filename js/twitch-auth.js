@@ -1,10 +1,11 @@
-import { TWITCH_CONFIG } from './config.js?v=44';
+import { TWITCH_CONFIG } from './config.js?v=45';
 
 const TOKEN_KEY = 'wormhole_access_token';
 const LEGACY_TOKEN_KEY = 'raid_finder_token';
 const OAUTH_STATE_KEY = 'wormhole_oauth_state';
 const OAUTH_STATE_CREATED_KEY = 'wormhole_oauth_state_created';
-const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
+const OAUTH_STATE_COOKIE = 'wormhole_oauth_verifier';
+const OAUTH_STATE_MAX_AGE_MS = 30 * 60 * 1000;
 
 function browserStorage(name) {
   try {
@@ -39,6 +40,45 @@ function safelyRemove(storage, key) {
   }
 }
 
+function readOAuthStateCookie() {
+  try {
+    const raw = String(globalThis.document?.cookie ?? '')
+      .split(';')
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${OAUTH_STATE_COOKIE}=`))
+      ?.slice(OAUTH_STATE_COOKIE.length + 1);
+    if (!raw) return null;
+    const [state, createdAtRaw] = decodeURIComponent(raw).split('.');
+    const createdAt = Number(createdAtRaw);
+    if (!state || !Number.isFinite(createdAt) || Date.now() - createdAt > OAUTH_STATE_MAX_AGE_MS) {
+      return null;
+    }
+    return state;
+  } catch {
+    return null;
+  }
+}
+
+function writeOAuthStateCookie(state, createdAt) {
+  try {
+    const secure = globalThis.location?.protocol === 'https:' || globalThis.window?.location?.protocol === 'https:'
+      ? '; Secure'
+      : '';
+    globalThis.document.cookie = `${OAUTH_STATE_COOKIE}=${encodeURIComponent(`${state}.${createdAt}`)}; Path=/; Max-Age=1800; SameSite=Lax${secure}`;
+    return readOAuthStateCookie() === state;
+  } catch {
+    return false;
+  }
+}
+
+function clearOAuthStateCookie() {
+  try {
+    globalThis.document.cookie = `${OAUTH_STATE_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  } catch {
+    // Cookie access may be blocked alongside Web Storage.
+  }
+}
+
 function readOAuthState() {
   for (const storageName of ['sessionStorage', 'localStorage']) {
     const storage = browserStorage(storageName);
@@ -52,7 +92,7 @@ function readOAuthState() {
     }
     return state;
   }
-  return null;
+  return readOAuthStateCookie();
 }
 
 function clearOAuthState() {
@@ -60,6 +100,7 @@ function clearOAuthState() {
   safelyRemove(browserStorage('localStorage'), OAUTH_STATE_KEY);
   safelyRemove(browserStorage('sessionStorage'), OAUTH_STATE_CREATED_KEY);
   safelyRemove(browserStorage('localStorage'), OAUTH_STATE_CREATED_KEY);
+  clearOAuthStateCookie();
 }
 
 function cleanRedirectUrl() {
@@ -92,7 +133,8 @@ export const TwitchAuth = {
     const createdAt = String(Date.now());
     if (savedInSession) safelySet(browserStorage('sessionStorage'), OAUTH_STATE_CREATED_KEY, createdAt);
     if (savedLocally) safelySet(browserStorage('localStorage'), OAUTH_STATE_CREATED_KEY, createdAt);
-    if (!savedInSession && !savedLocally) {
+    const savedInCookie = writeOAuthStateCookie(state, createdAt);
+    if (!savedInSession && !savedLocally && !savedInCookie) {
       throw new Error('Twitch login needs browser storage. Allow site storage for Wormhole and try again.');
     }
     const url = new URL(TWITCH_CONFIG.authorizeUrl);
@@ -101,6 +143,9 @@ export const TwitchAuth = {
     url.searchParams.set('response_type', 'token');
     url.searchParams.set('scope', TWITCH_CONFIG.scopes.join(' '));
     url.searchParams.set('state', state);
+    // Forces Twitch to show a fresh consent screen. This prevents an older
+    // authorization from silently returning without newly added scopes.
+    url.searchParams.set('force_verify', 'true');
     window.location.href = url.toString();
   },
 
@@ -164,7 +209,11 @@ export const TwitchAuth = {
       }
       const grantedScopes = new Set(validation.scopes ?? []);
       if (!TWITCH_CONFIG.scopes.every((scope) => grantedScopes.has(scope))) {
-        return { valid: false, reason: 'missing_scopes' };
+        return {
+          valid: false,
+          reason: 'missing_scopes',
+          missingScopes: TWITCH_CONFIG.scopes.filter((scope) => !grantedScopes.has(scope)),
+        };
       }
       return { valid: true, validation };
     } catch {

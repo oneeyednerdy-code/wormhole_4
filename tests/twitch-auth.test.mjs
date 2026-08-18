@@ -18,7 +18,7 @@ class MemoryStorage {
 
 globalThis.sessionStorage = new MemoryStorage();
 globalThis.localStorage = new MemoryStorage();
-globalThis.document = { title: 'Wormhole' };
+globalThis.document = { title: 'Wormhole', cookie: '' };
 globalThis.window = {
   location: {
     origin: 'https://wormhole.example',
@@ -31,6 +31,7 @@ globalThis.window = {
 };
 
 const { getOAuthRedirectUri } = await import('../js/config.js');
+const { TWITCH_CONFIG } = await import('../js/config.js');
 const { TwitchAuth } = await import('../js/twitch-auth.js');
 
 test('normalizes index.html to a stable OAuth callback directory', () => {
@@ -45,6 +46,12 @@ test('rejects direct file access with a useful hosting message', () => {
   );
 });
 
+test('an explicit production redirect can override host aliases', () => {
+  TWITCH_CONFIG.redirectUriOverride = 'https://wormhole.example/';
+  assert.equal(TWITCH_CONFIG.redirectUri, 'https://wormhole.example/');
+  TWITCH_CONFIG.redirectUriOverride = '';
+});
+
 test('login creates a valid Twitch authorization URL and durable verifier', () => {
   sessionStorage.removeItem('wormhole_oauth_state');
   localStorage.removeItem('wormhole_oauth_state');
@@ -54,10 +61,30 @@ test('login creates a valid Twitch authorization URL and durable verifier', () =
   const state = url.searchParams.get('state');
   assert.equal(url.origin, 'https://id.twitch.tv');
   assert.equal(url.searchParams.get('response_type'), 'token');
+  assert.equal(url.searchParams.get('force_verify'), 'true');
   assert.ok(url.searchParams.get('scope').split(' ').includes('user:write:chat'));
   assert.ok(state);
   assert.equal(sessionStorage.getItem('wormhole_oauth_state'), state);
   assert.equal(localStorage.getItem('wormhole_oauth_state'), state);
+});
+
+test('OAuth state can fall back to a short-lived SameSite cookie', () => {
+  const workingSessionStorage = globalThis.sessionStorage;
+  const workingLocalStorage = globalThis.localStorage;
+  const blocked = {
+    getItem() { throw new Error('blocked'); },
+    setItem() { throw new Error('blocked'); },
+    removeItem() { throw new Error('blocked'); },
+  };
+  globalThis.sessionStorage = blocked;
+  globalThis.localStorage = blocked;
+  document.cookie = '';
+  assert.doesNotThrow(() => TwitchAuth.redirectToLogin());
+  const state = new URL(window.location.href).searchParams.get('state');
+  window.location.hash = `#access_token=cookie-token&state=${state}&token_type=bearer`;
+  assert.equal(TwitchAuth.captureRedirectToken(), 'cookie-token');
+  globalThis.sessionStorage = workingSessionStorage;
+  globalThis.localStorage = workingLocalStorage;
 });
 
 test('OAuth state survives a return in a fresh browsing context', () => {
@@ -97,7 +124,7 @@ test('OAuth callbacks with the wrong state remain rejected', () => {
 
 test('expired OAuth state is rejected', () => {
   sessionStorage.setItem('wormhole_oauth_state', 'expired-state');
-  sessionStorage.setItem('wormhole_oauth_state_created', String(Date.now() - 11 * 60 * 1000));
+  sessionStorage.setItem('wormhole_oauth_state_created', String(Date.now() - 31 * 60 * 1000));
   localStorage.removeItem('wormhole_oauth_state');
   window.location.hash = '#access_token=bad-token&state=expired-state&token_type=bearer';
   assert.throws(() => TwitchAuth.captureRedirectToken(), /could not be verified/);
@@ -127,7 +154,9 @@ test('token validation checks client identity and every requested scope', async 
       return { client_id: '15d6s3tdyd3p7o3owf1ugx6zorpgfw', scopes: ['user:read:follows'] };
     },
   });
-  assert.equal((await TwitchAuth.validateToken('token')).reason, 'missing_scopes');
+  const status = await TwitchAuth.validateToken('token');
+  assert.equal(status.reason, 'missing_scopes');
+  assert.deepEqual(status.missingScopes, ['channel:manage:raids', 'user:write:chat']);
 });
 
 test('temporary validation outages preserve the session for retry', async () => {

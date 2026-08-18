@@ -151,7 +151,7 @@ test('token validation checks client identity and every requested scope', async 
   globalThis.fetch = async () => ({
     ok: true,
     async json() {
-      return { client_id: '15d6s3tdyd3p7o3owf1ugx6zorpgfw', scopes: ['user:read:follows'] };
+      return { client_id: 'wigwgqcieffev63tiiwq6j3dozv4o5', scopes: ['user:read:follows'] };
     },
   });
   const status = await TwitchAuth.validateToken('token');

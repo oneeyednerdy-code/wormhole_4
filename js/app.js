@@ -1,34 +1,34 @@
-import { TWITCH_CONFIG } from './config.js?v=46';
-import { TwitchAuth } from './twitch-auth.js?v=46';
-import { TwitchApi } from './twitch-api.js?v=46';
-import { applyHardFilters, findRaidMatches } from './raid-match.js?v=46';
-import { RaidListener } from './raid-listener.js?v=46';
-import { ViewerHistory } from './viewer-history.js?v=46';
-import { PreviousStreamHistory } from './previous-stream-history.js?v=46';
-import { paginate } from './pagination.js?v=46';
-import { sortRaidMatches } from './result-sort.js?v=46';
-import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=46';
+import { TWITCH_CONFIG } from './config.js?v=47';
+import { TwitchAuth } from './twitch-auth.js?v=47';
+import { TwitchApi } from './twitch-api.js?v=47';
+import { applyHardFilters, findRaidMatches } from './raid-match.js?v=47';
+import { RaidListener } from './raid-listener.js?v=47';
+import { ViewerHistory } from './viewer-history.js?v=47';
+import { PreviousStreamHistory } from './previous-stream-history.js?v=47';
+import { paginate } from './pagination.js?v=47';
+import { sortRaidMatches } from './result-sort.js?v=47';
+import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=47';
 import {
   createRaidCountdown,
   getRaidCountdownSnapshot,
-} from './raid-countdown.js?v=46';
-import { ChannelHistory } from './channel-history.js?v=46';
-import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=46';
+} from './raid-countdown.js?v=47';
+import { ChannelHistory } from './channel-history.js?v=47';
+import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=47';
 import {
   getGenreGameNames,
   getGenreLabelsForGame,
-} from './genre-presets.js?v=46';
-import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=46';
-import { prepareTagDisplay } from './tag-display.js?v=46';
-import { normalizeTwitchLogin } from './direct-search.js?v=46';
-import { buildFollowedDirectoryMatches } from './followed-directory.js?v=46';
-import { loadFilterPreset, saveFilterPreset } from './filter-preset-storage.js?v=46';
+} from './genre-presets.js?v=47';
+import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=47';
+import { prepareTagDisplay } from './tag-display.js?v=47';
+import { normalizeTwitchLogin } from './direct-search.js?v=47';
+import { buildFollowedDirectoryMatches } from './followed-directory.js?v=47';
+import { loadFilterPreset, saveFilterPreset } from './filter-preset-storage.js?v=47';
 import {
   buildRaidCompletionMessage,
   getRaidDestinationEmbedUrls,
   getTwitchRaidControlsUrl,
   isMatchingRaidConfirmation,
-} from './raid-completion.js?v=46';
+} from './raid-completion.js?v=47';
 
 const state = {
   api: null,

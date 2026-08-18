@@ -1,4 +1,4 @@
-import { StorageConsent } from './storage-consent.js?v=46';
+import { StorageConsent } from './storage-consent.js?v=47';
 
 const STORAGE_KEY = 'wormhole_previous_streams_v1';
 const MAX_STREAMS = 5;

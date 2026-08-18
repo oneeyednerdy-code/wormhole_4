@@ -6,16 +6,19 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv https://www.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
   <title>Wormhole Networking Tool by OneEyedNerdy</title>
   <meta name="application-name" content="Wormhole Networking Tool by OneEyedNerdy" />
-  <link rel="icon" href="assets/favicon.ico" sizes="any" />
-  <script src="js/appearance-boot.js?v=58"></script>
+  <meta name="wormhole-release" content="0.0.63" />
+  <meta name="wormhole-cache-version" content="63" />
+  <link rel="icon" href="assets/favicon.ico?v=63" sizes="any" />
+  <script src="js/appearance-boot.js?v=63"></script>
+  <script type="module" src="js/version-check.js?v=63"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=58" />
-  <link rel="stylesheet" href="css/mobile.css?v=58" />
+  <link rel="stylesheet" href="css/styles.css?v=63" />
+  <link rel="stylesheet" href="css/mobile.css?v=63" />
 </head>
 <body>
 
@@ -23,10 +26,10 @@
   <main id="login-view" class="login-view">
     <div class="login-card">
       <div class="login-card__mark">
-        <img src="assets/wormhole-logo.svg" alt="" aria-hidden="true" />
+        <img src="assets/wormhole-logo.svg?v=63" alt="" aria-hidden="true" />
       </div>
       <h1 class="login-card__title">Wormhole</h1>
-      <p class="build-version">Beta-0.0.58</p>
+      <p class="build-version">Beta-0.0.63</p>
       <p class="login-card__subtitle">
         Sign off with a raid that actually fits — matched by game,
         viewer count, and how long you've both been live.
@@ -53,7 +56,7 @@
     <a class="skip-link" href="#discovery-view">Skip to main content</a>
     <header class="topbar">
       <a class="topbar__brand" href="./" aria-label="Wormhole home">
-        <img class="topbar__brand-logo" src="assets/wormhole-logo.svg" alt="" aria-hidden="true" />
+        <img class="topbar__brand-logo" src="assets/wormhole-logo.svg?v=63" alt="" aria-hidden="true" />
         <span>Wormhole</span>
       </a>
       <div class="topbar__account">
@@ -302,8 +305,8 @@
           <label class="results-pagination__sort" for="results-sort">
             Sort by
             <select id="results-sort" class="results-pagination__select">
-              <option value="recommended" selected>Recommended</option>
-              <option value="following-first">Following First</option>
+              <option value="recommended">Recommended</option>
+              <option value="following-first" selected>Following First</option>
               <option value="viewers-high">Viewers: High to Low</option>
               <option value="viewers-low">Viewers: Low to High</option>
               <option value="ending-soon">Ending Soon (Longest Live)</option>
@@ -329,6 +332,10 @@
             <button id="results-prev-page" class="btn btn--ghost" type="button">Previous</button>
             <button id="results-next-page" class="btn btn--ghost" type="button">Next</button>
           </div>
+        </div>
+        <div id="tag-match-legend" class="tag-match-legend hidden" aria-label="Tag match legend">
+          <span id="tag-legend-shared"><span aria-hidden="true">✓</span> Shared with your stream</span>
+          <span id="tag-legend-searched"><span aria-hidden="true">#</span> Matches your tag search</span>
         </div>
         <ul id="results-list" class="results-list"></ul>
       </section>
@@ -414,9 +421,15 @@
   </dialog>
 
   <!-- RAID CONFIRM DIALOG -->
-  <dialog id="raid-dialog" class="dialog" aria-labelledby="raid-dialog-title" aria-describedby="raid-dialog-text">
+  <dialog id="raid-dialog" class="dialog raid-preview-dialog" aria-labelledby="raid-dialog-title" aria-describedby="raid-dialog-text raid-ad-status-note">
     <h2 id="raid-dialog-title" class="dialog__title">Confirm raid</h2>
     <p id="raid-dialog-text" class="dialog__text"></p>
+    <section class="raid-target-preview" aria-labelledby="raid-confirm-preview-title">
+      <h3 id="raid-confirm-preview-title">Preview the destination</h3>
+      <iframe id="raid-confirm-preview" src="about:blank" title="Twitch raid destination preview" allow="autoplay; fullscreen" allowfullscreen></iframe>
+      <p>Play the preview and wait for the stream’s content before continuing. This can help you avoid entering during an ad, but Twitch may serve different ads to different viewers.</p>
+    </section>
+    <p id="raid-ad-status-note" class="raid-message-choice__note"><strong>Target ad status unavailable:</strong> Twitch only lets a broadcaster read their own ad schedule. Preview the destination before confirming, but remember that ads may differ between viewers.</p>
     <div class="raid-message-choice">
       <label class="toggle raid-message-choice__toggle" for="raid-message-opt-in">
         <input id="raid-message-opt-in" type="checkbox" />
@@ -443,6 +456,11 @@
     <h2 id="raid-progress-title" class="raid-progress__title">Preparing raid…</h2>
     <p id="raid-progress-text" class="dialog__text" aria-live="polite"></p>
     <p id="raid-progress-audience" class="raid-progress__audience"></p>
+    <section class="raid-target-preview" aria-labelledby="raid-progress-preview-title">
+      <h3 id="raid-progress-preview-title">Check the destination before Raid Now</h3>
+      <iframe id="raid-progress-preview" src="about:blank" title="Twitch raid destination preview during countdown" allow="autoplay; fullscreen" allowfullscreen></iframe>
+      <p>Confirm that the broadcast has returned to live content before opening Twitch Raid Controls. This preview cannot guarantee the same ad experience for every viewer.</p>
+    </section>
     <div class="raid-progress__timer" role="timer" aria-live="off" aria-label="Raid countdown">
       <div id="raid-progress-ring" class="raid-progress__ring">
         <span id="raid-countdown-value">90</span>
@@ -509,9 +527,9 @@
     </label>
   </footer>
 
-  <script type="module" src="js/device-layout.js?v=58"></script>
-  <script type="module" src="js/storage-consent-ui.js?v=58"></script>
-  <script type="module" src="js/ui-controls.js?v=58"></script>
-  <script type="module" src="js/wormhole-app-v58.js?v=58"></script>
+  <script type="module" src="js/device-layout.js?v=63"></script>
+  <script type="module" src="js/storage-consent-ui.js?v=63"></script>
+  <script type="module" src="js/ui-controls.js?v=63"></script>
+  <script type="module" src="js/wormhole-app-v63.js?v=63"></script>
 </body>
 </html>

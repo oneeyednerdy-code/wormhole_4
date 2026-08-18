@@ -3,20 +3,61 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const app = await readFile(new URL('../js/wormhole-app-v58.js', import.meta.url), 'utf8');
+const app = await readFile(new URL('../js/wormhole-app-v63.js', import.meta.url), 'utf8');
 const logo = await readFile(new URL('../assets/wormhole-logo.svg', import.meta.url), 'utf8');
 const favicon = await readFile(new URL('../assets/favicon.ico', import.meta.url));
 
 test('the login screen identifies the current release as a beta', () => {
-  assert.match(html, /<p class="build-version">Beta-0\.0\.58<\/p>/);
+  assert.match(html, /<p class="build-version">Beta-0\.0\.63<\/p>/);
+});
+
+test('unfollowed result cards offer a safe Twitch follow action', () => {
+  assert.match(app, /!s\.is_followed && twitchChannelUrl/);
+  assert.match(app, />Follow on Twitch ↗<\/a>/);
+  assert.match(app, /Opens Twitch where you can follow this channel/);
+});
+
+test('raid confirmation explains why target ad status cannot be verified', () => {
+  assert.match(html, /id="raid-ad-status-note"/);
+  assert.match(html, /Twitch only lets a broadcaster read their own ad schedule/);
+  assert.match(html, /ads may differ between viewers/);
+});
+
+test('raid confirmation and countdown include live Twitch destination previews', () => {
+  assert.match(html, /id="raid-confirm-preview"[^>]*title="Twitch raid destination preview"/);
+  assert.match(html, /id="raid-progress-preview"[^>]*title="Twitch raid destination preview during countdown"/);
+  assert.match(html, /Check the destination before Raid Now/);
+  assert.match(app, /el\.raidConfirmPreview\.src = previewUrl \?\? 'about:blank'/);
+  assert.match(app, /el\.raidProgressPreview\.src = previewUrl \?\? 'about:blank'/);
+  assert.match(app, /el\.raidConfirmPreview\.src = 'about:blank'/);
+});
+
+test('following first is the default results order', () => {
+  assert.match(html, /<option value="following-first" selected>Following First<\/option>/);
+  assert.match(app, /resultsSort: 'following-first'/);
 });
 
 test('branding uses the full page title, single-color logo, and ICO bookmark icon', () => {
   assert.match(html, /<title>Wormhole Networking Tool by OneEyedNerdy<\/title>/);
-  assert.match(html, /<link rel="icon" href="assets\/favicon\.ico" sizes="any" \/>/);
+  assert.match(html, /<link rel="icon" href="assets\/favicon\.ico\?v=63" sizes="any" \/>/);
   const colors = new Set([...logo.matchAll(/#[0-9a-f]{6}/gi)].map((match) => match[0].toUpperCase()));
   assert.deepEqual([...colors], ['#8B5CF6']);
   assert.deepEqual([...favicon.subarray(0, 4)], [0, 0, 1, 0]);
+});
+
+test('result tags distinguish shared, searched, and combined matches accessibly', () => {
+  assert.match(html, /id="tag-match-legend"[^>]*aria-label="Tag match legend"/);
+  assert.match(app, /stream-tag--shared-searched/);
+  assert.match(app, /stream-tag--searched/);
+  assert.match(app, /shared with your stream and matches your tag search/);
+  assert.match(app, /state\.resultsMode === 'matches' \? getTagsQuery\(\) : \[\]/);
+});
+
+test('match cards enrich and display Twitch content classification labels', () => {
+  assert.match(app, /getChannelInformationForUsers/);
+  assert.match(app, /DebatedSocialIssuesAndPolitics: 'Politics and sensitive social issues'/);
+  assert.match(app, /aria-label="Content warnings"/);
+  assert.match(app, /contentLabelsHtml\(s\)/);
 });
 
 test('the interface exposes comparison, matching goal, presets, and layout controls', () => {

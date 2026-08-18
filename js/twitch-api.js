@@ -1,5 +1,5 @@
-import { TWITCH_CONFIG } from './twitch-config-v58.js?v=58';
-import { RequestError, RequestManager } from './browser-request-v58.js?v=58';
+import { TWITCH_CONFIG } from './twitch-config-v63.js?v=63';
+import { RequestError, RequestManager } from './browser-request-v63.js?v=63';
 
 function normalizeGameName(name) {
   return String(name ?? '')
@@ -94,6 +94,34 @@ export class TwitchApi {
   async getChannelInformation(broadcasterId) {
     const json = await this._get('/channels', { broadcaster_id: broadcasterId });
     return json.data?.[0] ?? null;
+  }
+
+  /**
+   * Gets channel metadata for many broadcasters, including Twitch Content
+   * Classification Labels. Twitch's live-stream response does not include
+   * CCLs, so match cards are enriched from /channels in batches of 100.
+   */
+  async getChannelInformationForUsers(userIds, { signal } = {}) {
+    const channels = new Map();
+    const uniqueIds = [...new Set(userIds)].filter(Boolean);
+
+    for (let index = 0; index < uniqueIds.length; index += 100) {
+      const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/channels');
+      for (const id of uniqueIds.slice(index, index + 100)) {
+        url.searchParams.append('broadcaster_id', id);
+      }
+      const response = await this._request(
+        url,
+        { headers: this.headers, cache: 'no-store' },
+        { signal }
+      );
+      const json = await response.json();
+      for (const channel of json.data ?? []) {
+        channels.set(channel.broadcaster_id, channel);
+      }
+    }
+
+    return channels;
   }
 
   /** The broadcaster's newest published past-broadcast VODs. */

@@ -25,6 +25,41 @@ test('resolves an exact streamer login through Twitch users', async () => {
   assert.equal(requestedUrl.searchParams.get('login'), 'example');
 });
 
+test('loads content classification labels from channel information in batches', async () => {
+  const requestedUrls = [];
+  globalThis.fetch = async (url) => {
+    const requestedUrl = new URL(url);
+    requestedUrls.push(requestedUrl);
+    const ids = requestedUrl.searchParams.getAll('broadcaster_id');
+    return {
+      ok: true,
+      async json() {
+        return {
+          data: ids.map((id) => ({
+            broadcaster_id: id,
+            content_classification_labels: id === 'channel-1'
+              ? ['DebatedSocialIssuesAndPolitics', 'ProfanityVulgarity']
+              : [],
+          })),
+        };
+      },
+    };
+  };
+
+  const api = new TwitchApi('test-token');
+  const ids = Array.from({ length: 101 }, (_, index) => `channel-${index + 1}`);
+  const channels = await api.getChannelInformationForUsers(ids);
+
+  assert.equal(requestedUrls.length, 2);
+  assert.equal(requestedUrls[0].pathname, '/helix/channels');
+  assert.equal(requestedUrls[0].searchParams.getAll('broadcaster_id').length, 100);
+  assert.equal(requestedUrls[1].searchParams.getAll('broadcaster_id').length, 1);
+  assert.deepEqual(channels.get('channel-1').content_classification_labels, [
+    'DebatedSocialIssuesAndPolitics',
+    'ProfanityVulgarity',
+  ]);
+});
+
 test('starts a raid and returns Twitch\'s countdown timestamp', async () => {
   let requestedUrl;
   let requestedMethod;

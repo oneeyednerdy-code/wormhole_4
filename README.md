@@ -1,11 +1,22 @@
 # Wormhole (web)
 
-Current release: **Beta-0.0.58**. During beta development, each feature build
-increments the patch number (`Beta-0.0.59`, `Beta-0.0.60`, and so on).
+Current release: **Beta-0.0.63**. During beta development, each feature build
+increments the patch number (`Beta-0.0.63`, `Beta-0.0.63`, and so on).
+
+Wormhole checks `version.json` with `cache: no-store` on every page load. If a
+browser serves an older page, the app removes obsolete Wormhole-managed Cache
+Storage entries and reloads once with the current release in the URL. This
+does not clear Twitch login state, accessibility settings, theme, privacy
+choices, filter presets, or optional local history.
 
 The product name used in browser tabs and bookmarks is **Wormhole Networking
 Tool by OneEyedNerdy**. Its hourglass-wormhole mark uses a single Wormhole
 purple (`#8B5CF6`) and is supplied as both SVG artwork and a multi-size ICO.
+
+Result-card tags explain why they matched without relying on color alone. A
+checkmark identifies a tag shared with the logged-in stream, a pound sign
+identifies a manually searched tag, and both symbols identify a tag satisfying
+both conditions. Matching tags are ordered before neutral channel tags.
 
 A static website — plain HTML/CSS/JS, no build step, no framework — that
 logs in with Twitch and finds you a good channel to raid, matched on:
@@ -120,7 +131,7 @@ handles natively — no popups, no custom URL schemes, no build tooling.
    generated client secret in Wormhole or any frontend file.
 5. Save, then copy the **Client ID**.
 
-Open `js/twitch-config-v58.js` and paste it in:
+Open `js/twitch-config-v63.js` and paste it in:
 
 ```js
 clientId: 'YOUR_TWITCH_CLIENT_ID',
@@ -137,7 +148,7 @@ URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
 match, including HTTPS, hostname, path, and trailing slash.
 
 If your host exposes the app through several aliases or rewrites, set
-`redirectUriOverride` in `js/twitch-config-v58.js` to the one production callback you
+`redirectUriOverride` in `js/twitch-config-v63.js` to the one production callback you
 registered with Twitch. Production and preview hostnames are different origins
 and must not be treated as interchangeable.
 
@@ -309,8 +320,23 @@ an OAuth Redirect URL on your Twitch app (step 1).
 - Each visible result card loads the channel's public follower total from
   Twitch's `/channels/followers` endpoint. Totals are cached while the app is
   open, and only the current results page is loaded to limit API requests.
-- Result cards show Twitch's mature flag and content-classification labels so
-  creators can spot potential community-safety mismatches before raiding.
+- Result cards load Twitch Content Classification Labels from channel
+  information and show them as accessible content warnings, including
+  politics and sensitive social issues, drugs or intoxication, gambling,
+  mature-rated games, profanity, sexual themes, and graphic violence.
+- Following First is the default results order. Channels the logged-in user
+  already follows appear above unfollowed channels, while the other sort modes
+  remain available when a different ordering is needed.
+- Unfollowed result cards include a Follow on Twitch action. Twitch does not
+  provide an API operation for third-party apps to create a follow, so the
+  action securely opens that channel on Twitch for the user to confirm.
+- Twitch restricts ad-schedule data to the broadcaster who owns the target
+  channel. Wormhole therefore does not claim to verify a destination's ad
+  status and explains this limitation in the raid confirmation dialog.
+- The raid confirmation dialog and active 90-second countdown both embed the
+  target channel. The streamer can play the preview and wait for live content
+  before using Twitch's Raid Now control. Because Twitch ads may be
+  viewer-specific, the preview is a manual safety check rather than a guarantee.
 - **Recent activity** loads on demand for one result at a time and includes:
   the latest three public VODs, total broadcasts found in the last 30 days,
   popular clips with in-card previews, account creation date, and the next
@@ -428,7 +454,7 @@ assets/
   favicon.ico        # 16, 32, and 48 px browser/bookmark icon
 css/styles.css       # All styling
 js/
-  twitch-config-v58.js # Client ID, scopes, redirect URI
+  twitch-config-v63.js # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   direct-search.js    # Normalizes exact streamer usernames and URLs
@@ -439,7 +465,7 @@ js/
   appearance-boot.js   # Applies saved theme before first paint
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
-  wormhole-app-v58.js # Wires everything together, renders the UI
+  wormhole-app-v63.js # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
   twitch-auth.test.mjs # Twitch login security and redirect tests

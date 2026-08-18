@@ -5,6 +5,16 @@ html[data-device-layout='tablet'] {
   scroll-padding-top: 82px;
 }
 
+html[data-device-layout='mobile'] .raid-target-preview,
+html[data-device-layout='tablet'] .raid-target-preview {
+  padding: 8px;
+}
+
+html[data-device-layout='mobile'] .raid-target-preview iframe,
+html[data-device-layout='tablet'] .raid-target-preview iframe {
+  min-height: 260px;
+}
+
 html[data-device-layout='mobile'] body,
 html[data-device-layout='tablet'] body {
   -webkit-text-size-adjust: 100%;

@@ -98,7 +98,7 @@ handles natively — no popups, no custom URL schemes, no build tooling.
    for example:
    - `http://localhost:8000/` for local testing
    - `https://yourname.github.io/wormhole/` for GitHub Pages
-   - `https://wormhole.netlify.app/` for Netlify
+   - `https://your-domain.example/` for another static host
 
    You can register multiple redirect URLs on the same app, so add both your
    local and production URLs.
@@ -108,7 +108,7 @@ handles natively — no popups, no custom URL schemes, no build tooling.
    generated client secret in Wormhole or any frontend file.
 5. Save, then copy the **Client ID**.
 
-Open `js/twitch-config-v48.js` and paste it in:
+Open `js/twitch-config-v49.js` and paste it in:
 
 ```js
 clientId: 'YOUR_TWITCH_CLIENT_ID',
@@ -125,9 +125,9 @@ URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
 match, including HTTPS, hostname, path, and trailing slash.
 
 If your host exposes the app through several aliases or rewrites, set
-`redirectUriOverride` in `js/twitch-config-v48.js` to the one production callback you
-registered with Twitch. Netlify production, branch-deploy, and deploy-preview
-hostnames are different origins and must not be treated as interchangeable.
+`redirectUriOverride` in `js/twitch-config-v49.js` to the one production callback you
+registered with Twitch. Production and preview hostnames are different origins
+and must not be treated as interchangeable.
 
 Login requests force a fresh Twitch approval screen so newly added permissions
 cannot be skipped by an older authorization. The CSRF verifier is retained for
@@ -158,33 +158,11 @@ serves static files.
 Any static host works, since there's no server-side code:
 
 - **GitHub Pages**: push this folder to a repo, enable Pages on it.
-- **Netlify / Vercel**: drag-and-drop the folder, or connect the repo.
+- **Vercel or another static host**: upload the folder or connect the repo.
 - **Any web host**: it's just static files — upload as-is.
 
 Whatever URL it ends up live at, make sure that exact URL is registered as
 an OAuth Redirect URL on your Twitch app (step 1).
-
-### Optional protected Netlify actions
-
-The app still works as a static site. For a Netlify deployment, v44 also ships
-an optional same-origin serverless gate for raid start, raid cancellation, and
-the opted-in completion chat message. It validates the Twitch token on every
-mutation, verifies that the token owner is the initiating broadcaster/sender,
-rejects cross-origin requests, limits accepted fields, and never retries a
-mutation automatically.
-
-1. In Netlify, set `TWITCH_CLIENT_ID` to the same public Client ID used in
-   `js/twitch-config-v48.js`.
-2. Set `WORMHOLE_ALLOWED_ORIGIN` to the exact production origin, such as
-   `https://wormhole.netlify.app` (no trailing slash).
-3. Change `backendActions` to `true` in `js/twitch-config-v48.js`.
-4. Deploy the folder. The included `netlify.toml` publishes the site, exposes
-   `/api/raid-action`, applies security headers, and configures safe asset
-   caching.
-
-Do not put a Twitch client secret in the frontend or in this package. This
-gate validates the existing user token; an authorization-code migration would
-be required to move Twitch tokens completely into HttpOnly cookies.
 
 ## Reliability and safety
 
@@ -203,8 +181,6 @@ be required to move Twitch tokens completely into HttpOnly cookies.
   If Twitch validates the token but briefly fails to return the full `/users`
   profile, Wormhole can open with the validated user ID and login while clearly
   marking the reduced startup state.
-- `netlify.toml` adds clickjacking, MIME-sniffing, referrer, permissions, and
-  opener protections.
 
 ---
 
@@ -420,7 +396,7 @@ index.html          # Page shell, both views (login + app)
 privacy.html        # Storage and privacy policy
 css/styles.css       # All styling
 js/
-  twitch-config-v48.js # Client ID, scopes, redirect URI
+  twitch-config-v49.js # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   direct-search.js    # Normalizes exact streamer usernames and URLs
@@ -431,7 +407,7 @@ js/
   appearance-boot.js   # Applies saved theme before first paint
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
-  wormhole-app-v48.js # Wires everything together, renders the UI
+  wormhole-app-v49.js # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
   twitch-auth.test.mjs # Twitch login security and redirect tests

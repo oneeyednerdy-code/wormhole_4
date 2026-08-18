@@ -1,5 +1,5 @@
-import { TWITCH_CONFIG } from './twitch-config-v48.js?v=48';
-import { RequestError, RequestManager } from './request-manager.js?v=48';
+import { TWITCH_CONFIG } from './twitch-config-v49.js?v=49';
+import { RequestError, RequestManager } from './request-manager.js?v=49';
 
 function normalizeGameName(name) {
   return String(name ?? '')
@@ -52,14 +52,6 @@ export class TwitchApi {
       }
       throw error;
     }
-  }
-
-  async _protectedAction(action, payload) {
-    return this._request('/api/raid-action', {
-      method: 'POST',
-      headers: { ...this.headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ...payload }),
-    }, { retries: 0 });
   }
 
   async _get(path, query = {}, { signal } = {}) {
@@ -644,11 +636,6 @@ export class TwitchApi {
    * Requires the channel:manage:raids scope.
    */
   async startRaid(fromBroadcasterId, toBroadcasterId) {
-    if (TWITCH_CONFIG.backendActions) {
-      const response = await this._protectedAction('start', { fromBroadcasterId, toBroadcasterId });
-      const json = await response.json();
-      return json.data?.[0] ?? null;
-    }
     const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/raids');
     url.searchParams.set('from_broadcaster_id', fromBroadcasterId);
     url.searchParams.set('to_broadcaster_id', toBroadcasterId);
@@ -659,11 +646,6 @@ export class TwitchApi {
 
   /** Sends a chat message as the logged-in user. Requires user:write:chat. */
   async sendChatMessage(broadcasterId, senderId, message) {
-    if (TWITCH_CONFIG.backendActions) {
-      const response = await this._protectedAction('chat', { broadcasterId, senderId, message });
-      const json = await response.json();
-      return json.data?.[0] ?? { is_sent: false, drop_reason: { message: 'Twitch did not return a delivery result.' } };
-    }
     const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/chat/messages');
     const res = await this._request(url, {
       method: 'POST',
@@ -680,10 +662,6 @@ export class TwitchApi {
 
   /** Cancels a pending raid initiated by the logged-in broadcaster. */
   async cancelRaid(fromBroadcasterId) {
-    if (TWITCH_CONFIG.backendActions) {
-      await this._protectedAction('cancel', { fromBroadcasterId });
-      return;
-    }
     const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/raids');
     url.searchParams.set('broadcaster_id', fromBroadcasterId);
     await this._request(url, { method: 'DELETE', headers: this.headers });

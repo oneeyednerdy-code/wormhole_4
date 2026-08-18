@@ -1,34 +1,34 @@
-import { TWITCH_CONFIG } from './twitch-config-v48.js?v=48';
-import { TwitchAuth } from './twitch-auth.js?v=48';
-import { TwitchApi } from './twitch-api.js?v=48';
-import { applyHardFilters, findRaidMatches } from './raid-match.js?v=48';
-import { RaidListener } from './raid-listener.js?v=48';
-import { ViewerHistory } from './viewer-history.js?v=48';
-import { PreviousStreamHistory } from './previous-stream-history.js?v=48';
-import { paginate } from './pagination.js?v=48';
-import { sortRaidMatches } from './result-sort.js?v=48';
-import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=48';
+import { TWITCH_CONFIG } from './twitch-config-v49.js?v=49';
+import { TwitchAuth } from './twitch-auth.js?v=49';
+import { TwitchApi } from './twitch-api.js?v=49';
+import { applyHardFilters, findRaidMatches } from './raid-match.js?v=49';
+import { RaidListener } from './raid-listener.js?v=49';
+import { ViewerHistory } from './viewer-history.js?v=49';
+import { PreviousStreamHistory } from './previous-stream-history.js?v=49';
+import { paginate } from './pagination.js?v=49';
+import { sortRaidMatches } from './result-sort.js?v=49';
+import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=49';
 import {
   createRaidCountdown,
   getRaidCountdownSnapshot,
-} from './raid-countdown.js?v=48';
-import { ChannelHistory } from './channel-history.js?v=48';
-import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=48';
+} from './raid-countdown.js?v=49';
+import { ChannelHistory } from './channel-history.js?v=49';
+import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=49';
 import {
   getGenreGameNames,
   getGenreLabelsForGame,
-} from './genre-presets.js?v=48';
-import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=48';
-import { prepareTagDisplay } from './tag-display.js?v=48';
-import { normalizeTwitchLogin } from './direct-search.js?v=48';
-import { buildFollowedDirectoryMatches } from './followed-directory.js?v=48';
-import { loadFilterPreset, saveFilterPreset } from './filter-preset-storage.js?v=48';
+} from './genre-presets.js?v=49';
+import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=49';
+import { prepareTagDisplay } from './tag-display.js?v=49';
+import { normalizeTwitchLogin } from './direct-search.js?v=49';
+import { buildFollowedDirectoryMatches } from './followed-directory.js?v=49';
+import { loadFilterPreset, saveFilterPreset } from './filter-preset-storage.js?v=49';
 import {
   buildRaidCompletionMessage,
   getRaidDestinationEmbedUrls,
   getTwitchRaidControlsUrl,
   isMatchingRaidConfirmation,
-} from './raid-completion.js?v=48';
+} from './raid-completion.js?v=49';
 
 const state = {
   api: null,
@@ -198,7 +198,7 @@ function showView(view) {
 el.loginBtn.addEventListener('click', () => {
   if (TWITCH_CONFIG.clientId === 'YOUR_TWITCH_CLIENT_ID') {
     el.loginError.textContent =
-      'Set your Twitch Client ID in js/twitch-config-v48.js before logging in.';
+      'Set your Twitch Client ID in js/twitch-config-v49.js before logging in.';
     return;
   }
   try {

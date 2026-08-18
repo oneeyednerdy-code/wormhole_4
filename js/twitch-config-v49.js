@@ -23,14 +23,9 @@ export const TWITCH_CONFIG = {
   // rewrites, set this to the one exact production callback registered in the
   // Twitch Developer Console, including its trailing slash.
   redirectUriOverride: '',
-  // Set to true on Netlify after configuring TWITCH_CLIENT_ID and
-  // WORMHOLE_ALLOWED_ORIGIN. Raid and completion-message mutations will then
-  // be identity-checked by the bundled serverless function.
-  backendActions: false,
-
   // Must exactly match an "OAuth Redirect URL" registered on your Twitch app.
   // Defaults to wherever this page is currently served from, so it works
-  // unchanged on localhost, GitHub Pages, Netlify, etc. — just make sure
+  // unchanged on localhost, GitHub Pages, or another static host — just make sure
   // the URL you register in the Twitch console matches this at runtime.
   get redirectUri() {
     return this.redirectUriOverride || getOAuthRedirectUri();

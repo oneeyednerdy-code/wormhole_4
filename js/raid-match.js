@@ -1,5 +1,5 @@
-import { ViewerHistory } from './viewer-history.js?v=65';
-import { isLanguageTag } from './language-tags.js?v=65';
+import { ViewerHistory } from './viewer-history.js?v=66';
+import { isLanguageTag } from './language-tags.js?v=66';
 
 // Base weights are used when automatic tag comparison is disabled or the
 // logged-in stream has no meaningful non-language tags. When tags are
@@ -97,6 +97,8 @@ function combinedScore(scores, tagSimilarityPercent) {
  * - requiredTags: array of tag strings (case-insensitive) — a candidate
  *   must have at least one of these in its own `tags` array (the free-text
  *   tags Twitch streamers set, e.g. "Speedrun", "Cozy", "English").
+ * - requiredLanguageTag: an independently required language tag. This keeps
+ *   a broad default such as English from satisfying a custom tag search.
  */
 export function applyHardFilters(
   candidates,
@@ -107,12 +109,14 @@ export function applyHardFilters(
     requireFollowed = false,
     requireSharedTeam = false,
     requiredTags = null,
+    requiredLanguageTag = null,
   } = {}
 ) {
   const typeFilter = allowedBroadcasterTypes ? new Set(allowedBroadcasterTypes) : null;
   const tagFilter = requiredTags?.length
-    ? new Set(requiredTags.map((t) => t.toLowerCase()))
+    ? new Set(requiredTags.map((t) => String(t).trim().toLowerCase()).filter(Boolean))
     : null;
+  const languageKey = String(requiredLanguageTag ?? '').trim().toLowerCase();
 
   return candidates.filter((s) => {
     if (minViewers != null && s.viewer_count < minViewers) return false;
@@ -121,8 +125,12 @@ export function applyHardFilters(
     if (requireFollowed && s.is_followed !== true) return false;
     if (requireSharedTeam && !(s.shared_team_names?.length > 0)) return false;
     if (tagFilter) {
-      const streamTags = (s.tags ?? []).map((t) => t.toLowerCase());
+      const streamTags = (s.tags ?? []).map((t) => String(t).trim().toLowerCase());
       if (!streamTags.some((t) => tagFilter.has(t))) return false;
+    }
+    if (languageKey) {
+      const streamTags = (s.tags ?? []).map((t) => String(t).trim().toLowerCase());
+      if (!streamTags.includes(languageKey)) return false;
     }
     return true;
   });
@@ -150,6 +158,7 @@ export function findRaidMatches(
     requireFollowed = false,
     requireSharedTeam = false,
     requiredTags = null,
+    requiredLanguageTag = null,
     compareTags = true,
     categoryMatchApplied = true,
     primaryCategoryId = myStream.game_id,
@@ -163,6 +172,7 @@ export function findRaidMatches(
     requireFollowed,
     requireSharedTeam,
     requiredTags,
+    requiredLanguageTag,
   });
 
   // Record fresh samples for everyone we just looked at, so the local

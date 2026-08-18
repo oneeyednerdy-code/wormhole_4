@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const app = await readFile(new URL('../js/wormhole-app-v65.js', import.meta.url), 'utf8');
+const app = await readFile(new URL('../js/wormhole-app-v66.js', import.meta.url), 'utf8');
 const logo = await readFile(new URL('../assets/wormhole-logo.svg', import.meta.url), 'utf8');
 const favicon = await readFile(new URL('../assets/favicon.ico', import.meta.url));
 
 test('the login screen identifies the current release as a beta', () => {
-  assert.match(html, /<p class="build-version">Beta-0\.0\.65<\/p>/);
+  assert.match(html, /<p class="build-version">Beta-0\.0\.66<\/p>/);
 });
 
 test('unfollowed result cards offer a safe Twitch follow action', () => {
@@ -43,13 +43,15 @@ test('Following Only bypasses categories, keeps typed tags, and works offline', 
   assert.match(app, /usingOfflineFollowingMode = !state\.myStream && wantsOnlyFollowing/);
   assert.match(app, /onlyFollowing: wantsOnlyFollowing/);
   assert.match(app, /requiredTags: tags/);
+  assert.match(app, /requiredLanguageTag: languageTag/);
+  assert.match(app, /const tags = getCustomTagsQuery\(\)/);
   assert.match(app, /buildFollowedDirectoryMatches\(filteredFollowedStreams\)/);
   assert.match(app, /el\.findBtn\.disabled = !el\.onlyFollowingFilter\.checked/);
 });
 
 test('branding uses the full page title, single-color logo, and ICO bookmark icon', () => {
   assert.match(html, /<title>Wormhole Networking Tool by OneEyedNerdy<\/title>/);
-  assert.match(html, /<link rel="icon" href="assets\/favicon\.ico\?v=65" sizes="any" \/>/);
+  assert.match(html, /<link rel="icon" href="assets\/favicon\.ico\?v=66" sizes="any" \/>/);
   const colors = new Set([...logo.matchAll(/#[0-9a-f]{6}/gi)].map((match) => match[0].toUpperCase()));
   assert.deepEqual([...colors], ['#8B5CF6']);
   assert.deepEqual([...favicon.subarray(0, 4)], [0, 0, 1, 0]);

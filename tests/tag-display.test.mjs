@@ -32,3 +32,13 @@ test('tag matching is case-insensitive and keeps neutral tags after matches', ()
     ]
   );
 });
+
+test('GenAIOptedOut receives searched-tag highlighting', () => {
+  assert.deepEqual(
+    prepareTagDisplay(['English', 'GenAIOptedOut'], [], ['GenAIOptedOut']),
+    [
+      { label: 'GenAIOptedOut', shared: false, searched: true, language: false },
+      { label: 'English', shared: false, searched: false, language: true },
+    ]
+  );
+});

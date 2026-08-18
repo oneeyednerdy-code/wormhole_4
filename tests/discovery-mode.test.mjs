@@ -45,3 +45,20 @@ test('typed tags still filter followed streams after category bypass', () => {
     ['cozy']
   );
 });
+
+test('offline followed discovery requires language separately from a custom tag', () => {
+  const streams = [
+    { user_id: '1', tags: ['English', 'GenAIOptedOut'], is_followed: true },
+    { user_id: '2', tags: ['English', 'Cozy'], is_followed: true },
+    { user_id: '3', tags: ['Spanish', 'GenAIOptedOut'], is_followed: true },
+  ];
+
+  assert.deepEqual(
+    applyHardFilters(streams, {
+      requireFollowed: true,
+      requiredTags: ['GenAIOptedOut'],
+      requiredLanguageTag: 'English',
+    }).map((stream) => stream.user_id),
+    ['1']
+  );
+});

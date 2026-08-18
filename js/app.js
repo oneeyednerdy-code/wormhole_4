@@ -1,27 +1,28 @@
-import { TWITCH_CONFIG } from './config.js?v=37';
-import { TwitchAuth } from './twitch-auth.js?v=37';
-import { TwitchApi } from './twitch-api.js?v=37';
-import { applyHardFilters, findRaidMatches } from './raid-match.js?v=37';
-import { RaidListener } from './raid-listener.js?v=37';
-import { ViewerHistory } from './viewer-history.js?v=37';
-import { PreviousStreamHistory } from './previous-stream-history.js?v=37';
-import { paginate } from './pagination.js?v=37';
-import { sortRaidMatches } from './result-sort.js?v=37';
-import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=37';
+import { TWITCH_CONFIG } from './config.js?v=39';
+import { TwitchAuth } from './twitch-auth.js?v=39';
+import { TwitchApi } from './twitch-api.js?v=39';
+import { applyHardFilters, findRaidMatches } from './raid-match.js?v=39';
+import { RaidListener } from './raid-listener.js?v=39';
+import { ViewerHistory } from './viewer-history.js?v=39';
+import { PreviousStreamHistory } from './previous-stream-history.js?v=39';
+import { paginate } from './pagination.js?v=39';
+import { sortRaidMatches } from './result-sort.js?v=39';
+import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=39';
 import {
   createRaidCountdown,
   getRaidCountdownSnapshot,
   twitchChannelUrl,
-} from './raid-countdown.js?v=37';
-import { ChannelHistory } from './channel-history.js?v=37';
-import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=37';
+} from './raid-countdown.js?v=39';
+import { ChannelHistory } from './channel-history.js?v=39';
+import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=39';
 import {
   getGenreGameNames,
   getGenreLabelsForGame,
-} from './genre-presets.js?v=37';
-import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=37';
-import { prepareTagDisplay } from './tag-display.js?v=37';
-import { normalizeTwitchLogin } from './direct-search.js?v=37';
+} from './genre-presets.js?v=39';
+import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=39';
+import { prepareTagDisplay } from './tag-display.js?v=39';
+import { normalizeTwitchLogin } from './direct-search.js?v=39';
+import { buildFollowedDirectoryMatches } from './followed-directory.js?v=39';
 
 const state = {
   api: null,
@@ -43,6 +44,7 @@ const state = {
   resultsPage: 1,
   resultsPageSize: 12,
   resultsSort: 'recommended',
+  resultsMode: 'matches',
   activeRaid: null,
   raidCountdownTimer: null,
   raidRedirectTimer: null,
@@ -70,6 +72,8 @@ const el = {
   directStreamerInput: document.getElementById('direct-streamer-input'),
   directStreamerBtn: document.getElementById('direct-streamer-btn'),
   directStreamerStatus: document.getElementById('direct-streamer-status'),
+  showFollowedLiveBtn: document.getElementById('show-followed-live-btn'),
+  followedLiveStatus: document.getElementById('followed-live-status'),
   viewerMatchHint: document.getElementById('viewer-match-hint'),
   viewerToleranceFilter: document.getElementById('viewer-tolerance-filter'),
   statusFilters: document.getElementById('status-filters'),
@@ -186,6 +190,7 @@ el.logoutBtn.addEventListener('click', async () => {
   state.user = null;
   state.myStream = null;
   state.matches = [];
+  el.showFollowedLiveBtn.disabled = true;
   showView('login');
 });
 
@@ -204,6 +209,8 @@ async function loadCurrentUser() {
   state.recentVods = vodResult.status === 'fulfilled' ? vodResult.value : [];
   state.selectedPreviousVodId = state.recentVods[0]?.id ?? null;
   state.usingPreviousStream = false;
+  el.showFollowedLiveBtn.disabled = false;
+  el.followedLiveStatus.textContent = 'Ready to load every followed channel currently live.';
   if (state.myStream) PreviousStreamHistory.record(state.myStream);
   renderUser();
   renderStreamPanel();
@@ -519,7 +526,7 @@ function setupOfflineCategorySearch() {
     }
     offlineCategorySearchDebounce = setTimeout(async () => {
       try {
-        const results = await state.api.searchCategories(query, { maxResults: 8 });
+        const results = await state.api.searchCategories(query, { maxResults: 20 });
         if (input.value.trim() !== query) return;
         if (!results.length) {
           suggestions.innerHTML = '<li class="category-suggestions__empty">No matches</li>';
@@ -599,9 +606,11 @@ function renderTeamHint() {
 el.findBtn.addEventListener('click', () => runSearch());
 
 let directSearchGeneration = 0;
+let followedLiveGeneration = 0;
 
 el.directStreamerForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  followedLiveGeneration += 1;
   if (!state.myStream || !state.api) {
     el.directStreamerStatus.textContent = 'Go live or choose a previous stream first.';
     return;
@@ -667,6 +676,7 @@ el.directStreamerForm.addEventListener('submit', async (event) => {
     });
     state.resultsPage = 1;
     state.resultsSort = 'recommended';
+    state.resultsMode = 'direct';
     el.directStreamerStatus.textContent = `Showing ${profile.display_name}. Discovery filters were bypassed.`;
     el.resultsPanel.classList.remove('hidden');
     renderResults();
@@ -682,10 +692,77 @@ el.directStreamerForm.addEventListener('submit', async (event) => {
   }
 });
 
+el.showFollowedLiveBtn.addEventListener('click', async () => {
+  if (!state.api || !state.user) return;
+
+  const generation = ++followedLiveGeneration;
+  searchGeneration += 1;
+  directSearchGeneration += 1;
+  if (state.myStream) {
+    el.directStreamerBtn.disabled = false;
+    el.directStreamerBtn.textContent = 'Find streamer';
+  }
+
+  el.showFollowedLiveBtn.disabled = true;
+  el.showFollowedLiveBtn.textContent = 'Loading followed channels…';
+  el.followedLiveStatus.textContent = 'Loading every followed channel currently live…';
+  el.resultsPanel.classList.remove('hidden');
+  el.resultsPagination.classList.add('hidden');
+  el.resultsList.innerHTML = loadingCardsHtml();
+  showSearchStatus('Loading your live followed channels from Twitch…');
+
+  try {
+    const streams = await state.api.getFollowedLiveStreams(state.user.id);
+    if (generation !== followedLiveGeneration) return;
+
+    const broadcasterTypes = await state.api.getBroadcasterTypes(
+      streams.map((stream) => stream.user_id)
+    );
+    if (generation !== followedLiveGeneration) return;
+
+    for (const stream of streams) {
+      stream.broadcaster_type = broadcasterTypes.get(stream.user_id) ?? 'none';
+      stream.is_followed = true;
+      stream.followed_at = null;
+    }
+
+    state.matches = buildFollowedDirectoryMatches(streams);
+    state.resultsPage = 1;
+    state.resultsSort = 'viewers-high';
+    state.resultsMode = 'followed-live';
+    state.expandedWatchId = null;
+    state.expandedActivityId = null;
+    el.followedLiveStatus.textContent = streams.length
+      ? `${fmtNumber(streams.length)} followed channel${streams.length === 1 ? '' : 's'} live now. Discovery filters were bypassed.`
+      : 'None of the channels you follow are currently live.';
+    renderResults();
+  } catch (error) {
+    if (generation !== followedLiveGeneration) return;
+    console.error(error);
+    state.matches = [];
+    state.resultsMode = 'followed-live';
+    el.resultsList.innerHTML = '';
+    el.followedLiveStatus.textContent = 'Could not load followed live channels.';
+    showResultNotice({
+      title: 'Followed channels unavailable',
+      message: 'Wormhole could not load your live followed channels. Log out and back in if Twitch needs the follow permission.',
+      retry: false,
+    });
+  } finally {
+    if (generation === followedLiveGeneration && state.api) {
+      el.showFollowedLiveBtn.disabled = false;
+      el.showFollowedLiveBtn.textContent = 'Show all live followed channels';
+    }
+  }
+});
+
 // Re-run the search automatically when a filter changes, but only if
 // results are already showing — no point searching before the first click.
 function rerunIfResultsVisible() {
-  if (!el.resultsPanel.classList.contains('hidden')) runSearch();
+  if (
+    !el.resultsPanel.classList.contains('hidden') &&
+    state.resultsMode === 'matches'
+  ) runSearch();
 }
 
 function onFilterChanged() {
@@ -963,11 +1040,12 @@ el.clearGenresBtn.addEventListener('click', () => {
 //
 // IGDB's own API can't be called from a browser: it has no CORS support
 // and its auth needs a client secret that can't safely live in front-end
-// code. Twitch's /search/categories endpoint covers the same underlying
-// database (Twitch owns IGDB) and works with the token we already have —
-// so that's what powers "search other games/categories" here.
+// code. Twitch's /games and /search/categories endpoints cover the same
+// underlying database (Twitch owns IGDB) and work with the token we already
+// have. Using both prevents exact categories from being buried by fuzzy ones.
 
 let categorySearchDebounce = null;
+let categorySearchGeneration = 0;
 
 el.categorySearchInput.addEventListener('input', () => {
   clearTimeout(categorySearchDebounce);
@@ -985,10 +1063,17 @@ el.categorySearchInput.addEventListener('blur', () => {
 });
 
 async function runCategorySearch(query) {
+  const generation = ++categorySearchGeneration;
+  const normalizedQuery = query.trim();
   try {
-    const results = await state.api.searchCategories(query, { maxResults: 8 });
+    const results = await state.api.searchCategories(normalizedQuery, { maxResults: 20 });
+    if (
+      generation !== categorySearchGeneration ||
+      el.categorySearchInput.value.trim() !== normalizedQuery
+    ) return;
     renderCategorySuggestions(results);
   } catch (e) {
+    if (generation !== categorySearchGeneration) return;
     console.error(e);
     hideCategorySuggestions();
   }
@@ -1114,6 +1199,8 @@ function showResultNotice({ title, message, retry = false }) {
 
 async function runSearch() {
   if (!state.myStream) return;
+  followedLiveGeneration += 1;
+  state.resultsMode = 'matches';
   if (!state.usingPreviousStream) PreviousStreamHistory.record(state.myStream);
 
   const generation = ++searchGeneration;
@@ -1306,6 +1393,7 @@ function scoreLabel(score) {
 }
 
 function matchReasons(match) {
+  if (match.directoryListing) return ['Channel you follow', 'Currently live'];
   const reasons = match.categoryMatchApplied ? ['Matching category'] : [];
   if (match.meaningfulSharedTags?.length) {
     reasons.push(`${match.meaningfulSharedTags.length} shared Twitch tag${match.meaningfulSharedTags.length === 1 ? '' : 's'}`);
@@ -1332,8 +1420,12 @@ function renderResults() {
   const renderGeneration = ++resultsRenderGeneration;
   if (!state.matches.length) {
     showResultNotice({
-      title: 'No matching channels found',
-      message: 'Try removing a tag or team filter, adding another category, or showing all viewer counts.',
+      title: state.resultsMode === 'followed-live'
+        ? 'No followed channels are live'
+        : 'No matching channels found',
+      message: state.resultsMode === 'followed-live'
+        ? 'None of the channels you follow are currently streaming.'
+        : 'Try removing a tag or team filter, adding another category, or showing all viewer counts.',
     });
     el.resultsPagination.classList.add('hidden');
     el.resultsList.innerHTML = '';
@@ -1611,11 +1703,12 @@ function watchMediaHtml(stream) {
 
 function resultCardHtml(match, rank) {
   const s = match.stream;
+  const isDirectoryListing = Boolean(match.directoryListing);
   const scorePct = Math.round(match.matchScore);
   // Analog meter needle: -90deg (0%) to +90deg (100%).
   const needleDeg = -90 + (scorePct / 100) * 180;
   const statusLabel = STATUS_LABELS[s.broadcaster_type ?? 'none'];
-  const raidButton = state.usingPreviousStream
+  const raidButton = !state.myStream || state.usingPreviousStream
     ? '<button class="btn btn--outline" disabled title="You must be live to start a raid">Go live to raid</button>'
     : `<button class="btn btn--outline" data-raid-id="${escapeHtml(s.user_id)}">Raid this channel</button>`;
   const previewButton = state.expandedWatchId === s.user_id
@@ -1633,13 +1726,13 @@ function resultCardHtml(match, rank) {
         <span class="result-card__rank">${rank}</span>
         <div class="result-card__identity">
           <span class="result-card__name">${escapeHtml(s.user_name)}</span>
-          <span class="result-card__match-label">${scoreLabel(scorePct)}</span>
+          <span class="result-card__match-label">${isDirectoryListing ? 'Live channel you follow' : scoreLabel(scorePct)}</span>
         </div>
-        <div class="meter ${scoreClass(scorePct)}" title="${scorePct}% match — ${scoreLabel(scorePct)}" aria-label="${scorePct}% match, ${scoreLabel(scorePct)}">
+        ${isDirectoryListing ? '<span class="following-tag">Following · live now</span>' : `<div class="meter ${scoreClass(scorePct)}" title="${scorePct}% match — ${scoreLabel(scorePct)}" aria-label="${scorePct}% match, ${scoreLabel(scorePct)}">
           <div class="meter__arc"></div>
           <div class="meter__needle" style="transform: rotate(${needleDeg}deg)"></div>
           <div class="meter__value">${scorePct}</div>
-        </div>
+        </div>`}
       </div>
       ${watchMediaHtml(s)}
       <p class="result-card__title">${escapeHtml(s.title)}</p>

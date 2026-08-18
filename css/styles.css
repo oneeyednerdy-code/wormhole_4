@@ -499,6 +499,35 @@ body.light-theme .btn--primary:hover:not(:disabled) {
   font-size: 0.78rem;
 }
 
+/* ---------- Followed live directory ---------- */
+
+.followed-live-panel {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) auto;
+  align-items: center;
+  gap: 12px 24px;
+}
+
+.followed-live-panel__copy h2 {
+  margin: 2px 0 5px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.12rem;
+}
+
+.followed-live-panel__copy p:last-child {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+}
+
+.followed-live-status {
+  grid-column: 1 / -1;
+  min-height: 1.3em;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
 /* ---------- Own stream panel ---------- */
 
 .tally {
@@ -2205,7 +2234,12 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 
-  .direct-search-status {
+  .followed-live-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .direct-search-status,
+  .followed-live-status {
     grid-column: auto;
   }
 

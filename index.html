@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
   <title>Wormhole</title>
-  <script src="js/appearance-boot.js?v=37"></script>
+  <script src="js/appearance-boot.js?v=39"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=37" />
+  <link rel="stylesheet" href="css/styles.css?v=39" />
 </head>
 <body>
 
@@ -72,6 +72,16 @@
           <button id="direct-streamer-btn" class="btn btn--outline" type="submit" disabled>Find streamer</button>
         </form>
         <p id="direct-streamer-status" class="direct-search-status" role="status" aria-live="polite">Go live or choose a previous stream before using direct lookup.</p>
+      </section>
+
+      <section class="panel followed-live-panel" aria-labelledby="followed-live-title">
+        <div class="followed-live-panel__copy">
+          <p class="section-eyebrow">Your Twitch network</p>
+          <h2 id="followed-live-title">Live channels you follow</h2>
+          <p>Load every channel you follow that is live now, regardless of game, category, audience size, tags, or other discovery filters.</p>
+        </div>
+        <button id="show-followed-live-btn" class="btn btn--outline" type="button" disabled>Show all live followed channels</button>
+        <p id="followed-live-status" class="followed-live-status" role="status" aria-live="polite">Connect to Twitch to load your live followed channels.</p>
       </section>
 
       <section id="filters-panel" class="panel filters-panel">
@@ -363,8 +373,8 @@
     </p>
   </footer>
 
-  <script type="module" src="js/storage-consent-ui.js?v=37"></script>
-  <script type="module" src="js/ui-controls.js?v=37"></script>
-  <script type="module" src="js/app.js?v=37"></script>
+  <script type="module" src="js/storage-consent-ui.js?v=39"></script>
+  <script type="module" src="js/ui-controls.js?v=39"></script>
+  <script type="module" src="js/app.js?v=39"></script>
 </body>
 </html>

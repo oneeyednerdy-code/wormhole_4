@@ -114,7 +114,7 @@ test('followed live streams paginate until every live followed channel is loaded
       ok: true,
       async json() {
         return after
-          ? { data: [{ user_id: 'live-3' }], pagination: {} }
+          ? { data: [{ user_id: 'live-2' }, { user_id: 'live-3' }], pagination: {} }
           : {
               data: [{ user_id: 'live-1' }, { user_id: 'live-2' }],
               pagination: { cursor: 'second-page' },
@@ -266,6 +266,39 @@ test('exact category names resolve in one cached Twitch games batch', async () =
     requestedUrls[0].searchParams.getAll('name'),
     ['World of Warcraft', 'Phasmophobia']
   );
+});
+
+test('category search places an exact Twitch game ahead of fuzzy results', async () => {
+  const requestedUrls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    requestedUrls.push(parsed);
+    return {
+      ok: true,
+      async json() {
+        if (parsed.pathname === '/helix/games') {
+          return { data: [{ id: 'exact-id', name: 'Star Wars: The Old Republic' }] };
+        }
+        return {
+          data: [
+            { id: 'similar-id', name: 'Star Wars' },
+            { id: 'exact-id', name: 'Star Wars: The Old Republic' },
+          ],
+          pagination: {},
+        };
+      },
+    };
+  };
+
+  const api = new TwitchApi('test-token');
+  const results = await api.searchCategories('Star Wars: The Old Republic', { maxResults: 20 });
+
+  assert.deepEqual(results.map((game) => game.id), ['exact-id', 'similar-id']);
+  assert.deepEqual(requestedUrls.map((url) => url.pathname), [
+    '/helix/games',
+    '/helix/search/categories',
+  ]);
+  assert.equal(requestedUrls[1].searchParams.get('first'), '20');
 });
 
 test('genre streams send multiple category IDs in one request', async () => {

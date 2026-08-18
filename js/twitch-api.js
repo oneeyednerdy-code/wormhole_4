@@ -1,4 +1,4 @@
-import { TWITCH_CONFIG } from './config.js?v=37';
+import { TWITCH_CONFIG } from './config.js?v=39';
 
 function normalizeGameName(name) {
   return String(name ?? '')
@@ -208,14 +208,36 @@ export class TwitchApi {
    * app: Twitch owns IGDB and Twitch's category IDs are sourced from it,
    * but IGDB's raw API has no CORS support and requires a client secret
    * (client_credentials grant) that can't safely live in front-end code.
-   * Twitch's own /search/categories endpoint covers the same underlying
-   * game database and, since it's Helix, works with the same user token
-   * and CORS policy the rest of this app already relies on.
+   * Twitch's /games and /search/categories endpoints cover the same underlying
+   * game database and, since they're Helix, work with the same user token and
+   * CORS policy the rest of this app already relies on.
    */
-  async searchCategories(query, { maxResults = 8 } = {}) {
-    if (!query.trim()) return [];
-    const json = await this._get('/search/categories', { query, first: maxResults });
-    return json.data ?? [];
+  async searchCategories(query, { maxResults = 20 } = {}) {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery) return [];
+    const limit = Math.min(Math.max(maxResults, 1), 100);
+
+    // Twitch exposes fuzzy category search and exact-name game lookup as
+    // separate endpoints. Query both so a valid exact category is not omitted
+    // merely because it fell outside the fuzzy endpoint's first result page.
+    const [exactResult, fuzzyResult] = await Promise.allSettled([
+      this.getGamesByNames([trimmedQuery]),
+      this._get('/search/categories', { query: trimmedQuery, first: limit }),
+    ]);
+    if (exactResult.status === 'rejected' && fuzzyResult.status === 'rejected') {
+      throw fuzzyResult.reason;
+    }
+
+    const exact = exactResult.status === 'fulfilled' ? exactResult.value : [];
+    const fuzzy = fuzzyResult.status === 'fulfilled' ? fuzzyResult.value.data ?? [] : [];
+    const seen = new Set();
+    return [...exact, ...fuzzy]
+      .filter((category) => {
+        if (!category?.id || seen.has(category.id)) return false;
+        seen.add(category.id);
+        return true;
+      })
+      .slice(0, limit);
   }
 
   /** Resolves exact Twitch category names in URL-safe batches. */
@@ -368,6 +390,7 @@ export class TwitchApi {
    */
   async getFollowedLiveStreams(userId) {
     const streams = [];
+    const seen = new Set();
     let cursor = null;
 
     do {
@@ -375,7 +398,11 @@ export class TwitchApi {
       if (cursor) query.after = cursor;
 
       const json = await this._get('/streams/followed', query);
-      streams.push(...(json.data ?? []));
+      for (const stream of json.data ?? []) {
+        if (!stream.user_id || seen.has(stream.user_id)) continue;
+        seen.add(stream.user_id);
+        streams.push(stream);
+      }
       cursor = json.pagination?.cursor ?? null;
     } while (cursor);
 

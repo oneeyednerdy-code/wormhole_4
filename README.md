@@ -204,7 +204,9 @@ an OAuth Redirect URL on your Twitch app (step 1).
     observed tags are saved with stream history for offline matching.
   - **Categories** — search box to add other games/categories to the search,
     beyond your own current one. See the IGDB note below for why this uses
-    Twitch's own search instead of calling IGDB directly.
+    Twitch instead of calling IGDB directly. The dropdown combines Twitch's
+    exact-name Games lookup with up to 20 fuzzy category matches, ensuring an
+    exact valid category is not hidden outside a short suggestion list.
   - **Genre groups** — broad presets based on IGDB's genre, theme, and game-mode
     concepts. Checkbox changes apply automatically. Wormhole resolves curated
     game names through small Twitch `/games` batches and falls back to Twitch's
@@ -216,6 +218,11 @@ an OAuth Redirect URL on your Twitch app (step 1).
   Twitch's `/channels/followed` endpoint and the `user:read:follows` scope; it
   only filters discovery results when **Following only** is enabled. If you
   logged in before that permission was added, log out and back in once.
+- The separate **Live channels you follow** button loads Twitch's complete
+  paginated list of followed channels currently live. It bypasses games,
+  categories, viewer ranges, tags, teams, and every other discovery filter.
+  It works while the logged-in channel is offline, although raid actions stay
+  disabled until that channel goes live.
 - The results toolbar can sort the current matches without rerunning the Twitch
   search. **Following First** groups channels you already follow at the top and
   keeps them ordered by recommendation score. **Ending Soon** places the

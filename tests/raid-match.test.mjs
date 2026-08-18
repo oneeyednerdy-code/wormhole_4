@@ -47,7 +47,7 @@ test('compares logged-in and candidate tags case-insensitively', () => {
   );
   assert.deepEqual(comparison.sharedTags, ['English', 'LGBTQIA+']);
   assert.deepEqual(comparison.meaningfulSharedTags, ['LGBTQIA+']);
-  assert.equal(comparison.similarityPercent, 50);
+  assert.equal(Math.round(comparison.similarityPercent), 45);
 });
 
 test('language-only overlap is displayed but does not affect tag similarity', () => {

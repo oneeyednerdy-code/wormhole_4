@@ -1,0 +1,264 @@
+/* Dedicated touch layout. Activated automatically by js/device-layout.js. */
+
+html[data-device-layout='mobile'],
+html[data-device-layout='tablet'] {
+  scroll-padding-top: 82px;
+}
+
+html[data-device-layout='mobile'] body,
+html[data-device-layout='tablet'] body {
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+html[data-device-layout='mobile'] button,
+html[data-device-layout='mobile'] select,
+html[data-device-layout='mobile'] input,
+html[data-device-layout='mobile'] .btn,
+html[data-device-layout='tablet'] button,
+html[data-device-layout='tablet'] select,
+html[data-device-layout='tablet'] input,
+html[data-device-layout='tablet'] .btn {
+  min-height: 44px;
+}
+
+html[data-device-layout='mobile'] .topbar,
+html[data-device-layout='tablet'] .topbar {
+  padding-top: max(12px, env(safe-area-inset-top));
+}
+
+html[data-device-layout='tablet'] .main {
+  max-width: 960px;
+  padding: 20px 18px calc(76px + env(safe-area-inset-bottom));
+}
+
+html[data-device-layout='tablet'] .results-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html[data-device-layout='tablet'] .topbar__account {
+  gap: 8px;
+}
+
+html[data-device-layout='tablet'] .result-card__buttons .btn {
+  min-height: 48px;
+}
+
+html[data-device-layout='mobile'] .topbar {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding-inline: 12px;
+}
+
+html[data-device-layout='mobile'] .topbar__brand span:last-child,
+html[data-device-layout='mobile'] .topbar__name {
+  display: none;
+}
+
+html[data-device-layout='mobile'] .topbar__brand-logo {
+  width: 38px;
+  height: 38px;
+}
+
+html[data-device-layout='mobile'] .topbar__account {
+  justify-content: flex-end;
+  gap: 5px;
+  min-width: 0;
+}
+
+html[data-device-layout='mobile'] .connection-status {
+  display: none;
+}
+
+html[data-device-layout='mobile'] .topbar__user {
+  gap: 0;
+}
+
+html[data-device-layout='mobile'] .topbar__avatar {
+  width: 36px;
+  height: 36px;
+}
+
+html[data-device-layout='mobile'] .topbar__account .btn {
+  min-height: 40px;
+  padding: 7px 8px;
+  font-size: 0.69rem;
+}
+
+html[data-device-layout='mobile'] .main {
+  width: 100%;
+  padding: 14px 10px calc(92px + env(safe-area-inset-bottom));
+  gap: 14px;
+}
+
+html[data-device-layout='mobile'] .panel {
+  padding: 15px;
+  border-radius: 12px;
+}
+
+html[data-device-layout='mobile'] .direct-search-panel,
+html[data-device-layout='mobile'] .followed-live-panel {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-device-layout='mobile'] .direct-search-form,
+html[data-device-layout='mobile'] .dialog__actions,
+html[data-device-layout='mobile'] .raid-destination__actions {
+  flex-direction: column;
+}
+
+html[data-device-layout='mobile'] .direct-search-form .btn,
+html[data-device-layout='mobile'] .followed-live-panel > .btn,
+html[data-device-layout='mobile'] .dialog__actions .btn,
+html[data-device-layout='mobile'] .dialog__actions a,
+html[data-device-layout='mobile'] .raid-destination__actions .btn {
+  width: 100%;
+}
+
+html[data-device-layout='mobile'] .filters-panel__header {
+  align-items: center;
+}
+
+html[data-device-layout='mobile'] .filters-panel__header .btn {
+  flex-shrink: 0;
+}
+
+html[data-device-layout='mobile'] .filter-row,
+html[data-device-layout='mobile'] .filter-row__top {
+  align-items: stretch;
+  flex-direction: column;
+}
+
+html[data-device-layout='mobile'] .viewer-range-options,
+html[data-device-layout='mobile'] .genre-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html[data-device-layout='mobile'] .toggle {
+  min-height: 44px;
+}
+
+html[data-device-layout='mobile'] .toggle__box {
+  width: 20px;
+  height: 20px;
+}
+
+html[data-device-layout='mobile'] .control-row {
+  position: sticky;
+  bottom: 0;
+  z-index: 22;
+  margin-inline: -10px;
+  padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--panel-line);
+  background: var(--bg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 -12px 28px -20px rgba(0, 0, 0, 0.9);
+}
+
+@supports (background: color-mix(in srgb, black, white)) {
+  html[data-device-layout='mobile'] .control-row {
+    background: color-mix(in srgb, var(--bg) 92%, transparent);
+  }
+}
+
+html[data-device-layout='mobile'] .active-filters {
+  max-height: 92px;
+  overflow-y: auto;
+}
+
+html[data-device-layout='mobile'] .control-row > .btn {
+  min-height: 50px;
+  font-size: 0.95rem;
+}
+
+html[data-device-layout='mobile'] .results-pagination {
+  top: 72px;
+  padding: 10px;
+}
+
+html[data-device-layout='mobile'] .results-pagination__limit,
+html[data-device-layout='mobile'] .results-pagination__sort,
+html[data-device-layout='mobile'] .results-pagination__buttons {
+  width: 100%;
+}
+
+html[data-device-layout='mobile'] .results-pagination__buttons .btn {
+  flex: 1;
+}
+
+html[data-device-layout='mobile'] .results-list {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+
+html[data-device-layout='mobile'] .result-card {
+  padding: 14px;
+}
+
+html[data-device-layout='mobile'] .result-card__buttons {
+  grid-template-columns: 1fr;
+}
+
+html[data-device-layout='mobile'] .result-card__buttons .btn,
+html[data-device-layout='mobile'] .result-card__activity-button {
+  min-height: 48px;
+}
+
+html[data-device-layout='mobile'] .result-card__title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+html[data-device-layout='mobile'] .dialog {
+  width: 100%;
+  max-width: none;
+  max-height: min(88vh, 760px);
+  margin: auto 0 0;
+  overflow-y: auto;
+  border-radius: 18px 18px 0 0;
+  padding: 20px 16px max(20px, env(safe-area-inset-bottom));
+}
+
+html[data-device-layout='mobile'] .raid-progress-dialog {
+  width: 100%;
+}
+
+html[data-device-layout='mobile'] .raid-destination-view {
+  width: calc(100% - 20px);
+  margin: 14px auto 28px;
+}
+
+html[data-device-layout='mobile'] .raid-destination__chat {
+  height: min(62vh, 480px);
+}
+
+html[data-device-layout='mobile'] .storage-choice {
+  bottom: 0;
+  width: 100%;
+  max-height: 90vh;
+  border-radius: 18px 18px 0 0;
+  padding-bottom: max(18px, env(safe-area-inset-bottom));
+}
+
+html[data-device-layout='mobile'] .site-footer {
+  padding-bottom: calc(32px + env(safe-area-inset-bottom));
+}
+
+@media (max-width: 380px) {
+  html[data-device-layout='mobile'] .topbar {
+    grid-template-columns: 1fr;
+  }
+
+  html[data-device-layout='mobile'] .topbar__brand {
+    display: none;
+  }
+
+  html[data-device-layout='mobile'] .topbar__account {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}

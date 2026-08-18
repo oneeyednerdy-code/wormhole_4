@@ -1,0 +1,8 @@
+{
+  "name": "wormhole-twitch-raid-matcher",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

@@ -85,6 +85,7 @@ export class RaidListener {
 
   _scheduleReconnect() {
     if (this.shouldStop || this.reconnectTimer) return;
+    this._setStatus('reconnecting');
     const delay = Math.min(1000 * 2 ** this.reconnectAttempt, MAX_RECONNECT_DELAY_MS);
     this.reconnectAttempt += 1;
     this.reconnectTimer = setTimeout(() => {
@@ -128,6 +129,7 @@ export class RaidListener {
       } catch (error) {
         console.error('Failed to subscribe to channel.raid:', error);
         this._setStatus('error');
+        socket.close();
       }
       return;
     }

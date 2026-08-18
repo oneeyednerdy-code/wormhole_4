@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv https://www.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
+  <title>Wormhole</title>
+  <script src="js/appearance-boot.js?v=41"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="css/styles.css?v=41" />
+</head>
+<body>
+
+  <!-- LOGIN VIEW -->
+  <main id="login-view" class="login-view">
+    <div class="login-card">
+      <div class="login-card__mark">
+        <img src="assets/wormhole-logo.svg" alt="" aria-hidden="true" />
+      </div>
+      <h1 class="login-card__title">Wormhole</h1>
+      <p class="login-card__subtitle">
+        Sign off with a raid that actually fits — matched by game,
+        viewer count, and how long you've both been live.
+      </p>
+      <button id="login-btn" class="btn btn--primary btn--block">Log in with Twitch</button>
+      <button class="btn btn--ghost btn--small login-card__theme" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
+      <p id="login-error" class="login-card__error" role="alert"></p>
+      <details class="login-card__setup">
+        <summary>Login setup help</summary>
+        <p>Twitch must have this exact OAuth Redirect URL registered:</p>
+        <code id="oauth-redirect-uri"></code>
+        <p>The Twitch application must use <strong>Confidential</strong> client type for this redirect login. Never add its client secret to Wormhole.</p>
+      </details>
+    </div>
+  </main>
+
+  <!-- APP VIEW -->
+  <div id="app-view" class="app-view hidden">
+    <header class="topbar">
+      <a class="topbar__brand" href="./" aria-label="Wormhole home">
+        <img class="topbar__brand-logo" src="assets/wormhole-logo.svg" alt="" aria-hidden="true" />
+        <span>Wormhole</span>
+      </a>
+      <div class="topbar__account">
+        <div class="topbar__user">
+          <img id="user-avatar" class="topbar__avatar" alt="" />
+          <span id="user-name" class="topbar__name"></span>
+        </div>
+        <button id="theme-toggle" class="btn btn--ghost btn--small" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
+        <button id="contrast-toggle" class="btn btn--ghost btn--small" type="button" aria-pressed="false">High contrast</button>
+        <button id="logout-btn" class="btn btn--ghost btn--small">Log out</button>
+      </div>
+    </header>
+
+    <main id="discovery-view" class="main">
+      <section id="stream-panel" class="panel stream-panel"></section>
+
+      <section class="panel direct-search-panel" aria-labelledby="direct-search-title">
+        <div class="direct-search-panel__copy">
+          <p class="section-eyebrow">Direct lookup</p>
+          <h2 id="direct-search-title">Find a specific streamer</h2>
+          <p>Enter an exact Twitch username. Direct lookup bypasses discovery filters but still compares the live channel with your current or previous-stream baseline.</p>
+        </div>
+        <form id="direct-streamer-form" class="direct-search-form">
+          <label class="sr-only" for="direct-streamer-input">Twitch username or channel URL</label>
+          <input id="direct-streamer-input" class="text-input" type="text" placeholder="Twitch username or channel URL" autocomplete="off" spellcheck="false" />
+          <button id="direct-streamer-btn" class="btn btn--outline" type="submit" disabled>Find streamer</button>
+        </form>
+        <p id="direct-streamer-status" class="direct-search-status" role="status" aria-live="polite">Go live or choose a previous stream before using direct lookup.</p>
+      </section>
+
+      <section class="panel followed-live-panel" aria-labelledby="followed-live-title">
+        <div class="followed-live-panel__copy">
+          <p class="section-eyebrow">Your Twitch network</p>
+          <h2 id="followed-live-title">Live channels you follow</h2>
+          <p>Load every channel you follow that is live now, regardless of game, category, audience size, tags, or other discovery filters.</p>
+        </div>
+        <button id="show-followed-live-btn" class="btn btn--outline" type="button" disabled>Show all live followed channels</button>
+        <p id="followed-live-status" class="followed-live-status" role="status" aria-live="polite">Connect to Twitch to load your live followed channels.</p>
+      </section>
+
+      <section id="filters-panel" class="panel filters-panel">
+        <div class="filters-panel__header">
+          <div>
+            <p class="section-eyebrow">Discovery controls</p>
+            <h2 class="filters-panel__title">Find the right community</h2>
+          </div>
+          <button id="filters-toggle" class="btn btn--ghost btn--small" type="button" aria-expanded="true" aria-controls="filters-content">Hide filters</button>
+        </div>
+
+        <div id="filters-content" class="filters-panel__content">
+
+        <h3 class="filter-section-title">Audience</h3>
+        <div class="filter-row filter-row--stack">
+          <div class="filter-row__top">
+            <span class="filter-row__label">Viewer count</span>
+            <p id="viewer-match-hint" class="filter-row__hint filter-row__hint--inline"></p>
+          </div>
+          <fieldset id="viewer-tolerance-filter" class="viewer-range-options">
+            <legend class="sr-only">Viewer-count matching range</legend>
+            <label class="viewer-range-option">
+              <input type="radio" name="viewer-tolerance" value="50" checked />
+              <span>±50%</span><small>Recommended</small>
+            </label>
+            <label class="viewer-range-option">
+              <input type="radio" name="viewer-tolerance" value="75" />
+              <span>±75%</span><small>Wider</small>
+            </label>
+            <label class="viewer-range-option">
+              <input type="radio" name="viewer-tolerance" value="100" />
+              <span>±100%</span><small>Broad</small>
+            </label>
+            <label class="viewer-range-option">
+              <input type="radio" name="viewer-tolerance" value="all" />
+              <span>All</span><small>No limit</small>
+            </label>
+          </fieldset>
+        </div>
+
+        <h3 class="filter-section-title">Community</h3>
+        <div class="filter-row">
+          <span class="filter-row__label">Channel status</span>
+          <div class="toggle-group" id="status-filters">
+            <label class="toggle">
+              <input type="checkbox" value="partner" checked />
+              <span class="toggle__box"></span>
+              <span class="toggle__text">Partner</span>
+            </label>
+            <label class="toggle">
+              <input type="checkbox" value="affiliate" checked />
+              <span class="toggle__box"></span>
+              <span class="toggle__text">Affiliate</span>
+            </label>
+          </div>
+        </div>
+        <p class="filter-row__hint filter-row__hint--left">Non-affiliate channels are always included — these two just add Partner and/or Affiliate on top.</p>
+
+        <div class="filter-row">
+          <span class="filter-row__label">Following</span>
+          <label class="toggle">
+            <input type="checkbox" id="only-following-filter" />
+            <span class="toggle__box"></span>
+            <span class="toggle__text">Only channels I follow</span>
+          </label>
+        </div>
+        <p class="filter-row__hint filter-row__hint--left">With no category selected, every followed channel currently live is considered. Other active filters still apply.</p>
+
+        <div class="filter-row">
+          <span class="filter-row__label">Team</span>
+          <label class="toggle">
+            <input type="checkbox" id="same-team-filter" />
+            <span class="toggle__box"></span>
+            <span class="toggle__text">Shared Team Members</span>
+          </label>
+        </div>
+        <p id="team-hint" class="filter-row__hint"></p>
+
+        <h3 class="filter-section-title">Content</h3>
+        <div class="filter-row filter-row--stack">
+          <div class="filter-row__top">
+            <label class="filter-row__label" for="language-select">Language</label>
+            <span class="filter-row__hint-inline">adds the selection to Twitch tags</span>
+          </div>
+          <select id="language-select" class="text-input language-select">
+            <option value="">Any language</option>
+            <option value="English" selected>English</option>
+            <option value="Spanish">Spanish</option>
+            <option value="German">German</option>
+            <option value="French">French</option>
+            <option value="Portuguese">Portuguese</option>
+            <option value="Japanese">Japanese</option>
+            <option value="Korean">Korean</option>
+            <option value="Russian">Russian</option>
+            <option value="Italian">Italian</option>
+            <option value="Polish">Polish</option>
+            <option value="Turkish">Turkish</option>
+            <option value="Arabic">Arabic</option>
+            <option value="Chinese">Chinese</option>
+          </select>
+        </div>
+        <div class="filter-row filter-row--stack">
+          <div class="filter-row__top">
+            <span class="filter-row__label">Tags</span>
+            <span class="filter-row__hint-inline">comma-separated, matches any</span>
+          </div>
+          <input
+            id="tags-input"
+            type="text"
+            class="text-input"
+            value="English"
+            placeholder="e.g. speedrun, cozy, english…"
+            autocomplete="off"
+          />
+        </div>
+        <div class="filter-row">
+          <span class="filter-row__label">Automatic tag matching</span>
+          <label class="toggle">
+            <input type="checkbox" id="match-stream-tags" checked />
+            <span class="toggle__box"></span>
+            <span class="toggle__text">Match my stream tags</span>
+          </label>
+        </div>
+        <p id="match-stream-tags-hint" class="filter-row__hint filter-row__hint--left"></p>
+
+        <h3 class="filter-section-title">Advanced discovery</h3>
+        <div class="filter-row filter-row--stack">
+          <div class="filter-row__top">
+            <span class="filter-row__label">Genre groups</span>
+            <span class="filter-row__hint-inline">curated from IGDB genres, themes, and game modes</span>
+          </div>
+          <div id="genre-filters" class="genre-grid">
+            <label class="toggle"><input type="checkbox" value="rpg" /><span class="toggle__box"></span><span class="toggle__text">RPG</span></label>
+            <label class="toggle"><input type="checkbox" value="mmo" /><span class="toggle__box"></span><span class="toggle__text">MMO</span></label>
+            <label class="toggle"><input type="checkbox" value="shooter" /><span class="toggle__box"></span><span class="toggle__text">Shooter</span></label>
+            <label class="toggle"><input type="checkbox" value="strategy" /><span class="toggle__box"></span><span class="toggle__text">Strategy</span></label>
+            <label class="toggle"><input type="checkbox" value="horror" /><span class="toggle__box"></span><span class="toggle__text">Horror</span></label>
+            <label class="toggle"><input type="checkbox" value="survival" /><span class="toggle__box"></span><span class="toggle__text">Survival</span></label>
+            <label class="toggle"><input type="checkbox" value="simulation" /><span class="toggle__box"></span><span class="toggle__text">Simulation</span></label>
+            <label class="toggle"><input type="checkbox" value="adventure" /><span class="toggle__box"></span><span class="toggle__text">Adventure</span></label>
+          </div>
+          <div class="genre-actions">
+            <button id="add-genres-btn" class="btn btn--ghost" type="button">Apply selected genre games</button>
+            <button id="clear-genres-btn" class="btn btn--ghost" type="button">Clear genre games</button>
+          </div>
+          <p id="genre-hint" class="filter-row__hint filter-row__hint--left">Selections apply automatically. Remove any individual games you do not want below.</p>
+        </div>
+
+        <div class="filter-row filter-row--stack">
+          <div class="filter-row__top">
+            <span class="filter-row__label">Categories</span>
+            <span class="filter-row__hint-inline">searches Twitch's category database (built on IGDB)</span>
+          </div>
+          <div class="category-search">
+            <input
+              id="category-search-input"
+              type="text"
+              class="text-input"
+              placeholder="Add another game or category…"
+              autocomplete="off"
+            />
+            <ul id="category-suggestions" class="category-suggestions hidden"></ul>
+          </div>
+          <div id="selected-categories" class="chip-row"></div>
+        </div>
+        </div>
+      </section>
+
+      <section class="control-row">
+        <div class="active-filters">
+          <div class="active-filters__heading">
+            <span id="active-filter-count">0 active filters</span>
+            <button id="clear-all-filters" class="active-filters__clear" type="button">Clear all</button>
+          </div>
+          <div id="active-filter-chips" class="active-filter-chips" aria-live="polite"></div>
+        </div>
+        <button id="find-btn" class="btn btn--primary" disabled>Find someone to raid</button>
+      </section>
+
+      <section id="results-panel" class="panel results-panel hidden">
+        <div class="results-heading">
+          <div>
+            <p class="section-eyebrow">Live recommendations</p>
+            <h2>Potential raid destinations</h2>
+          </div>
+        </div>
+        <div id="results-status" class="results-status hidden" role="status" aria-live="polite"></div>
+        <div id="results-pagination" class="results-pagination hidden">
+          <label class="results-pagination__sort" for="results-sort">
+            Sort by
+            <select id="results-sort" class="results-pagination__select">
+              <option value="recommended" selected>Recommended</option>
+              <option value="following-first">Following First</option>
+              <option value="viewers-high">Viewers: High to Low</option>
+              <option value="viewers-low">Viewers: Low to High</option>
+              <option value="ending-soon">Ending Soon (Longest Live)</option>
+              <option value="just-started">Just Started</option>
+            </select>
+          </label>
+          <label class="results-pagination__limit" for="results-page-size">
+            Results per page
+            <select id="results-page-size" class="results-pagination__select">
+              <option value="12" selected>12</option>
+              <option value="24">24</option>
+              <option value="36">36</option>
+              <option value="48">48</option>
+              <option value="60">60</option>
+              <option value="72">72</option>
+              <option value="84">84</option>
+              <option value="96">96</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+          <span id="results-page-summary" class="results-pagination__summary" aria-live="polite"></span>
+          <div class="results-pagination__buttons">
+            <button id="results-prev-page" class="btn btn--ghost" type="button">Previous</button>
+            <button id="results-next-page" class="btn btn--ghost" type="button">Next</button>
+          </div>
+        </div>
+        <ul id="results-list" class="results-list"></ul>
+      </section>
+    </main>
+
+    <section id="raid-destination-view" class="raid-destination-view hidden" aria-labelledby="raid-destination-title">
+      <header class="raid-destination__header">
+        <div>
+          <p class="section-eyebrow">Raid confirmed by Twitch</p>
+          <h1 id="raid-destination-title">Welcome to the raided channel</h1>
+          <p id="raid-destination-status" class="raid-destination__status" role="status" aria-live="polite"></p>
+        </div>
+        <div class="raid-destination__actions">
+          <button id="raid-destination-back-btn" class="btn btn--ghost" type="button">Back to Wormhole</button>
+          <a id="raid-destination-open-link" class="btn btn--outline" href="https://twitch.tv" target="_blank" rel="noopener noreferrer">Open on Twitch ↗</a>
+        </div>
+      </header>
+      <div class="raid-destination__grid">
+        <div class="raid-destination__video">
+          <iframe id="raid-destination-player" title="Raided Twitch channel" allow="autoplay; fullscreen" allowfullscreen></iframe>
+        </div>
+        <div class="raid-destination__chat">
+          <iframe id="raid-destination-chat" title="Raided Twitch channel chat"></iframe>
+        </div>
+      </div>
+      <p class="raid-destination__note">The player and chat are official Twitch embeds. Your browser may ask you to sign in to Twitch inside chat.</p>
+    </section>
+  </div>
+
+  <!-- RAID CONFIRM DIALOG -->
+  <dialog id="raid-dialog" class="dialog">
+    <p id="raid-dialog-text" class="dialog__text"></p>
+    <div class="dialog__actions">
+      <button id="raid-cancel-btn" class="btn btn--ghost">Cancel</button>
+      <button id="raid-confirm-btn" class="btn btn--primary">Raid!</button>
+    </div>
+  </dialog>
+
+  <!-- ACTIVE RAID COUNTDOWN -->
+  <dialog id="raid-progress-dialog" class="dialog raid-progress-dialog">
+    <p class="raid-progress__eyebrow">Raid in progress</p>
+    <img id="raid-progress-avatar" class="raid-progress__avatar" alt="" />
+    <h2 id="raid-progress-title" class="raid-progress__title">Preparing raid…</h2>
+    <p id="raid-progress-text" class="dialog__text" aria-live="polite"></p>
+    <p id="raid-progress-audience" class="raid-progress__audience"></p>
+    <div class="raid-progress__timer" role="timer" aria-live="off" aria-label="Raid countdown">
+      <div id="raid-progress-ring" class="raid-progress__ring">
+        <span id="raid-countdown-value">90</span>
+        <small>seconds</small>
+      </div>
+    </div>
+    <div class="raid-progress__track" aria-hidden="true">
+      <div id="raid-progress-bar" class="raid-progress__bar"></div>
+    </div>
+    <p class="raid-progress__note">After Twitch confirms the completed raid, Wormhole will open the channel and chat here without leaving the app.</p>
+    <div class="dialog__actions">
+      <button id="raid-progress-cancel-btn" class="btn btn--ghost" type="button">Cancel raid</button>
+      <a id="raid-controls-link" class="btn btn--primary" href="https://dashboard.twitch.tv" target="_blank" rel="noopener noreferrer">Open Twitch Raid Controls ↗</a>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <section id="storage-choice-panel" class="storage-choice" role="dialog" aria-labelledby="storage-choice-title" aria-describedby="storage-choice-description" hidden>
+    <button id="storage-choice-close" class="storage-choice__close" type="button" aria-label="Close privacy settings">×</button>
+    <div class="storage-choice__copy">
+      <p class="section-eyebrow">Privacy &amp; storage</p>
+      <h2 id="storage-choice-title" tabindex="-1">Choose what Wormhole remembers</h2>
+      <p id="storage-choice-description">Essential browser storage keeps Twitch login and accessibility settings working. Optional local history improves averages and offline matching. Wormhole does not use advertising trackers.</p>
+      <p id="storage-choice-status" class="storage-choice__status" aria-live="polite"></p>
+      <p><a href="privacy.html">Read the storage policy</a></p>
+    </div>
+    <div class="storage-choice__actions">
+      <button id="storage-essential-btn" class="btn btn--ghost" type="button">Essential only</button>
+      <button id="storage-history-btn" class="btn btn--primary" type="button">Allow local history</button>
+      <button id="delete-local-history-btn" class="btn btn--ghost" type="button" hidden>Delete local history</button>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <a href="https://ko-fi.com/S6S5BZT4I" target="_blank" rel="noopener noreferrer" class="site-footer__kofi">
+      <img
+        src="https://ko-fi.com/img/githubbutton_sm.svg"
+        alt="Support this project on Ko-fi"
+        height="20"
+      />
+    </a>
+    <p class="site-footer__credit">
+      Project by <a href="https://www.beacons.ai/oneeyednerdy" target="_blank" rel="noopener noreferrer">OneEyedNerdy</a>
+    </p>
+    <p class="site-footer__privacy">
+      <button type="button" data-open-storage-settings>Privacy settings</button>
+      <span aria-hidden="true">·</span>
+      <a href="privacy.html">Storage policy</a>
+    </p>
+  </footer>
+
+  <script type="module" src="js/storage-consent-ui.js?v=41"></script>
+  <script type="module" src="js/ui-controls.js?v=41"></script>
+  <script type="module" src="js/app.js?v=41"></script>
+</body>
+</html>

@@ -1,5 +1,5 @@
-import { ViewerHistory } from './viewer-history.js?v=42';
-import { isLanguageTag } from './language-tags.js?v=42';
+import { ViewerHistory } from './viewer-history.js?v=44';
+import { isLanguageTag } from './language-tags.js?v=44';
 
 // Base weights are used when automatic tag comparison is disabled or the
 // logged-in stream has no meaningful non-language tags. When tags are
@@ -45,12 +45,21 @@ export function compareStreamTags(myTags, candidateTags) {
   const sharedTags = [...mine].filter(([key]) => theirs.has(key)).map(([, tag]) => tag);
   const meaningfulMine = [...mine.values()].filter((tag) => !isLanguageTag(tag));
   const meaningfulSharedTags = sharedTags.filter((tag) => !isLanguageTag(tag));
+  const meaningfulTheirs = [...theirs.values()].filter((tag) => !isLanguageTag(tag));
+  const unionSize = new Set([
+    ...meaningfulMine.map((tag) => tag.toLowerCase()),
+    ...meaningfulTheirs.map((tag) => tag.toLowerCase()),
+  ]).size;
+  const recall = meaningfulMine.length
+    ? meaningfulSharedTags.length / meaningfulMine.length
+    : null;
+  const jaccard = unionSize ? meaningfulSharedTags.length / unionSize : null;
   return {
     sharedTags,
     meaningfulSharedTags,
-    similarityPercent: meaningfulMine.length
-      ? (meaningfulSharedTags.length / meaningfulMine.length) * 100
-      : null,
+    similarityPercent: recall == null
+      ? null
+      : ((recall * 0.7) + ((jaccard ?? 0) * 0.3)) * 100,
   };
 }
 
@@ -143,6 +152,8 @@ export function findRaidMatches(
     requiredTags = null,
     compareTags = true,
     categoryMatchApplied = true,
+    primaryCategoryId = myStream.game_id,
+    matchPreset = 'similar',
   } = {}
 ) {
   const filtered = applyHardFilters(candidates, {
@@ -198,15 +209,31 @@ export function findRaidMatches(
     });
     const tagComparison = compareStreamTags(myStream.tags, candidate.tags);
     const tagComparisonApplied = compareTags && Number.isFinite(tagComparison.similarityPercent);
-    const matchScore = combinedScore(
+    let matchScore = combinedScore(
       scoreComponents,
       tagComparisonApplied ? tagComparison.similarityPercent : null
     );
+    const isPrimaryCategory = Boolean(primaryCategoryId) && candidate.game_id === primaryCategoryId;
+    if (categoryMatchApplied) matchScore += isPrimaryCategory ? 5 : 0;
+    if (matchPreset === 'growth') {
+      const ratio = candidate.viewer_count / Math.max(myStream.viewer_count, 1);
+      matchScore += Math.max(0, 10 - Math.abs(1.5 - ratio) * 10);
+    } else if (matchPreset === 'familiar') {
+      if (candidate.is_followed) matchScore += 7;
+      if (candidate.shared_team_names?.length) matchScore += 7;
+      matchScore += Math.min(5, tagComparison.meaningfulSharedTags.length * 2);
+    } else if (matchPreset === 'explore') {
+      if (!candidate.is_followed) matchScore += 4;
+      if (primaryCategoryId && !isPrimaryCategory) matchScore += 6;
+    }
+    matchScore = Math.min(100, matchScore);
 
     results.push({
       stream: candidate,
       estimatedAverageViewers: estimatedAverage,
       averageIsHistorical,
+      historyConfidence: avgRecord?.confidence ?? 'New estimate',
+      historySessionCount: avgRecord?.sessionCount ?? 0,
       matchScore,
       viewerCountDiffPercent: liveViewerDiffPercent,
       averageViewerCountDiffPercent: averageViewerDiffPercent,
@@ -216,6 +243,8 @@ export function findRaidMatches(
       tagSimilarityPercent: tagComparison.similarityPercent,
       tagComparisonApplied,
       categoryMatchApplied,
+      isPrimaryCategory,
+      matchPreset,
     });
   }
 

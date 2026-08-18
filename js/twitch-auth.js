@@ -1,8 +1,10 @@
-import { TWITCH_CONFIG } from './config.js?v=42';
+import { TWITCH_CONFIG } from './config.js?v=44';
 
 const TOKEN_KEY = 'wormhole_access_token';
 const LEGACY_TOKEN_KEY = 'raid_finder_token';
 const OAUTH_STATE_KEY = 'wormhole_oauth_state';
+const OAUTH_STATE_CREATED_KEY = 'wormhole_oauth_state_created';
+const OAUTH_STATE_MAX_AGE_MS = 10 * 60 * 1000;
 
 function browserStorage(name) {
   try {
@@ -38,13 +40,26 @@ function safelyRemove(storage, key) {
 }
 
 function readOAuthState() {
-  return safelyGet(browserStorage('sessionStorage'), OAUTH_STATE_KEY)
-    || safelyGet(browserStorage('localStorage'), OAUTH_STATE_KEY);
+  for (const storageName of ['sessionStorage', 'localStorage']) {
+    const storage = browserStorage(storageName);
+    const state = safelyGet(storage, OAUTH_STATE_KEY);
+    if (!state) continue;
+    const createdAt = Number(safelyGet(storage, OAUTH_STATE_CREATED_KEY));
+    if (Number.isFinite(createdAt) && createdAt > 0 && Date.now() - createdAt > OAUTH_STATE_MAX_AGE_MS) {
+      safelyRemove(storage, OAUTH_STATE_KEY);
+      safelyRemove(storage, OAUTH_STATE_CREATED_KEY);
+      continue;
+    }
+    return state;
+  }
+  return null;
 }
 
 function clearOAuthState() {
   safelyRemove(browserStorage('sessionStorage'), OAUTH_STATE_KEY);
   safelyRemove(browserStorage('localStorage'), OAUTH_STATE_KEY);
+  safelyRemove(browserStorage('sessionStorage'), OAUTH_STATE_CREATED_KEY);
+  safelyRemove(browserStorage('localStorage'), OAUTH_STATE_CREATED_KEY);
 }
 
 function cleanRedirectUrl() {
@@ -74,6 +89,9 @@ export const TwitchAuth = {
     // hosts/browsers return from Twitch in a fresh tab where sessionStorage
     // is empty, while localStorage remains scoped to the same app origin.
     const savedLocally = safelySet(browserStorage('localStorage'), OAUTH_STATE_KEY, state);
+    const createdAt = String(Date.now());
+    if (savedInSession) safelySet(browserStorage('sessionStorage'), OAUTH_STATE_CREATED_KEY, createdAt);
+    if (savedLocally) safelySet(browserStorage('localStorage'), OAUTH_STATE_CREATED_KEY, createdAt);
     if (!savedInSession && !savedLocally) {
       throw new Error('Twitch login needs browser storage. Allow site storage for Wormhole and try again.');
     }

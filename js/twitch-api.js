@@ -1,4 +1,5 @@
-import { TWITCH_CONFIG } from './config.js?v=42';
+import { TWITCH_CONFIG } from './config.js?v=44';
+import { RequestError, RequestManager } from './request-manager.js?v=44';
 
 function normalizeGameName(name) {
   return String(name ?? '')
@@ -17,8 +18,9 @@ export class TwitchApiError extends Error {
 
 /** Wormhole's thin wrapper around Twitch's REST API. */
 export class TwitchApi {
-  constructor(accessToken) {
+  constructor(accessToken, { requestManager } = {}) {
     this.accessToken = accessToken;
+    this.requestManager = requestManager ?? new RequestManager();
     this.broadcasterTypeCache = new Map();
     this.teamCache = new Map();
     this.followedBroadcasterIdsCache = new Map();
@@ -38,18 +40,34 @@ export class TwitchApi {
     };
   }
 
-  async _get(path, query = {}) {
+  async _request(url, options = {}, requestOptions = {}) {
+    try {
+      return await this.requestManager.request(url, options, requestOptions);
+    } catch (error) {
+      if (error instanceof RequestError) {
+        throw new TwitchApiError(
+          `${options.method ?? 'GET'} ${new URL(url, globalThis.location?.origin ?? 'http://localhost').pathname} failed (${error.status}): ${error.body}`,
+          error.status
+        );
+      }
+      throw error;
+    }
+  }
+
+  async _protectedAction(action, payload) {
+    return this._request('/api/raid-action', {
+      method: 'POST',
+      headers: { ...this.headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...payload }),
+    }, { retries: 0 });
+  }
+
+  async _get(path, query = {}, { signal } = {}) {
     const url = new URL(TWITCH_CONFIG.apiBaseUrl + path);
     for (const [k, v] of Object.entries(query)) {
       if (v !== undefined && v !== null) url.searchParams.set(k, v);
     }
-    const res = await fetch(url, { headers: this.headers });
-    if (!res.ok) {
-      throw new TwitchApiError(
-        `GET ${path} failed (${res.status}): ${await res.text()}`,
-        res.status
-      );
-    }
+    const res = await this._request(url, { headers: this.headers }, { signal });
     return res.json();
   }
 
@@ -103,7 +121,7 @@ export class TwitchApi {
    * a separate lookup, batched in groups of 100 (Twitch's per-request cap).
    * Returns a Map of userId -> broadcaster_type.
    */
-  async getBroadcasterTypes(userIds) {
+  async getBroadcasterTypes(userIds, { signal } = {}) {
     const types = new Map();
     const uniqueIds = [...new Set(userIds)];
     const uncachedIds = uniqueIds.filter((id) => {
@@ -116,13 +134,7 @@ export class TwitchApi {
       const batch = uncachedIds.slice(i, i + 100);
       const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/users');
       batch.forEach((id) => url.searchParams.append('id', id));
-      const res = await fetch(url, { headers: this.headers });
-      if (!res.ok) {
-        throw new TwitchApiError(
-          `GET /users failed (${res.status}): ${await res.text()}`,
-          res.status
-        );
-      }
+      const res = await this._request(url, { headers: this.headers }, { signal });
       const json = await res.json();
       for (const user of json.data ?? []) {
         const type = user.broadcaster_type || 'none';
@@ -162,10 +174,10 @@ export class TwitchApi {
    * Twitch's quirk: this endpoint returns 404 (not an empty array) when
    * the broadcaster isn't on any team, so that case is normalized to [].
    */
-  async getChannelTeams(broadcasterId) {
+  async getChannelTeams(broadcasterId, { signal } = {}) {
     if (this.teamCache.has(broadcasterId)) return this.teamCache.get(broadcasterId);
     try {
-      const json = await this._get('/teams/channel', { broadcaster_id: broadcasterId });
+      const json = await this._get('/teams/channel', { broadcaster_id: broadcasterId }, { signal });
       const teams = json.data ?? [];
       this.teamCache.set(broadcasterId, teams);
       return teams;
@@ -176,8 +188,6 @@ export class TwitchApi {
       }
       throw e;
     }
-    const json = await res.json();
-    return json.data?.[0] ?? null;
   }
 
   /**
@@ -187,14 +197,14 @@ export class TwitchApi {
    * under Twitch's rate limits rather than one giant Promise.all burst.
    * Returns a Map of userId -> array of team objects.
    */
-  async getTeamMembershipsForUsers(userIds, { concurrency = 8 } = {}) {
+  async getTeamMembershipsForUsers(userIds, { concurrency = 8, signal } = {}) {
     const results = new Map();
     const queue = [...new Set(userIds)];
 
     const worker = async () => {
       while (queue.length) {
         const id = queue.shift();
-        results.set(id, await this.getChannelTeams(id));
+        results.set(id, await this.getChannelTeams(id, { signal }));
       }
     };
 
@@ -241,7 +251,7 @@ export class TwitchApi {
   }
 
   /** Resolves exact Twitch category names in URL-safe batches. */
-  async getGamesByNames(names) {
+  async getGamesByNames(names, { signal } = {}) {
     const requested = [...new Set(names.map((name) => name.trim()).filter(Boolean))];
     const missing = requested.filter((name) => !this.gameNameCache.has(normalizeGameName(name)));
 
@@ -249,13 +259,7 @@ export class TwitchApi {
       const batch = missing.slice(i, i + 20);
       const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/games');
       batch.forEach((name) => url.searchParams.append('name', name));
-      const res = await fetch(url, { headers: this.headers });
-      if (!res.ok) {
-        throw new TwitchApiError(
-          `GET /games failed (${res.status}): ${await res.text()}`,
-          res.status
-        );
-      }
+      const res = await this._request(url, { headers: this.headers }, { signal });
       const json = await res.json();
       const returned = new Map(
         (json.data ?? []).map((game) => [normalizeGameName(game.name), game])
@@ -327,7 +331,7 @@ export class TwitchApi {
    */
   async getLiveStreamsByGame(
     gameId,
-    { maxResults = 100, language, stopBelowViewers = null } = {}
+    { maxResults = 100, language, stopBelowViewers = null, signal } = {}
   ) {
     const streams = [];
     let cursor = null;
@@ -337,7 +341,7 @@ export class TwitchApi {
       if (language) query.language = language;
       if (cursor) query.after = cursor;
 
-      const json = await this._get('/streams', query);
+      const json = await this._get('/streams', query, { signal });
       streams.push(...(json.data ?? []));
 
       const lastViewerCount = json.data?.at(-1)?.viewer_count;
@@ -358,7 +362,7 @@ export class TwitchApi {
 
   /** Fetches currently-live streams across all categories. */
   async getLiveStreams(
-    { maxResults = 100, language, stopBelowViewers = null } = {}
+    { maxResults = 100, language, stopBelowViewers = null, signal } = {}
   ) {
     const streams = [];
     let cursor = null;
@@ -368,7 +372,7 @@ export class TwitchApi {
       if (language) query.language = language;
       if (cursor) query.after = cursor;
 
-      const json = await this._get('/streams', query);
+      const json = await this._get('/streams', query, { signal });
       streams.push(...(json.data ?? []));
       const lastViewerCount = json.data?.at(-1)?.viewer_count;
       if (
@@ -388,7 +392,7 @@ export class TwitchApi {
    * Twitch returns at most 100 streams per page, so continue until its cursor
    * is exhausted instead of applying the general discovery result cap.
    */
-  async getFollowedLiveStreams(userId) {
+  async getFollowedLiveStreams(userId, { signal } = {}) {
     const streams = [];
     const seen = new Set();
     let cursor = null;
@@ -397,7 +401,7 @@ export class TwitchApi {
       const query = { user_id: userId, first: 100 };
       if (cursor) query.after = cursor;
 
-      const json = await this._get('/streams/followed', query);
+      const json = await this._get('/streams/followed', query, { signal });
       for (const stream of json.data ?? []) {
         if (!stream.user_id || seen.has(stream.user_id)) continue;
         seen.add(stream.user_id);
@@ -412,7 +416,7 @@ export class TwitchApi {
   /** Fetches live streams matching any of up to 100 category IDs. */
   async getLiveStreamsByGames(
     gameIds,
-    { maxResults = 100, language, stopBelowViewers = null } = {}
+    { maxResults = 100, language, stopBelowViewers = null, signal } = {}
   ) {
     const ids = [...new Set(gameIds)].slice(0, 100);
     if (!ids.length) return [];
@@ -426,13 +430,7 @@ export class TwitchApi {
       if (language) url.searchParams.set('language', language);
       if (cursor) url.searchParams.set('after', cursor);
 
-      const res = await fetch(url, { headers: this.headers });
-      if (!res.ok) {
-        throw new TwitchApiError(
-          `GET /streams failed (${res.status}): ${await res.text()}`,
-          res.status
-        );
-      }
+      const res = await this._request(url, { headers: this.headers }, { signal });
       const json = await res.json();
       streams.push(...(json.data ?? []));
       const lastViewerCount = json.data?.at(-1)?.viewer_count;
@@ -454,7 +452,7 @@ export class TwitchApi {
    * The in-flight promise is cached per user so repeated searches only load
    * the follow list once during this browser session.
    */
-  async getFollowedBroadcasterIds(userId) {
+  async getFollowedBroadcasterIds(userId, { signal } = {}) {
     if (this.followedBroadcasterIdsCache.has(userId)) {
       return this.followedBroadcasterIdsCache.get(userId);
     }
@@ -467,7 +465,7 @@ export class TwitchApi {
         const query = { user_id: userId, first: 100 };
         if (cursor) query.after = cursor;
 
-        const json = await this._get('/channels/followed', query);
+        const json = await this._get('/channels/followed', query, { signal });
         for (const follow of json.data ?? []) {
           if (follow.broadcaster_id) {
             ids.add(follow.broadcaster_id);
@@ -628,7 +626,7 @@ export class TwitchApi {
    */
   async createEventSubWebSocketSubscription(type, version, condition, sessionId) {
     const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/eventsub/subscriptions');
-    const res = await fetch(url, {
+    const res = await this._request(url, {
       method: 'POST',
       headers: { ...this.headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -638,12 +636,6 @@ export class TwitchApi {
         transport: { method: 'websocket', session_id: sessionId },
       }),
     });
-    if (!res.ok) {
-      throw new TwitchApiError(
-        `Failed to create EventSub subscription (${res.status}): ${await res.text()}`,
-        res.status
-      );
-    }
     return res.json();
   }
 
@@ -652,24 +644,28 @@ export class TwitchApi {
    * Requires the channel:manage:raids scope.
    */
   async startRaid(fromBroadcasterId, toBroadcasterId) {
+    if (TWITCH_CONFIG.backendActions) {
+      const response = await this._protectedAction('start', { fromBroadcasterId, toBroadcasterId });
+      const json = await response.json();
+      return json.data?.[0] ?? null;
+    }
     const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/raids');
     url.searchParams.set('from_broadcaster_id', fromBroadcasterId);
     url.searchParams.set('to_broadcaster_id', toBroadcasterId);
-    const res = await fetch(url, { method: 'POST', headers: this.headers });
-    if (!res.ok) {
-      throw new TwitchApiError(
-        `Failed to start raid (${res.status}): ${await res.text()}`,
-        res.status
-      );
-    }
+    const res = await this._request(url, { method: 'POST', headers: this.headers });
     const json = await res.json();
     return json.data?.[0] ?? null;
   }
 
   /** Sends a chat message as the logged-in user. Requires user:write:chat. */
   async sendChatMessage(broadcasterId, senderId, message) {
+    if (TWITCH_CONFIG.backendActions) {
+      const response = await this._protectedAction('chat', { broadcasterId, senderId, message });
+      const json = await response.json();
+      return json.data?.[0] ?? { is_sent: false, drop_reason: { message: 'Twitch did not return a delivery result.' } };
+    }
     const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/chat/messages');
-    const res = await fetch(url, {
+    const res = await this._request(url, {
       method: 'POST',
       headers: { ...this.headers, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -678,26 +674,18 @@ export class TwitchApi {
         message,
       }),
     });
-    if (!res.ok) {
-      throw new TwitchApiError(
-        `Failed to send chat message (${res.status}): ${await res.text()}`,
-        res.status
-      );
-    }
     const json = await res.json();
     return json.data?.[0] ?? { is_sent: false, drop_reason: { message: 'Twitch did not return a delivery result.' } };
   }
 
   /** Cancels a pending raid initiated by the logged-in broadcaster. */
   async cancelRaid(fromBroadcasterId) {
+    if (TWITCH_CONFIG.backendActions) {
+      await this._protectedAction('cancel', { fromBroadcasterId });
+      return;
+    }
     const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/raids');
     url.searchParams.set('broadcaster_id', fromBroadcasterId);
-    const res = await fetch(url, { method: 'DELETE', headers: this.headers });
-    if (!res.ok && res.status !== 204) {
-      throw new TwitchApiError(
-        `Failed to cancel raid (${res.status}): ${await res.text()}`,
-        res.status
-      );
-    }
+    await this._request(url, { method: 'DELETE', headers: this.headers });
   }
 }

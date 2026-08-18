@@ -427,6 +427,33 @@ body.light-theme .btn--primary:hover:not(:disabled) {
   gap: 18px;
 }
 
+.connection-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.62rem;
+  white-space: nowrap;
+}
+
+.connection-status::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #777;
+}
+
+.connection-status[data-status='connected']::before { background: var(--green); }
+.connection-status[data-status='connecting']::before { background: var(--amber); }
+.connection-status[data-status='reconnecting']::before { background: var(--amber); }
+.connection-status[data-status='error']::before { background: #ef6b73; }
+
 .topbar__avatar {
   width: 34px;
   height: 34px;
@@ -820,6 +847,14 @@ body.light-theme .btn--primary:hover:not(:disabled) {
 
 .filter-section-title:first-child {
   margin-top: 16px;
+}
+
+.filter-preset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--panel-line);
 }
 
 .filters-panel--collapsed .filters-panel__header {
@@ -2549,4 +2584,20 @@ a:focus-visible {
 
 .site-footer__credit a:hover {
   text-decoration: underline;
+}
+
+.site-footer__layout { display: flex; align-items: center; gap: 8px; color: var(--text-dim); font-size: 0.78rem; }
+.compare-dialog { width: min(960px, calc(100% - 32px)); }
+.compare-dialog__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.compare-dialog__header h2 { margin: 0; }
+.compare-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+.compare-card { padding: 18px; border: 1px solid var(--panel-line); border-radius: 14px; background: var(--panel-raised); }
+.compare-card h3, .compare-card p { margin-top: 0; }
+.compare-card dl { display: grid; gap: 10px; }
+.compare-card dl div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--panel-line); padding-bottom: 8px; }
+.compare-card dt { color: var(--text-dim); }
+.compare-card dd { margin: 0; text-align: right; font-weight: 600; }
+
+@media (max-width: 800px) {
+  .compare-grid { grid-template-columns: 1fr; }
 }

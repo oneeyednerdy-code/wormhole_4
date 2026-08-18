@@ -95,6 +95,14 @@ test('OAuth callbacks with the wrong state remain rejected', () => {
   assert.equal(sessionStorage.getItem('wormhole_access_token'), 'test-token');
 });
 
+test('expired OAuth state is rejected', () => {
+  sessionStorage.setItem('wormhole_oauth_state', 'expired-state');
+  sessionStorage.setItem('wormhole_oauth_state_created', String(Date.now() - 11 * 60 * 1000));
+  localStorage.removeItem('wormhole_oauth_state');
+  window.location.hash = '#access_token=bad-token&state=expired-state&token_type=bearer';
+  assert.throws(() => TwitchAuth.captureRedirectToken(), /could not be verified/);
+});
+
 test('OAuth callback errors are shown and cleared instead of silently ignored', () => {
   sessionStorage.setItem('wormhole_oauth_state', 'error-state');
   window.location.search = '?error=access_denied&error_description=Permission+declined&state=error-state';

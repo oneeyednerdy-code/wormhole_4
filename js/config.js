@@ -19,6 +19,10 @@ export function getOAuthRedirectUri(location = window.location) {
 
 export const TWITCH_CONFIG = {
   clientId: '15d6s3tdyd3p7o3owf1ugx6zorpgfw',
+  // Set to true on Netlify after configuring TWITCH_CLIENT_ID and
+  // WORMHOLE_ALLOWED_ORIGIN. Raid and completion-message mutations will then
+  // be identity-checked by the bundled serverless function.
+  backendActions: false,
 
   // Must exactly match an "OAuth Redirect URL" registered on your Twitch app.
   // Defaults to wherever this page is currently served from, so it works

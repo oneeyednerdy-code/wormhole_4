@@ -37,6 +37,15 @@ EventSub confirmation. Only that confirmation sends the completion chat
 message and opens an in-app destination view containing the raided channel's
 official Twitch player and chat embeds.
 
+Version 44 adds four matching goals (Similar Community, Growth Opportunity,
+Familiar Channels, and Explore Something New), explicit save/load controls for
+one local filter preset, and a three-channel shortlist comparison. Individual
+results can be refreshed or hidden without rerunning the entire search. The
+toolbar reports when data was fetched and how many candidates were removed by
+the active filters. Historical audience estimates now group samples by stream,
+trim outliers when enough sessions exist, weight recent streams more heavily,
+and display a confidence label.
+
 The interface uses a responsive raid-control-room layout with collapsible
 discovery controls, removable active-filter chips, a sticky results toolbar,
 accessible focus states and higher-contrast system support. Match cards explain
@@ -49,6 +58,15 @@ another API feature fails to initialize. Responsive breakpoints cover desktop,
 tablet, and narrow mobile layouts, and a bundled SVG Wormhole mark appears in
 both the login panel and application header. The mark depicts two glowing
 portal mouths connected by the narrow throat of an hourglass-shaped wormhole.
+
+Phones and tablets automatically receive a dedicated touch layout without a
+redirect or second login. It detects narrow viewports and coarse touch input,
+then uses larger 44-pixel controls, single-column cards, compact navigation,
+bottom-sheet dialogs, safe-area spacing, a sticky raid-search action, and a
+tablet two-column result grid. Rotating or resizing the device updates the
+layout automatically, while desktop screens retain the full dashboard. A
+footer selector can force Mobile, Tablet, or Desktop layout and remembers that
+preference on the device.
 
 If you are offline, Wormhole offers up to five recent past-broadcast VODs to
 choose from. Twitch supplies each VOD's title, date, duration, and thumbnail.
@@ -69,6 +87,115 @@ category, and remembers that correction for the next time you choose that VOD.
 Why plain HTML/JS instead of a framework: Twitch's OAuth flow is designed
 around a browser redirect (`response_type=token`), which a static site
 handles natively — no popups, no custom URL schemes, no build tooling.
+
+---
+
+## 1. Register a Twitch application
+
+1. Go to https://dev.twitch.tv/console/apps → **Register Your Application**.
+2. Name it anything (e.g. "Wormhole").
+3. **OAuth Redirect URLs**: add the exact URL you'll serve this site from —
+   for example:
+   - `http://localhost:8000/` for local testing
+   - `https://yourname.github.io/wormhole/` for GitHub Pages
+   - `https://wormhole.netlify.app/` for Netlify
+
+   You can register multiple redirect URLs on the same app, so add both your
+   local and production URLs.
+4. Client type: **Confidential**. Twitch currently limits Public clients to
+   Device Code Flow, so Public will not work with this browser redirect. The
+   implicit flow still uses only the public Client ID: do **not** put the
+   generated client secret in Wormhole or any frontend file.
+5. Save, then copy the **Client ID**.
+
+Open `js/config.js` and paste it in:
+
+```js
+clientId: 'YOUR_TWITCH_CLIENT_ID',
+```
+
+The redirect URI itself doesn't need editing — it's computed automatically
+from wherever the page is being served (`window.location.origin +
+window.location.pathname`), as long as it matches something you registered
+in step 3.
+
+Wormhole normalizes `/index.html` to its containing directory so the callback
+is stable. Expand **Login setup help** on the login screen and copy the exact
+URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
+match, including HTTPS, hostname, path, and trailing slash.
+
+---
+
+## 2. Run it locally
+
+Because this uses ES modules (`<script type="module">`), it needs to be
+served over `http://`, not opened directly as a `file://` path (browsers
+block module imports from the filesystem). Any static server works:
+
+```bash
+cd wormhole
+python3 -m http.server 8000
+# then open http://localhost:8000/
+```
+
+or `npx serve .`, or the VS Code "Live Server" extension — anything that
+serves static files.
+
+---
+
+## 3. Deploy it
+
+Any static host works, since there's no server-side code:
+
+- **GitHub Pages**: push this folder to a repo, enable Pages on it.
+- **Netlify / Vercel**: drag-and-drop the folder, or connect the repo.
+- **Any web host**: it's just static files — upload as-is.
+
+Whatever URL it ends up live at, make sure that exact URL is registered as
+an OAuth Redirect URL on your Twitch app (step 1).
+
+### Optional protected Netlify actions
+
+The app still works as a static site. For a Netlify deployment, v44 also ships
+an optional same-origin serverless gate for raid start, raid cancellation, and
+the opted-in completion chat message. It validates the Twitch token on every
+mutation, verifies that the token owner is the initiating broadcaster/sender,
+rejects cross-origin requests, limits accepted fields, and never retries a
+mutation automatically.
+
+1. In Netlify, set `TWITCH_CLIENT_ID` to the same public Client ID used in
+   `js/config.js`.
+2. Set `WORMHOLE_ALLOWED_ORIGIN` to the exact production origin, such as
+   `https://wormhole.netlify.app` (no trailing slash).
+3. Change `backendActions` to `true` in `js/config.js`.
+4. Deploy the folder. The included `netlify.toml` publishes the site, exposes
+   `/api/raid-action`, applies security headers, and configures safe asset
+   caching.
+
+Do not put a Twitch client secret in the frontend or in this package. This
+gate validates the existing user token; an authorization-code migration would
+be required to move Twitch tokens completely into HttpOnly cookies.
+
+## Reliability and safety
+
+- GET requests have a 15-second timeout, bounded retry behavior for transient
+  Twitch failures, rate-limit header tracking, and cancellation when a newer
+  search replaces an older one.
+- Raid and chat mutations are never retried automatically.
+- The selected destination is checked again immediately before raid start.
+- The EventSub connection exposes its current state. Completion-message opt-in
+  is unavailable unless confirmation is connected; Twitch reconnect
+  instructions are honored and duplicate messages are ignored.
+- OAuth state expires after ten minutes to narrow the callback replay window.
+- `netlify.toml` adds clickjacking, MIME-sniffing, referrer, permissions, and
+  opener protections.
+
+---
+
+> **Note:** "Helix" is the name Twitch itself gives its public API (it's
+> baked into the real endpoint, `api.twitch.tv/helix`) — it isn't part of
+> this app's branding and can't be renamed without breaking every request.
+> Everywhere else in this project, "Wormhole" is the product name.
 
 ## How matching works
 

@@ -5,14 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv https://www.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
   <title>Wormhole</title>
-  <script src="js/appearance-boot.js?v=42"></script>
+  <script src="js/appearance-boot.js?v=44"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=42" />
+  <link rel="stylesheet" href="css/styles.css?v=44" />
+  <link rel="stylesheet" href="css/mobile.css?v=44" />
 </head>
 <body>
 
@@ -47,6 +48,7 @@
         <span>Wormhole</span>
       </a>
       <div class="topbar__account">
+        <span id="eventsub-status" class="connection-status" data-status="disconnected" title="Raid confirmation connection">Confirmation offline</span>
         <div class="topbar__user">
           <img id="user-avatar" class="topbar__avatar" alt="" />
           <span id="user-name" class="topbar__name"></span>
@@ -94,6 +96,17 @@
         </div>
 
         <div id="filters-content" class="filters-panel__content">
+
+        <h3 class="filter-section-title">Matching goal</h3>
+        <div class="filter-row filter-row--stack">
+          <label class="filter-row__label" for="match-preset">What kind of raid are you looking for?</label>
+          <select id="match-preset" class="text-input">
+            <option value="similar" selected>Similar Community</option>
+            <option value="growth">Growth Opportunity</option>
+            <option value="familiar">Familiar Channels</option>
+            <option value="explore">Explore Something New</option>
+          </select>
+        </div>
 
         <h3 class="filter-section-title">Audience</h3>
         <div class="filter-row filter-row--stack">
@@ -247,6 +260,10 @@
           </div>
           <div id="selected-categories" class="chip-row"></div>
         </div>
+        <div class="filter-preset-actions">
+          <button id="save-filter-preset" class="btn btn--ghost" type="button">Save current filters</button>
+          <button id="load-filter-preset" class="btn btn--ghost" type="button">Load saved filters</button>
+        </div>
         </div>
       </section>
 
@@ -270,6 +287,7 @@
         </div>
         <div id="results-status" class="results-status hidden" role="status" aria-live="polite"></div>
         <div id="results-pagination" class="results-pagination hidden">
+          <button id="compare-shortlist-btn" class="btn btn--outline" type="button" disabled>Compare shortlist (0)</button>
           <label class="results-pagination__sort" for="results-sort">
             Sort by
             <select id="results-sort" class="results-pagination__select">
@@ -329,6 +347,18 @@
     </section>
   </div>
 
+  <!-- SHORTLIST COMPARISON DIALOG -->
+  <dialog id="compare-dialog" class="dialog compare-dialog" aria-labelledby="compare-dialog-title">
+    <div class="compare-dialog__header">
+      <div>
+        <p class="section-eyebrow">Shortlist</p>
+        <h2 id="compare-dialog-title">Compare raid destinations</h2>
+      </div>
+      <button id="compare-dialog-close" class="btn btn--ghost" type="button">Close</button>
+    </div>
+    <div id="compare-dialog-content" class="compare-grid"></div>
+  </dialog>
+
   <!-- RAID CONFIRM DIALOG -->
   <dialog id="raid-dialog" class="dialog">
     <p id="raid-dialog-text" class="dialog__text"></p>
@@ -343,6 +373,7 @@
         <q id="raid-message-preview"></q>
       </div>
       <p class="raid-message-choice__note">This is off by default. EventSub confirmation must match this destination before Wormhole can send the message.</p>
+      <p class="raid-message-choice__note"><strong>Shared Chat notice:</strong> Twitch may display a user-token message in every channel participating in the destination’s Shared Chat session.</p>
     </div>
     <div class="dialog__actions">
       <button id="raid-cancel-btn" class="btn btn--ghost">Cancel</button>
@@ -407,10 +438,20 @@
       <span aria-hidden="true">·</span>
       <a href="privacy.html">Storage policy</a>
     </p>
+    <label class="site-footer__layout" for="layout-override">
+      Layout
+      <select id="layout-override" class="results-pagination__select">
+        <option value="auto">Automatic</option>
+        <option value="mobile">Mobile</option>
+        <option value="tablet">Tablet</option>
+        <option value="desktop">Desktop</option>
+      </select>
+    </label>
   </footer>
 
-  <script type="module" src="js/storage-consent-ui.js?v=42"></script>
-  <script type="module" src="js/ui-controls.js?v=42"></script>
-  <script type="module" src="js/app.js?v=42"></script>
+  <script type="module" src="js/device-layout.js?v=44"></script>
+  <script type="module" src="js/storage-consent-ui.js?v=44"></script>
+  <script type="module" src="js/ui-controls.js?v=44"></script>
+  <script type="module" src="js/app.js?v=44"></script>
 </body>
 </html>

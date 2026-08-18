@@ -1,5 +1,5 @@
-export const RELEASE_VERSION = '0.0.63';
-export const CACHE_VERSION = '63';
+export const RELEASE_VERSION = '0.0.64';
+export const CACHE_VERSION = '64';
 export const RELEASE_STORAGE_KEY = 'wormhole_release_version';
 export const CACHE_NAME_PREFIX = 'wormhole-';
 

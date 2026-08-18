@@ -59,26 +59,26 @@ test('an old page clears outdated Wormhole caches and reloads with the latest ve
     },
     storage: new MemoryStorage({ [RELEASE_STORAGE_KEY]: '0.0.58' }),
     cacheStorage: {
-      keys: async () => ['wormhole-58', 'wormhole-59', 'unrelated-cache', 'wormhole-60', 'wormhole-61', 'wormhole-62'],
+      keys: async () => ['wormhole-58', 'wormhole-59', 'unrelated-cache', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63'],
       delete: async (name) => { deleted.push(name); return true; },
     },
-    fetchImpl: async () => manifestResponse('0.0.63', '63'),
+    fetchImpl: async () => manifestResponse('0.0.64', '64'),
   });
   assert.equal(result.reloading, true);
-  assert.deepEqual(deleted.sort(), ['wormhole-58', 'wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62']);
+  assert.deepEqual(deleted.sort(), ['wormhole-58', 'wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63']);
   const next = new URL(replaced);
-  assert.equal(next.searchParams.get('wormhole_version'), '0.0.63');
+  assert.equal(next.searchParams.get('wormhole_version'), '0.0.64');
   assert.equal(next.hash, '#access_token=preserved');
 });
 
 test('cache cleanup never removes unrelated or current caches', async () => {
   const deleted = [];
   const cleared = await clearOutdatedWormholeCaches({
-    keys: async () => ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'another-app'],
+    keys: async () => ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'another-app'],
     delete: async (name) => { deleted.push(name); return true; },
   });
-  assert.deepEqual(cleared, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62']);
-  assert.deepEqual(deleted, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62']);
+  assert.deepEqual(cleared, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63']);
+  assert.deepEqual(deleted, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63']);
 });
 
 test('offline version checks safely use the version already loaded', async () => {

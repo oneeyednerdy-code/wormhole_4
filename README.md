@@ -1,7 +1,7 @@
 # Wormhole (web)
 
-Current release: **Beta-0.0.63**. During beta development, each feature build
-increments the patch number (`Beta-0.0.63`, `Beta-0.0.63`, and so on).
+Current release: **Beta-0.0.64**. During beta development, each feature build
+increments the patch number (`Beta-0.0.64`, `Beta-0.0.64`, and so on).
 
 Wormhole checks `version.json` with `cache: no-store` on every page load. If a
 browser serves an older page, the app removes obsolete Wormhole-managed Cache
@@ -131,7 +131,7 @@ handles natively — no popups, no custom URL schemes, no build tooling.
    generated client secret in Wormhole or any frontend file.
 5. Save, then copy the **Client ID**.
 
-Open `js/twitch-config-v63.js` and paste it in:
+Open `js/twitch-config-v64.js` and paste it in:
 
 ```js
 clientId: 'YOUR_TWITCH_CLIENT_ID',
@@ -148,7 +148,7 @@ URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
 match, including HTTPS, hostname, path, and trailing slash.
 
 If your host exposes the app through several aliases or rewrites, set
-`redirectUriOverride` in `js/twitch-config-v63.js` to the one production callback you
+`redirectUriOverride` in `js/twitch-config-v64.js` to the one production callback you
 registered with Twitch. Production and preview hostnames are different origins
 and must not be treated as interchangeable.
 
@@ -262,13 +262,12 @@ an OAuth Redirect URL on your Twitch app (step 1).
     Since Twitch's `/streams` endpoint doesn't include broadcaster status
     at all, the app makes one extra batched call to `/users` per search to
     look it up.
-  - **Following only** — limits recommendations to live channels already in
-    the logged-in user's Twitch follow list. If Twitch's follow lookup fails,
-    the app stops the filtered search instead of pretending there are no
-    matches. With no category selected, Wormhole uses Twitch's dedicated
-    followed-streams endpoint and paginates through every followed channel
-    currently live instead of filtering a capped Twitch-wide discovery sample.
-    Audience, status, team, and tag filters still apply when selected.
+  - **Following only** — ignores the logged-in stream's game plus all selected
+    game and genre categories, then paginates through every followed channel
+    currently live. Typed tags, status, and team filters still apply. When the
+    logged-in channel is offline and no previous-stream baseline is selected,
+    Following Only remains available; category and viewer-range matching are
+    skipped while typed tags and the remaining usable filters continue to work.
   - **Team** — only show channels sharing one of your Twitch Teams. (Twitch
     doesn't have "guilds" — Teams are the closest equivalent: a named group
     of channels shown on each member's About page.) Twitch has no batch
@@ -454,7 +453,7 @@ assets/
   favicon.ico        # 16, 32, and 48 px browser/bookmark icon
 css/styles.css       # All styling
 js/
-  twitch-config-v63.js # Client ID, scopes, redirect URI
+  twitch-config-v64.js # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   direct-search.js    # Normalizes exact streamer usernames and URLs
@@ -465,7 +464,7 @@ js/
   appearance-boot.js   # Applies saved theme before first paint
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
-  wormhole-app-v63.js # Wires everything together, renders the UI
+  wormhole-app-v64.js # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
   twitch-auth.test.mjs # Twitch login security and redirect tests

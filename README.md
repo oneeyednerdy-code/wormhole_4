@@ -183,7 +183,10 @@ an OAuth Redirect URL on your Twitch app (step 1).
   - **Following only** — limits recommendations to live channels already in
     the logged-in user's Twitch follow list. If Twitch's follow lookup fails,
     the app stops the filtered search instead of pretending there are no
-    matches.
+    matches. With no category selected, Wormhole uses Twitch's dedicated
+    followed-streams endpoint and paginates through every followed channel
+    currently live instead of filtering a capped Twitch-wide discovery sample.
+    Audience, status, team, and tag filters still apply when selected.
   - **Team** — only show channels sharing one of your Twitch Teams. (Twitch
     doesn't have "guilds" — Teams are the closest equivalent: a named group
     of channels shown on each member's About page.) Twitch has no batch

@@ -1,4 +1,4 @@
-import { TWITCH_CONFIG } from './config.js?v=36';
+import { TWITCH_CONFIG } from './config.js?v=37';
 
 function normalizeGameName(name) {
   return String(name ?? '')
@@ -359,6 +359,27 @@ export class TwitchApi {
     }
 
     return streams.slice(0, maxResults);
+  }
+
+  /**
+   * Fetches every currently-live channel followed by the logged-in user.
+   * Twitch returns at most 100 streams per page, so continue until its cursor
+   * is exhausted instead of applying the general discovery result cap.
+   */
+  async getFollowedLiveStreams(userId) {
+    const streams = [];
+    let cursor = null;
+
+    do {
+      const query = { user_id: userId, first: 100 };
+      if (cursor) query.after = cursor;
+
+      const json = await this._get('/streams/followed', query);
+      streams.push(...(json.data ?? []));
+      cursor = json.pagination?.cursor ?? null;
+    } while (cursor);
+
+    return streams;
   }
 
   /** Fetches live streams matching any of up to 100 category IDs. */

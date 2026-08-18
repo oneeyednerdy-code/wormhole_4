@@ -1,27 +1,27 @@
-import { TWITCH_CONFIG } from './config.js?v=36';
-import { TwitchAuth } from './twitch-auth.js?v=36';
-import { TwitchApi } from './twitch-api.js?v=36';
-import { applyHardFilters, findRaidMatches } from './raid-match.js?v=36';
-import { RaidListener } from './raid-listener.js?v=36';
-import { ViewerHistory } from './viewer-history.js?v=36';
-import { PreviousStreamHistory } from './previous-stream-history.js?v=36';
-import { paginate } from './pagination.js?v=36';
-import { sortRaidMatches } from './result-sort.js?v=36';
-import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=36';
+import { TWITCH_CONFIG } from './config.js?v=37';
+import { TwitchAuth } from './twitch-auth.js?v=37';
+import { TwitchApi } from './twitch-api.js?v=37';
+import { applyHardFilters, findRaidMatches } from './raid-match.js?v=37';
+import { RaidListener } from './raid-listener.js?v=37';
+import { ViewerHistory } from './viewer-history.js?v=37';
+import { PreviousStreamHistory } from './previous-stream-history.js?v=37';
+import { paginate } from './pagination.js?v=37';
+import { sortRaidMatches } from './result-sort.js?v=37';
+import { calculateViewerRange, parseViewerTolerance } from './viewer-tolerance.js?v=37';
 import {
   createRaidCountdown,
   getRaidCountdownSnapshot,
   twitchChannelUrl,
-} from './raid-countdown.js?v=36';
-import { ChannelHistory } from './channel-history.js?v=36';
-import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=36';
+} from './raid-countdown.js?v=37';
+import { ChannelHistory } from './channel-history.js?v=37';
+import { estimateStreamEnd, parseTwitchDuration } from './stream-end-estimate.js?v=37';
 import {
   getGenreGameNames,
   getGenreLabelsForGame,
-} from './genre-presets.js?v=36';
-import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=36';
-import { prepareTagDisplay } from './tag-display.js?v=36';
-import { normalizeTwitchLogin } from './direct-search.js?v=36';
+} from './genre-presets.js?v=37';
+import { applyLanguageTag, isLanguageTag } from './language-tags.js?v=37';
+import { prepareTagDisplay } from './tag-display.js?v=37';
+import { normalizeTwitchLogin } from './direct-search.js?v=37';
 
 const state = {
   api: null,
@@ -1149,24 +1149,32 @@ async function runSearch() {
 
     const viewerRange = calculateViewerRange(state.myStream.viewer_count, viewerTolerancePercent);
     const minimumMatchedViewers = viewerRange?.min ?? null;
-    const candidateRequests = individualGameIds.map(
-      (id) => state.api.getLiveStreamsByGame(id, {
-        maxResults: showAllViewerCounts ? 500 : 1000,
-        stopBelowViewers: minimumMatchedViewers,
-      })
-    );
-    if (genreGameIds.length) {
-      candidateRequests.push(state.api.getLiveStreamsByGames(genreGameIds, {
-        maxResults: showAllViewerCounts ? 500 : 1000,
-        stopBelowViewers: minimumMatchedViewers,
-      }));
-    }
-    const categoryMatchApplied = candidateRequests.length > 0;
-    if (!categoryMatchApplied) {
-      candidateRequests.push(state.api.getLiveStreams({
-        maxResults: showAllViewerCounts ? 500 : 1000,
-        stopBelowViewers: minimumMatchedViewers,
-      }));
+    const categoryMatchApplied = individualGameIds.length > 0 || genreGameIds.length > 0;
+    const usingFollowedStreamsEndpoint = wantsOnlyFollowing && !categoryMatchApplied;
+    const candidateRequests = [];
+
+    if (usingFollowedStreamsEndpoint) {
+      showSearchStatus('Loading every channel you follow that is currently live…');
+      candidateRequests.push(state.api.getFollowedLiveStreams(state.user.id));
+    } else {
+      candidateRequests.push(...individualGameIds.map(
+        (id) => state.api.getLiveStreamsByGame(id, {
+          maxResults: showAllViewerCounts ? 500 : 1000,
+          stopBelowViewers: minimumMatchedViewers,
+        })
+      ));
+      if (genreGameIds.length) {
+        candidateRequests.push(state.api.getLiveStreamsByGames(genreGameIds, {
+          maxResults: showAllViewerCounts ? 500 : 1000,
+          stopBelowViewers: minimumMatchedViewers,
+        }));
+      }
+      if (!categoryMatchApplied) {
+        candidateRequests.push(state.api.getLiveStreams({
+          maxResults: showAllViewerCounts ? 500 : 1000,
+          stopBelowViewers: minimumMatchedViewers,
+        }));
+      }
     }
     const candidateLists = await Promise.all(candidateRequests);
     if (generation !== searchGeneration) return;
@@ -1199,7 +1207,9 @@ async function runSearch() {
     // instead of presenting an incorrect empty result set.
     showSearchStatus('Checking channels you already follow…');
     try {
-      const followedIds = await state.api.getFollowedBroadcasterIds(state.user.id);
+      const followedIds = usingFollowedStreamsEndpoint
+        ? new Set(candidates.map((stream) => stream.user_id))
+        : await state.api.getFollowedBroadcasterIds(state.user.id);
       if (generation !== searchGeneration) return;
       for (const s of candidates) {
         s.is_followed = followedIds.has(s.user_id);

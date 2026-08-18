@@ -104,6 +104,36 @@ test('followed broadcaster IDs paginate and are cached for the session', async (
   assert.equal(api.getFollowedAt('channel-1'), '2026-08-01T00:00:00Z');
 });
 
+test('followed live streams paginate until every live followed channel is loaded', async () => {
+  const requestedUrls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(url);
+    requestedUrls.push(parsed);
+    const after = parsed.searchParams.get('after');
+    return {
+      ok: true,
+      async json() {
+        return after
+          ? { data: [{ user_id: 'live-3' }], pagination: {} }
+          : {
+              data: [{ user_id: 'live-1' }, { user_id: 'live-2' }],
+              pagination: { cursor: 'second-page' },
+            };
+      },
+    };
+  };
+
+  const api = new TwitchApi('test-token');
+  const streams = await api.getFollowedLiveStreams('viewer-3');
+
+  assert.deepEqual(streams.map((stream) => stream.user_id), ['live-1', 'live-2', 'live-3']);
+  assert.equal(requestedUrls.length, 2);
+  assert.equal(requestedUrls[0].pathname, '/helix/streams/followed');
+  assert.equal(requestedUrls[0].searchParams.get('user_id'), 'viewer-3');
+  assert.equal(requestedUrls[0].searchParams.get('first'), '100');
+  assert.equal(requestedUrls[1].searchParams.get('after'), 'second-page');
+});
+
 test('failed follow lookup is evicted so a later search can retry', async () => {
   let attempts = 0;
   globalThis.fetch = async () => {

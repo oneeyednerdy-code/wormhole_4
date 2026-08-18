@@ -65,6 +65,7 @@ html[data-device-layout='mobile'] .topbar__account {
   justify-content: flex-end;
   gap: 5px;
   min-width: 0;
+  flex-wrap: wrap;
 }
 
 html[data-device-layout='mobile'] .connection-status {
@@ -223,6 +224,15 @@ html[data-device-layout='mobile'] .dialog {
   padding: 20px 16px max(20px, env(safe-area-inset-bottom));
 }
 
+html[data-device-layout='mobile'] .accessibility-option {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+html[data-device-layout='mobile'] .accessibility-option .results-pagination__select {
+  width: 100%;
+}
+
 html[data-device-layout='mobile'] .raid-progress-dialog {
   width: 100%;
 }
@@ -261,4 +271,17 @@ html[data-device-layout='mobile'] .site-footer {
     justify-content: center;
     flex-wrap: wrap;
   }
+}
+
+html[data-device-layout='mobile'] .topbar__account .btn,
+html[data-device-layout='mobile'] .connection-status,
+html[data-device-layout='mobile'] .result-card__title,
+html[data-device-layout='mobile'] .result-card__game,
+html[data-device-layout='mobile'] .stat-chip,
+html[data-device-layout='mobile'] .stream-tag,
+html[data-device-layout='mobile'] .content-label,
+html[data-device-layout='mobile'] .site-footer,
+html[data-device-layout='tablet'] .topbar__account .btn,
+html[data-device-layout='tablet'] .stat-chip {
+  font-size: 0.875rem;
 }

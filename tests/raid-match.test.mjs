@@ -105,6 +105,45 @@ test('following-only excludes channels the user does not follow', () => {
   assert.deepEqual(matches.map((match) => match.stream.user_id), ['followed']);
 });
 
+test('growth goal prioritizes a channel near 150% of the current audience', () => {
+  localStorage.clear();
+  const mine = stream('mine', 100);
+  const sameSize = stream('same-size', 100);
+  const stepUp = stream('step-up', 150);
+  const similar = findRaidMatches(mine, [stepUp, sameSize], { matchPreset: 'similar' });
+  const growth = findRaidMatches(mine, [sameSize, stepUp], { matchPreset: 'growth' });
+
+  assert.equal(similar[0].stream.user_id, 'same-size');
+  assert.equal(growth[0].stream.user_id, 'step-up');
+  assert.match(growth[0].goalMatchReason, /150%/);
+});
+
+test('familiar goal materially prioritizes a followed channel', () => {
+  localStorage.clear();
+  const mine = stream('mine', 100, ['Cozy']);
+  const unfamiliar = { ...stream('unfamiliar', 100, ['Speedrun']), is_followed: false };
+  const familiar = { ...stream('familiar', 130, ['Cozy']), is_followed: true };
+  const matches = findRaidMatches(mine, [unfamiliar, familiar], { matchPreset: 'familiar' });
+
+  assert.equal(matches[0].stream.user_id, 'familiar');
+  assert.match(matches[0].goalMatchReason, /already follow/);
+});
+
+test('explore goal materially prioritizes an unfollowed channel in a different selected category', () => {
+  localStorage.clear();
+  const mine = { ...stream('mine', 100), game_id: 'primary' };
+  const familiar = { ...stream('familiar', 100), game_id: 'primary', is_followed: true };
+  const discovery = { ...stream('discovery', 130), game_id: 'extra', is_followed: false };
+  const matches = findRaidMatches(mine, [familiar, discovery], {
+    matchPreset: 'explore',
+    primaryCategoryId: 'primary',
+    categoryMatchApplied: true,
+  });
+
+  assert.equal(matches[0].stream.user_id, 'discovery');
+  assert.match(matches[0].goalMatchReason, /new channel and category/);
+});
+
 test('custom 75% and 100% viewer bands include their exact boundaries', () => {
   localStorage.clear();
   const mine = stream('mine', 100);

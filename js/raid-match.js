@@ -1,5 +1,5 @@
-import { ViewerHistory } from './viewer-history.js?v=53';
-import { isLanguageTag } from './language-tags.js?v=53';
+import { ViewerHistory } from './viewer-history.js?v=58';
+import { isLanguageTag } from './language-tags.js?v=58';
 
 // Base weights are used when automatic tag comparison is disabled or the
 // logged-in stream has no meaningful non-language tags. When tags are
@@ -215,16 +215,29 @@ export function findRaidMatches(
     );
     const isPrimaryCategory = Boolean(primaryCategoryId) && candidate.game_id === primaryCategoryId;
     if (categoryMatchApplied) matchScore += isPrimaryCategory ? 5 : 0;
+    let goalMatchReason = null;
     if (matchPreset === 'growth') {
       const ratio = candidate.viewer_count / Math.max(myStream.viewer_count, 1);
-      matchScore += Math.max(0, 10 - Math.abs(1.5 - ratio) * 10);
+      const growthScore = Math.max(0, 100 - Math.abs(1.5 - ratio) * 100);
+      matchScore = matchScore * 0.4 + growthScore * 0.6;
+      goalMatchReason = `Growth goal: ${Math.round(ratio * 100)}% of your live audience`;
     } else if (matchPreset === 'familiar') {
-      if (candidate.is_followed) matchScore += 7;
-      if (candidate.shared_team_names?.length) matchScore += 7;
-      matchScore += Math.min(5, tagComparison.meaningfulSharedTags.length * 2);
+      const familiarityScore =
+        (candidate.is_followed ? 70 : 0) +
+        (candidate.shared_team_names?.length ? 20 : 0) +
+        Math.min(10, tagComparison.meaningfulSharedTags.length * 5);
+      matchScore = matchScore * 0.6 + familiarityScore * 0.4;
+      if (candidate.is_followed) goalMatchReason = 'Familiar goal: channel you already follow';
+      else if (candidate.shared_team_names?.length) goalMatchReason = 'Familiar goal: shared Twitch team';
+      else if (tagComparison.meaningfulSharedTags.length) goalMatchReason = 'Familiar goal: shared community tags';
     } else if (matchPreset === 'explore') {
-      if (!candidate.is_followed) matchScore += 4;
-      if (primaryCategoryId && !isPrimaryCategory) matchScore += 6;
+      const isNewChannel = !candidate.is_followed;
+      const isNewCategory = Boolean(primaryCategoryId) && !isPrimaryCategory;
+      const noveltyScore = (isNewChannel ? 60 : 0) + (isNewCategory ? 40 : 0);
+      matchScore = matchScore * 0.6 + noveltyScore * 0.4;
+      if (isNewChannel && isNewCategory) goalMatchReason = 'Explore goal: new channel and category';
+      else if (isNewChannel) goalMatchReason = 'Explore goal: channel you do not follow';
+      else if (isNewCategory) goalMatchReason = 'Explore goal: different category';
     }
     matchScore = Math.min(100, matchScore);
 
@@ -245,6 +258,7 @@ export function findRaidMatches(
       categoryMatchApplied,
       isPrimaryCategory,
       matchPreset,
+      goalMatchReason,
     });
   }
 

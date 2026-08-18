@@ -1,5 +1,5 @@
-import { TWITCH_CONFIG } from './twitch-config-v53.js?v=53';
-import { RequestError, RequestManager } from './browser-request-v53.js?v=53';
+import { TWITCH_CONFIG } from './twitch-config-v58.js?v=58';
+import { RequestError, RequestManager } from './browser-request-v58.js?v=58';
 
 function normalizeGameName(name) {
   return String(name ?? '')

@@ -4,16 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv https://www.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
-  <title>Wormhole</title>
-  <script src="js/appearance-boot.js?v=53"></script>
+  <title>Wormhole Networking Tool by OneEyedNerdy</title>
+  <meta name="application-name" content="Wormhole Networking Tool by OneEyedNerdy" />
+  <link rel="icon" href="assets/favicon.ico" sizes="any" />
+  <script src="js/appearance-boot.js?v=58"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=53" />
-  <link rel="stylesheet" href="css/mobile.css?v=53" />
+  <link rel="stylesheet" href="css/styles.css?v=58" />
+  <link rel="stylesheet" href="css/mobile.css?v=58" />
 </head>
 <body>
 
@@ -24,13 +26,17 @@
         <img src="assets/wormhole-logo.svg" alt="" aria-hidden="true" />
       </div>
       <h1 class="login-card__title">Wormhole</h1>
-      <p class="build-version">Beta Version v53</p>
+      <p class="build-version">Beta-0.0.58</p>
       <p class="login-card__subtitle">
         Sign off with a raid that actually fits — matched by game,
         viewer count, and how long you've both been live.
       </p>
       <button id="login-btn" class="btn btn--primary btn--block">Log in with Twitch</button>
-      <button class="btn btn--ghost btn--small login-card__theme" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
+      <div class="login-card__appearance" aria-label="Display options">
+        <button id="login-theme-toggle" class="btn btn--ghost btn--small login-card__theme" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
+        <button id="login-contrast-toggle" class="btn btn--ghost btn--small" type="button" data-contrast-toggle aria-pressed="false">High contrast</button>
+        <button class="btn btn--ghost btn--small" type="button" data-open-accessibility>Accessibility settings</button>
+      </div>
       <p id="login-error" class="login-card__error" role="alert"></p>
       <details class="login-card__setup">
         <summary>Login setup help</summary>
@@ -44,6 +50,7 @@
 
   <!-- APP VIEW -->
   <div id="app-view" class="app-view hidden">
+    <a class="skip-link" href="#discovery-view">Skip to main content</a>
     <header class="topbar">
       <a class="topbar__brand" href="./" aria-label="Wormhole home">
         <img class="topbar__brand-logo" src="assets/wormhole-logo.svg" alt="" aria-hidden="true" />
@@ -56,7 +63,8 @@
           <span id="user-name" class="topbar__name"></span>
         </div>
         <button id="theme-toggle" class="btn btn--ghost btn--small" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
-        <button id="contrast-toggle" class="btn btn--ghost btn--small" type="button" aria-pressed="false">High contrast</button>
+        <button id="contrast-toggle" class="btn btn--ghost btn--small" type="button" data-contrast-toggle aria-pressed="false">High contrast</button>
+        <button class="btn btn--ghost btn--small" type="button" data-open-accessibility>Accessibility</button>
         <button id="logout-btn" class="btn btn--ghost btn--small">Log out</button>
       </div>
     </header>
@@ -102,12 +110,13 @@
         <h3 class="filter-section-title">Matching goal</h3>
         <div class="filter-row filter-row--stack">
           <label class="filter-row__label" for="match-preset">What kind of raid are you looking for?</label>
-          <select id="match-preset" class="text-input">
+          <select id="match-preset" class="text-input" aria-describedby="match-preset-hint">
             <option value="similar" selected>Similar Community</option>
             <option value="growth">Growth Opportunity</option>
             <option value="familiar">Familiar Channels</option>
             <option value="explore">Explore Something New</option>
           </select>
+          <p id="match-preset-hint" class="filter-row__hint filter-row__hint--left" aria-live="polite">Prioritizes channels with viewer counts, average audiences, stream lengths, categories, and tags similar to yours.</p>
         </div>
 
         <h3 class="filter-section-title">Audience</h3>
@@ -349,6 +358,49 @@
     </section>
   </div>
 
+  <!-- ACCESSIBILITY SETTINGS -->
+  <dialog id="accessibility-dialog" class="dialog accessibility-dialog" aria-labelledby="accessibility-dialog-title" aria-describedby="accessibility-dialog-description">
+    <div class="compare-dialog__header">
+      <div>
+        <p class="section-eyebrow">Display preferences</p>
+        <h2 id="accessibility-dialog-title">Accessibility settings</h2>
+      </div>
+      <button id="accessibility-dialog-close" class="btn btn--ghost" type="button">Close</button>
+    </div>
+    <p id="accessibility-dialog-description" class="dialog__text">Adjust Wormhole without changing your Twitch account. These preferences stay on this device.</p>
+    <div class="accessibility-options">
+      <label class="accessibility-option" for="accessibility-text-size">
+        <span><strong>Text size</strong><small>Enlarges text and controls throughout Wormhole.</small></span>
+        <select id="accessibility-text-size" class="results-pagination__select">
+          <option value="100">100%</option>
+          <option value="125">125%</option>
+          <option value="150">150%</option>
+          <option value="200">200%</option>
+        </select>
+      </label>
+      <label class="toggle accessibility-option">
+        <input id="accessibility-relaxed-spacing" type="checkbox" />
+        <span class="toggle__box" aria-hidden="true"></span>
+        <span><strong>Relaxed text spacing</strong><small>Increases line, word, and paragraph spacing.</small></span>
+      </label>
+      <label class="toggle accessibility-option">
+        <input id="accessibility-reduce-motion" type="checkbox" />
+        <span class="toggle__box" aria-hidden="true"></span>
+        <span><strong>Reduce motion</strong><small>Removes interface animations and smooth scrolling.</small></span>
+      </label>
+      <label class="toggle accessibility-option">
+        <input id="accessibility-underline-links" type="checkbox" />
+        <span class="toggle__box" aria-hidden="true"></span>
+        <span><strong>Underline links</strong><small>Makes links identifiable without relying on color.</small></span>
+      </label>
+      <label class="toggle accessibility-option">
+        <input id="accessibility-simple-results" type="checkbox" />
+        <span class="toggle__box" aria-hidden="true"></span>
+        <span><strong>Simplified match cards</strong><small>Hides automatic thumbnails while keeping match information and preview controls.</small></span>
+      </label>
+    </div>
+  </dialog>
+
   <!-- SHORTLIST COMPARISON DIALOG -->
   <dialog id="compare-dialog" class="dialog compare-dialog" aria-labelledby="compare-dialog-title">
     <div class="compare-dialog__header">
@@ -362,7 +414,8 @@
   </dialog>
 
   <!-- RAID CONFIRM DIALOG -->
-  <dialog id="raid-dialog" class="dialog">
+  <dialog id="raid-dialog" class="dialog" aria-labelledby="raid-dialog-title" aria-describedby="raid-dialog-text">
+    <h2 id="raid-dialog-title" class="dialog__title">Confirm raid</h2>
     <p id="raid-dialog-text" class="dialog__text"></p>
     <div class="raid-message-choice">
       <label class="toggle raid-message-choice__toggle" for="raid-message-opt-in">
@@ -384,7 +437,7 @@
   </dialog>
 
   <!-- ACTIVE RAID COUNTDOWN -->
-  <dialog id="raid-progress-dialog" class="dialog raid-progress-dialog">
+  <dialog id="raid-progress-dialog" class="dialog raid-progress-dialog" aria-labelledby="raid-progress-title" aria-describedby="raid-progress-text raid-progress-audience">
     <p class="raid-progress__eyebrow">Raid in progress</p>
     <img id="raid-progress-avatar" class="raid-progress__avatar" alt="" />
     <h2 id="raid-progress-title" class="raid-progress__title">Preparing raid…</h2>
@@ -406,7 +459,10 @@
     </div>
   </dialog>
 
-  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <span id="toast-message"></span>
+    <button id="toast-close" class="toast__close" type="button" aria-label="Dismiss notification">×</button>
+  </div>
 
   <section id="storage-choice-panel" class="storage-choice" role="dialog" aria-labelledby="storage-choice-title" aria-describedby="storage-choice-description" hidden>
     <button id="storage-choice-close" class="storage-choice__close" type="button" aria-label="Close privacy settings">×</button>
@@ -436,6 +492,8 @@
       Project by <a href="https://www.beacons.ai/oneeyednerdy" target="_blank" rel="noopener noreferrer">OneEyedNerdy</a>
     </p>
     <p class="site-footer__privacy">
+      <button type="button" data-open-accessibility>Accessibility settings</button>
+      <span aria-hidden="true">·</span>
       <button type="button" data-open-storage-settings>Privacy settings</button>
       <span aria-hidden="true">·</span>
       <a href="privacy.html">Storage policy</a>
@@ -451,9 +509,9 @@
     </label>
   </footer>
 
-  <script type="module" src="js/device-layout.js?v=53"></script>
-  <script type="module" src="js/storage-consent-ui.js?v=53"></script>
-  <script type="module" src="js/ui-controls.js?v=53"></script>
-  <script type="module" src="js/wormhole-app-v53.js?v=53"></script>
+  <script type="module" src="js/device-layout.js?v=58"></script>
+  <script type="module" src="js/storage-consent-ui.js?v=58"></script>
+  <script type="module" src="js/ui-controls.js?v=58"></script>
+  <script type="module" src="js/wormhole-app-v58.js?v=58"></script>
 </body>
 </html>

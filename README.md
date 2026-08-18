@@ -1,5 +1,12 @@
 # Wormhole (web)
 
+Current release: **Beta-0.0.58**. During beta development, each feature build
+increments the patch number (`Beta-0.0.59`, `Beta-0.0.60`, and so on).
+
+The product name used in browser tabs and bookmarks is **Wormhole Networking
+Tool by OneEyedNerdy**. Its hourglass-wormhole mark uses a single Wormhole
+purple (`#8B5CF6`) and is supplied as both SVG artwork and a multi-size ICO.
+
 A static website — plain HTML/CSS/JS, no build step, no framework — that
 logs in with Twitch and finds you a good channel to raid, matched on:
 
@@ -70,6 +77,11 @@ preference on the device.
 
 If you are offline, Wormhole offers up to five recent past-broadcast VODs to
 choose from. Twitch supplies each VOD's title, date, duration, and thumbnail.
+The broadcaster status panel displays Twitch's official player after login:
+your channel while live, or the currently selected VOD while offline. Playback
+starts paused and muted. Because Twitch requires embedded players to be at
+least 400 pixels wide, phone panels that cannot meet that minimum receive an
+**Open on Twitch** fallback.
 When Wormhole previously observed that live session, it restores that stream's
 exact category and locally sampled viewer average. Otherwise it falls back to
 the channel's last-played category and broader local average, and lets you
@@ -108,7 +120,7 @@ handles natively — no popups, no custom URL schemes, no build tooling.
    generated client secret in Wormhole or any frontend file.
 5. Save, then copy the **Client ID**.
 
-Open `js/twitch-config-v53.js` and paste it in:
+Open `js/twitch-config-v58.js` and paste it in:
 
 ```js
 clientId: 'YOUR_TWITCH_CLIENT_ID',
@@ -125,7 +137,7 @@ URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
 match, including HTTPS, hostname, path, and trailing slash.
 
 If your host exposes the app through several aliases or rewrites, set
-`redirectUriOverride` in `js/twitch-config-v53.js` to the one production callback you
+`redirectUriOverride` in `js/twitch-config-v58.js` to the one production callback you
 registered with Twitch. Production and preview hostnames are different origins
 and must not be treated as interchangeable.
 
@@ -133,6 +145,12 @@ Login requests force a fresh Twitch approval screen so newly added permissions
 cannot be skipped by an older authorization. The CSRF verifier is retained for
 up to 30 minutes in session storage, local storage, and a short-lived SameSite
 cookie fallback; the access token itself remains in session storage only.
+
+The login screen and authenticated header both expose display controls. The
+Accessibility settings dialog provides persistent 100%, 125%, 150%, and 200%
+text sizes, relaxed spacing, reduced motion, underlined links, and simplified
+match cards. These preferences are essential local accessibility settings and
+do not enable optional stream history.
 
 ---
 
@@ -405,9 +423,12 @@ not attempt to imitate or bypass that protected Twitch action.
 ```
 index.html          # Page shell, both views (login + app)
 privacy.html        # Storage and privacy policy
+assets/
+  wormhole-logo.svg  # Single-color hourglass-wormhole mark
+  favicon.ico        # 16, 32, and 48 px browser/bookmark icon
 css/styles.css       # All styling
 js/
-  twitch-config-v53.js # Client ID, scopes, redirect URI
+  twitch-config-v58.js # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   direct-search.js    # Normalizes exact streamer usernames and URLs
@@ -418,7 +439,7 @@ js/
   appearance-boot.js   # Applies saved theme before first paint
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
-  wormhole-app-v53.js # Wires everything together, renders the UI
+  wormhole-app-v58.js # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
   twitch-auth.test.mjs # Twitch login security and redirect tests

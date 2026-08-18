@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RequestManager, RequestError } from '../js/browser-request-v53.js';
+import { RequestManager, RequestError } from '../js/browser-request-v58.js';
 
 function response(status, headers = {}) {
   return {

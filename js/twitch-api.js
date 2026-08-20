@@ -1,5 +1,5 @@
-import { TWITCH_CONFIG } from './twitch-config-v69.js?v=69';
-import { RequestError, RequestManager } from './browser-request-v69.js?v=69';
+import { TWITCH_CONFIG } from './twitch-config-v73.js?v=73';
+import { RequestError, RequestManager } from './browser-request-v73.js?v=73';
 
 const CHAT_SETTINGS_CACHE_TTL_MS = 60 * 1000;
 
@@ -20,9 +20,10 @@ export class TwitchApiError extends Error {
 
 /** Wormhole's thin wrapper around Twitch's REST API. */
 export class TwitchApi {
-  constructor(accessToken, { requestManager } = {}) {
+  constructor(accessToken, { requestManager, onError } = {}) {
     this.accessToken = accessToken;
     this.requestManager = requestManager ?? new RequestManager();
+    this.onError = typeof onError === 'function' ? onError : null;
     this.broadcasterTypeCache = new Map();
     this.teamCache = new Map();
     this.followedBroadcasterIdsCache = new Map();
@@ -49,9 +50,20 @@ export class TwitchApi {
     try {
       return await this.requestManager.request(url, options, requestOptions);
     } catch (error) {
+      const parsedUrl = new URL(url, globalThis.location?.origin ?? 'http://localhost');
+      try {
+        this.onError?.({
+          message: 'Twitch API request failed',
+          endpoint: parsedUrl.pathname,
+          method: options.method ?? 'GET',
+          status: Number(error?.status) || null,
+        });
+      } catch {
+        // Error reporting must never interfere with Twitch requests.
+      }
       if (error instanceof RequestError) {
         throw new TwitchApiError(
-          `${options.method ?? 'GET'} ${new URL(url, globalThis.location?.origin ?? 'http://localhost').pathname} failed (${error.status}): ${error.body}`,
+          `${options.method ?? 'GET'} ${parsedUrl.pathname} failed (${error.status}): ${error.body}`,
           error.status
         );
       }
@@ -775,22 +787,6 @@ export class TwitchApi {
     const res = await this._request(url, { method: 'POST', headers: this.headers });
     const json = await res.json();
     return json.data?.[0] ?? null;
-  }
-
-  /** Sends a chat message as the logged-in user. Requires user:write:chat. */
-  async sendChatMessage(broadcasterId, senderId, message) {
-    const url = new URL(TWITCH_CONFIG.apiBaseUrl + '/chat/messages');
-    const res = await this._request(url, {
-      method: 'POST',
-      headers: { ...this.headers, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        broadcaster_id: broadcasterId,
-        sender_id: senderId,
-        message,
-      }),
-    });
-    const json = await res.json();
-    return json.data?.[0] ?? { is_sent: false, drop_reason: { message: 'Twitch did not return a delivery result.' } };
   }
 
   /** Cancels a pending raid initiated by the logged-in broadcaster. */

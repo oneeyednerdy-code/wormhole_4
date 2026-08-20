@@ -1,4 +1,4 @@
-import { TWITCH_CONFIG } from './twitch-config-v69.js?v=69';
+import { TWITCH_CONFIG } from './twitch-config-v73.js?v=73';
 
 const TOKEN_KEY = 'wormhole_access_token';
 const LEGACY_TOKEN_KEY = 'raid_finder_token';

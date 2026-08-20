@@ -17,8 +17,17 @@ const matches = [
 
 test('publishes every results sorting option', () => {
   assert.deepEqual(RESULT_SORT_OPTIONS, [
-    'recommended', 'following-first', 'viewers-high', 'viewers-low', 'ending-soon', 'just-started',
+    'recommended', 'following-first', 'tag-match', 'viewers-high', 'viewers-low', 'ending-soon', 'just-started',
   ]);
+});
+
+test('sorts by typed-tag match percentage and count', () => {
+  const source = [
+    { ...matches[0], searchedTagMatchPercent: 50, searchedTagMatchCount: 1 },
+    { ...matches[1], searchedTagMatchPercent: 100, searchedTagMatchCount: 2 },
+    { ...matches[2], searchedTagMatchPercent: 0, searchedTagMatchCount: 0 },
+  ];
+  assert.deepEqual(sortRaidMatches(source, 'tag-match').map((m) => m.stream.user_id), ['oldest', 'middle', 'newest']);
 });
 
 test('sorts followed channels first and recommendations within each group', () => {

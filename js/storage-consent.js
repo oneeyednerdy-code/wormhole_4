@@ -3,6 +3,7 @@ export const OPTIONAL_HISTORY_KEYS = Object.freeze([
   'wormhole_viewer_history_v2',
   'wormhole_channel_history_v1',
   'wormhole_previous_streams_v1',
+  'wormhole_diagnostics_v1',
 ]);
 
 export const StorageConsent = {

@@ -1,18 +1,38 @@
-import { isLanguageTag } from './language-tags.js?v=69';
+import { isLanguageTag } from './language-tags.js?v=73';
+
+/** Twitch tags are compared without case, spaces, punctuation, or hash prefixes. */
+export function normalizeTagKey(tag) {
+  return String(tag ?? '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/^#+/, '')
+    .replace(/&/g, 'and')
+    .replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+export function getSearchedTagMatch(tags = [], searchedTags = []) {
+  const streamKeys = new Set(tags.map(normalizeTagKey).filter(Boolean));
+  const searched = [...new Set(searchedTags.map(normalizeTagKey).filter(Boolean))];
+  const matched = searched.filter((key) => streamKeys.has(key));
+  return {
+    searchedTagMatchCount: matched.length,
+    searchedTagMatchPercent: searched.length ? (matched.length / searched.length) * 100 : 0,
+  };
+}
 
 /** Creates a compact, deduplicated tag list for result cards. */
 export function prepareTagDisplay(tags, sharedTags = [], searchedTags = []) {
   const sharedKeys = new Set(
-    sharedTags.map((tag) => String(tag ?? '').trim().toLowerCase()).filter(Boolean)
+    sharedTags.map(normalizeTagKey).filter(Boolean)
   );
   const searchedKeys = new Set(
-    searchedTags.map((tag) => String(tag ?? '').trim().toLowerCase()).filter(Boolean)
+    searchedTags.map(normalizeTagKey).filter(Boolean)
   );
   const seen = new Set();
   const display = [];
   for (const value of tags ?? []) {
     const label = String(value ?? '').trim();
-    const key = label.toLowerCase();
+    const key = normalizeTagKey(label);
     if (!label || seen.has(key)) continue;
     seen.add(key);
     display.push({

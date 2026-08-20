@@ -1,7 +1,12 @@
 # Wormhole (web)
 
-Current release: **Beta-0.0.69**. During beta development, each feature build
-increments the patch number (`Beta-0.0.68`, `Beta-0.0.69`, and so on).
+Current release: **Beta-0.0.73**. During beta development, each feature build
+increments the patch number (`Beta-0.0.71`, `Beta-0.0.72`, and so on).
+
+The responsive layout automatically switches to a compact phone interface at
+600 CSS pixels or below. Narrow phones use a single-column layout, a compact
+account menu, non-obstructing result controls, 48-pixel touch targets, and
+viewport-safe dialogs. A manual layout override remains available in the footer.
 
 Wormhole checks `version.json` with `cache: no-store` on every page load. If a
 browser serves an older page, the app removes obsolete Wormhole-managed Cache
@@ -23,9 +28,8 @@ logs in with Twitch and finds you a good channel to raid, matched on:
 
 - **Game / category** — search and add extra games/categories, not just your
   current one
-- **Genre groups** — add curated RPG, MMO, Shooter, Strategy, Horror,
-  Survival, Simulation, or Adventure game groups, then remove individual
-  categories you do not want
+- **Genre groups** — add curated gaming presets plus Creative, Coding & Tech,
+  and Conversation groups for non-gaming Twitch categories
 - **Viewer count** — choose channels within ±50%, ±75%, or ±100% of your
   current live viewers, or show every viewer count; ±50% remains the default
 - **Channel status** — additive Partner/Affiliate toggles on top of an
@@ -34,10 +38,19 @@ logs in with Twitch and finds you a good channel to raid, matched on:
   using followers-only, subscribers-only, or emote-only chat
 - **Team** — optionally only show channels sharing one of your Twitch Teams
 - **Tags** — optionally require candidates to have at least one of the tags
-  you type in (e.g. "speedrun", "cozy", "english")
+  you type; Following Only refreshes while typing and normalizes common
+  spacing/punctuation differences
 - **Language** — defaults to English and offers popular language choices;
   it is applied independently from custom tags, while **Any language** removes
   the language restriction without deleting your other tag choices
+- **Suggested tags** — one-click shortcuts add or remove common Twitch tags,
+  including GenAIOptedOut, AIOptedOut, MatureContent, 18Plus, LurkerFriendly,
+  LGBTQIAPlus, Chatty, AMA, Cozy, FirstPlaythrough, NoBackseating, and VTuber
+- **Content warnings** — independently set each Twitch content classification
+  label or the mature-audience stream setting to Any, Require, or Exclude.
+  Multiple required labels use an at-least-one match, while matching any
+  excluded label removes the channel. If Twitch cannot return classification
+  data during a filtered search, Wormhole omits that uncertain result.
 - **Automatic tag matching** — compares the logged-in stream's Twitch tags
   with every candidate, shows shared tags on result cards, and uses meaningful
   overlap in the recommendation score; language tags are shown but scored
@@ -48,14 +61,14 @@ logs in with Twitch and finds you a good channel to raid, matched on:
 Results render as a grid of cards, each with a click-to-play live preview
 (Twitch's own embedded player) alongside the stats. Results are paginated with
 a selector for 12 through 100 cards per page. They can be sorted by recommended
-match, followed channels first, viewers high-to-low or low-to-high, longest
+match, followed channels first, tag match, viewers high-to-low or low-to-high, longest
 live (the best available "ending soon" proxy), or most recently started. It
 can also **start the raid** for you directly, via the Twitch API. After a raid
 starts, Wormhole displays Twitch's 90-second countdown with a cancel option.
 When the countdown finishes, Wormhole waits for Twitch's actual `channel.raid`
-EventSub confirmation. Only that confirmation sends the completion chat
-message and opens an in-app destination view containing the raided channel's
-official Twitch player and chat embeds.
+EventSub confirmation. The confirmation opens an in-app destination view with
+the official Twitch player and chat embeds. Wormhole no longer posts an
+automatic completion message; optional raid text is editable and copy-only.
 
 Version 44 adds four matching goals (Similar Community, Growth Opportunity,
 Familiar Channels, and Explore Something New), explicit save/load controls for
@@ -114,6 +127,86 @@ around a browser redirect (`response_type=token`), which a static site
 handles natively — no popups, no custom URL schemes, no build tooling.
 
 ---
+
+## 1. Register a Twitch application
+
+1. Go to https://dev.twitch.tv/console/apps → **Register Your Application**.
+2. Name it anything (e.g. "Wormhole").
+3. **OAuth Redirect URLs**: add the exact URL you'll serve this site from —
+   for example:
+   - `http://localhost:8000/` for local testing
+   - `https://yourname.github.io/wormhole/` for GitHub Pages
+   - `https://your-domain.example/` for another static host
+
+   You can register multiple redirect URLs on the same app, so add both your
+   local and production URLs.
+4. Client type: **Confidential**. Twitch currently limits Public clients to
+   Device Code Flow, so Public will not work with this browser redirect. The
+   implicit flow still uses only the public Client ID: do **not** put the
+   generated client secret in Wormhole or any frontend file.
+5. Save, then copy the **Client ID**.
+
+Open `js/twitch-config-v73.js` and paste it in:
+
+```js
+clientId: 'YOUR_TWITCH_CLIENT_ID',
+```
+
+The redirect URI itself doesn't need editing — it's computed automatically
+from wherever the page is being served (`window.location.origin +
+window.location.pathname`), as long as it matches something you registered
+in step 3.
+
+Wormhole normalizes `/index.html` to its containing directory so the callback
+is stable. Expand **Login setup help** on the login screen and copy the exact
+URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
+match, including HTTPS, hostname, path, and trailing slash.
+
+If your host exposes the app through several aliases or rewrites, set
+`redirectUriOverride` in `js/twitch-config-v73.js` to the one production callback you
+registered with Twitch. Production and preview hostnames are different origins
+and must not be treated as interchangeable.
+
+Login requests force a fresh Twitch approval screen so newly added permissions
+cannot be skipped by an older authorization. The CSRF verifier is retained for
+up to 30 minutes in session storage, local storage, and a short-lived SameSite
+cookie fallback; the access token itself remains in session storage only.
+
+The login screen and authenticated header both expose display controls. The
+Accessibility settings dialog provides persistent 100%, 125%, 150%, and 200%
+text sizes, relaxed spacing, reduced motion, underlined links, and simplified
+match cards. These preferences are essential local accessibility settings and
+do not enable optional stream history.
+
+---
+
+## 2. Run it locally
+
+Because this uses ES modules (`<script type="module">`), it needs to be
+served over `http://`, not opened directly as a `file://` path (browsers
+block module imports from the filesystem). Any static server works:
+
+```bash
+cd wormhole
+python3 -m http.server 8000
+# then open http://localhost:8000/
+```
+
+or `npx serve .`, or the VS Code "Live Server" extension — anything that
+serves static files.
+
+---
+
+## 3. Deploy it
+
+Any static host works, since there's no server-side code:
+
+- **GitHub Pages**: push this folder to a repo, enable Pages on it.
+- **Vercel or another static host**: upload the folder or connect the repo.
+- **Any web host**: it's just static files — upload as-is.
+
+Whatever URL it ends up live at, make sure that exact URL is registered as
+an OAuth Redirect URL on your Twitch app (step 1).
 
 ## Reliability and safety
 
@@ -337,9 +430,11 @@ local to your browser — it isn't sent anywhere.
 On first visit, Wormhole offers two clear choices: **Essential only** or
 **Allow local history**. Essential storage covers the Twitch login flow, the
 saved storage choice, and explicitly selected accessibility preferences.
-Optional history covers viewer samples, channel/category snapshots, and up to
-five previous-stream references. Until permission is given, those optional
-records are neither read nor written.
+Optional history covers viewer samples, channel/category snapshots, up to five
+previous-stream references, and up to 150 privacy-sanitized diagnostic events.
+Until permission is given, those optional records are neither read nor written.
+Diagnostics can remain in memory for the current session and download as a
+plain-text log for the Wormhole Discord <strong>#bug-reports</strong> channel.
 
 The footer's **Privacy settings** control reopens the panel at any time. It can
 also delete all optional local history. `privacy.html` contains the concise
@@ -355,15 +450,10 @@ requested at login). It asks for confirmation first, then Twitch shows the
 usual raid countdown in your dashboard/chat. The local countdown never sends
 a message by itself. Wormhole waits for the outgoing `channel.raid` EventSub
 notification for the exact selected destination. Before accepting a raid, the
-streamer can preview **“Wormhole Networking Tool has completed the Raid to
-@destination”** and explicitly opt in to sending it through
-`POST /helix/chat/messages`. The choice is off by default and applies only to
-that raid.
-This requires the `user:write:chat` scope, so existing users must log out and
-authorize the updated permission once. A failed or dropped message does not
-undo the raid; the in-app destination view reports the delivery result and
-still loads Twitch's official live player and chat. Wormhole no longer
-redirects the browser away from the app after a raid.
+streamer can edit and copy an optional raid message for manual use in Twitch
+chat. Wormhole does not request chat-write permission or automatically post a
+raid-completed message. The confirmed destination view still loads Twitch's
+official live player and chat without redirecting the browser away from the app.
 During the pending countdown, **Open Twitch Raid Controls** opens the logged-in
 streamer's official Twitch Stream Manager in a new tab. The streamer may use
 Twitch's own **Raid Now** control there to complete immediately; Wormhole does
@@ -381,7 +471,7 @@ assets/
   favicon.ico        # 16, 32, and 48 px browser/bookmark icon
 css/styles.css       # All styling
 js/
-  twitch-config-v69.js # Client ID, scopes, redirect URI
+  twitch-config-v73.js # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   direct-search.js    # Normalizes exact streamer usernames and URLs
@@ -392,7 +482,7 @@ js/
   appearance-boot.js   # Applies saved theme before first paint
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
-  wormhole-app-v69.js # Wires everything together, renders the UI
+  wormhole-app-v73.js # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
   twitch-auth.test.mjs # Twitch login security and redirect tests

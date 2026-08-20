@@ -59,6 +59,18 @@ export const GENRE_PRESETS = [
       'A Plague Tale: Requiem', 'Red Dead Redemption 2', 'Star Wars Jedi: Survivor',
     ],
   },
+  {
+    id: 'creative', label: 'Creative', igdbField: 'Twitch category',
+    games: ['Art', 'Makers & Crafting', 'Music', 'Food & Drink'],
+  },
+  {
+    id: 'coding', label: 'Coding & Tech', igdbField: 'Twitch category',
+    games: ['Software and Game Development', 'Science & Technology'],
+  },
+  {
+    id: 'conversation', label: 'Conversation', igdbField: 'Twitch category',
+    games: ['Just Chatting', 'Talk Shows & Podcasts', 'Travel & Outdoors', 'Sports'],
+  },
 ];
 
 export function getGenrePreset(id) {

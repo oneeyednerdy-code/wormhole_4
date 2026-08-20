@@ -30,8 +30,8 @@ globalThis.window = {
   history: { replaceState() {} },
 };
 
-const { getOAuthRedirectUri } = await import('../js/twitch-config-v69.js');
-const { TWITCH_CONFIG } = await import('../js/twitch-config-v69.js');
+const { getOAuthRedirectUri } = await import('../js/twitch-config-v73.js');
+const { TWITCH_CONFIG } = await import('../js/twitch-config-v73.js');
 const { TwitchAuth } = await import('../js/twitch-auth.js');
 
 test('normalizes index.html to a stable OAuth callback directory', () => {
@@ -62,7 +62,7 @@ test('login creates a valid Twitch authorization URL and durable verifier', () =
   assert.equal(url.origin, 'https://id.twitch.tv');
   assert.equal(url.searchParams.get('response_type'), 'token');
   assert.equal(url.searchParams.get('force_verify'), 'true');
-  assert.ok(url.searchParams.get('scope').split(' ').includes('user:write:chat'));
+  assert.ok(!url.searchParams.get('scope').split(' ').includes('user:write:chat'));
   assert.ok(url.searchParams.get('scope').split(' ').includes('moderator:read:followers'));
   assert.ok(state);
   assert.equal(sessionStorage.getItem('wormhole_oauth_state'), state);
@@ -157,7 +157,7 @@ test('token validation checks client identity and every requested scope', async 
   });
   const status = await TwitchAuth.validateToken('token');
   assert.equal(status.reason, 'missing_scopes');
-  assert.deepEqual(status.missingScopes, ['channel:manage:raids', 'moderator:read:followers', 'user:write:chat']);
+  assert.deepEqual(status.missingScopes, ['channel:manage:raids', 'moderator:read:followers']);
 });
 
 test('temporary validation outages preserve the session for retry', async () => {

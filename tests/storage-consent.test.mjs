@@ -34,6 +34,7 @@ test('essential-only removes optional history without removing essential prefere
     ['wormhole_viewer_history_v2', 'viewer data'],
     ['wormhole_channel_history_v1', 'channel data'],
     ['wormhole_previous_streams_v1', 'stream data'],
+    ['wormhole_diagnostics_v1', 'diagnostic data'],
     ['wormhole_twitch_token', 'oauth token'],
     ['wormhole_high_contrast', 'true'],
   ]);

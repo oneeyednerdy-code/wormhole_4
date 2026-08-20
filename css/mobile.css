@@ -12,13 +12,18 @@ html[data-device-layout='tablet'] .raid-target-preview {
 
 html[data-device-layout='mobile'] .raid-target-preview iframe,
 html[data-device-layout='tablet'] .raid-target-preview iframe {
-  min-height: 260px;
+  min-height: 0;
+  aspect-ratio: 16 / 9;
 }
 
 html[data-device-layout='mobile'] body,
 html[data-device-layout='tablet'] body {
   -webkit-text-size-adjust: 100%;
   touch-action: manipulation;
+}
+
+html[data-device-layout='mobile'] .login-view {
+  min-height: 100dvh;
 }
 
 html[data-device-layout='mobile'] button,
@@ -56,12 +61,11 @@ html[data-device-layout='tablet'] .result-card__buttons .btn {
 
 html[data-device-layout='mobile'] .topbar {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  padding-inline: 12px;
+  padding: max(8px, env(safe-area-inset-top)) 10px 8px;
 }
 
-html[data-device-layout='mobile'] .topbar__brand span:last-child,
 html[data-device-layout='mobile'] .topbar__name {
   display: none;
 }
@@ -71,11 +75,15 @@ html[data-device-layout='mobile'] .topbar__brand-logo {
   height: 38px;
 }
 
+html[data-device-layout='mobile'] .topbar__brand {
+  min-width: 0;
+}
+
 html[data-device-layout='mobile'] .topbar__account {
   justify-content: flex-end;
-  gap: 5px;
+  gap: 8px;
   min-width: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 html[data-device-layout='mobile'] .connection-status {
@@ -92,20 +100,74 @@ html[data-device-layout='mobile'] .topbar__avatar {
 }
 
 html[data-device-layout='mobile'] .topbar__account .btn {
-  min-height: 40px;
-  padding: 7px 8px;
-  font-size: 0.69rem;
+  min-height: 48px;
+  padding: 9px 12px;
+  font-size: 0.875rem;
+}
+
+html[data-device-layout='mobile'] .topbar__desktop-actions {
+  display: none;
+}
+
+html[data-device-layout='mobile'] .mobile-account-menu {
+  position: relative;
+  display: block;
+}
+
+html[data-device-layout='mobile'] .mobile-account-menu > summary {
+  min-width: 64px;
+  min-height: 48px;
+  display: grid;
+  place-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  color: var(--text);
+  background: var(--panel-raised);
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+html[data-device-layout='mobile'] .mobile-account-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+html[data-device-layout='mobile'] .mobile-account-menu[open] > summary {
+  border-color: var(--violet-bright);
+}
+
+html[data-device-layout='mobile'] .mobile-account-menu__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 50;
+  width: min(260px, calc(100vw - 20px));
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--panel-line);
+  border-radius: 12px;
+  background: var(--panel);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.55);
+}
+
+html[data-device-layout='mobile'] .mobile-account-menu__panel .btn {
+  width: 100%;
+  justify-content: flex-start;
 }
 
 html[data-device-layout='mobile'] .main {
   width: 100%;
-  padding: 14px 10px calc(92px + env(safe-area-inset-bottom));
-  gap: 14px;
+  min-width: 0;
+  padding: 10px 8px calc(48px + env(safe-area-inset-bottom));
+  gap: 10px;
 }
 
 html[data-device-layout='mobile'] .panel {
-  padding: 15px;
-  border-radius: 12px;
+  min-width: 0;
+  padding: 14px 12px;
+  border-radius: 10px;
 }
 
 html[data-device-layout='mobile'] .direct-search-panel,
@@ -128,7 +190,8 @@ html[data-device-layout='mobile'] .raid-destination__actions .btn {
 }
 
 html[data-device-layout='mobile'] .filters-panel__header {
-  align-items: center;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 html[data-device-layout='mobile'] .filters-panel__header .btn {
@@ -146,6 +209,31 @@ html[data-device-layout='mobile'] .genre-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+html[data-device-layout='mobile'] .text-input,
+html[data-device-layout='mobile'] .results-pagination__select,
+html[data-device-layout='mobile'] select,
+html[data-device-layout='mobile'] input,
+html[data-device-layout='mobile'] textarea {
+  max-width: 100%;
+  min-width: 0;
+  font-size: 16px;
+}
+
+html[data-device-layout='mobile'] .suggested-tags button {
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+
+html[data-device-layout='mobile'] .content-label-filters {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+html[data-device-layout='mobile'] .content-label-filters label,
+html[data-device-layout='mobile'] .content-label-filters select {
+  width: 100%;
+  min-width: 0;
+}
+
 html[data-device-layout='mobile'] .toggle {
   min-height: 44px;
 }
@@ -156,22 +244,12 @@ html[data-device-layout='mobile'] .toggle__box {
 }
 
 html[data-device-layout='mobile'] .control-row {
-  position: sticky;
-  bottom: 0;
-  z-index: 22;
-  margin-inline: -10px;
-  padding: 10px 12px max(10px, env(safe-area-inset-bottom));
+  position: static;
+  margin-inline: 0;
+  padding: 12px 0 0;
   border-top: 1px solid var(--panel-line);
-  background: var(--bg);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 -12px 28px -20px rgba(0, 0, 0, 0.9);
-}
-
-@supports (background: color-mix(in srgb, black, white)) {
-  html[data-device-layout='mobile'] .control-row {
-    background: color-mix(in srgb, var(--bg) 92%, transparent);
-  }
+  background: transparent;
+  box-shadow: none;
 }
 
 html[data-device-layout='mobile'] .active-filters {
@@ -185,8 +263,9 @@ html[data-device-layout='mobile'] .control-row > .btn {
 }
 
 html[data-device-layout='mobile'] .results-pagination {
-  top: 72px;
+  position: static;
   padding: 10px;
+  gap: 10px;
 }
 
 html[data-device-layout='mobile'] .results-pagination__limit,
@@ -205,7 +284,17 @@ html[data-device-layout='mobile'] .results-list {
 }
 
 html[data-device-layout='mobile'] .result-card {
-  padding: 14px;
+  min-width: 0;
+  padding: 12px;
+}
+
+html[data-device-layout='mobile'] .result-card__header {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+html[data-device-layout='mobile'] .meter {
+  margin-left: auto;
 }
 
 html[data-device-layout='mobile'] .result-card__buttons {
@@ -225,13 +314,13 @@ html[data-device-layout='mobile'] .result-card__title {
 }
 
 html[data-device-layout='mobile'] .dialog {
-  width: 100%;
+  width: calc(100% - 8px);
   max-width: none;
-  max-height: min(88vh, 760px);
-  margin: auto 0 0;
+  max-height: calc(100dvh - 8px);
+  margin: auto;
   overflow-y: auto;
-  border-radius: 18px 18px 0 0;
-  padding: 20px 16px max(20px, env(safe-area-inset-bottom));
+  border-radius: 14px;
+  padding: 18px 14px max(18px, env(safe-area-inset-bottom));
 }
 
 html[data-device-layout='mobile'] .accessibility-option {
@@ -244,7 +333,7 @@ html[data-device-layout='mobile'] .accessibility-option .results-pagination__sel
 }
 
 html[data-device-layout='mobile'] .raid-progress-dialog {
-  width: 100%;
+  width: calc(100% - 8px);
 }
 
 html[data-device-layout='mobile'] .raid-destination-view {
@@ -259,7 +348,8 @@ html[data-device-layout='mobile'] .raid-destination__chat {
 html[data-device-layout='mobile'] .storage-choice {
   bottom: 0;
   width: 100%;
-  max-height: 90vh;
+  max-height: 100dvh;
+  overflow-y: auto;
   border-radius: 18px 18px 0 0;
   padding-bottom: max(18px, env(safe-area-inset-bottom));
 }
@@ -269,17 +359,31 @@ html[data-device-layout='mobile'] .site-footer {
 }
 
 @media (max-width: 380px) {
-  html[data-device-layout='mobile'] .topbar {
-    grid-template-columns: 1fr;
-  }
-
-  html[data-device-layout='mobile'] .topbar__brand {
+  html[data-device-layout='mobile'] .topbar__brand span:last-child {
     display: none;
   }
 
-  html[data-device-layout='mobile'] .topbar__account {
-    justify-content: center;
-    flex-wrap: wrap;
+  html[data-device-layout='mobile'] .viewer-range-options,
+  html[data-device-layout='mobile'] .genre-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-device-layout='mobile'] .login-view {
+    padding: max(10px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom));
+  }
+
+  html[data-device-layout='mobile'] .login-card {
+    width: 100%;
+    padding: 24px 16px;
+  }
+
+  html[data-device-layout='mobile'] .login-card__appearance {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-device-layout='mobile'] .login-card__appearance .btn {
+    width: 100%;
   }
 }
 

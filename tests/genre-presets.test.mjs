@@ -6,10 +6,10 @@ import {
   getGenreLabelsForGame,
 } from '../js/genre-presets.js';
 
-test('genre presets expose the eight supported broad groups', () => {
+test('genre presets expose gaming and creative Twitch category groups', () => {
   assert.deepEqual(
     GENRE_PRESETS.map((preset) => preset.id),
-    ['rpg', 'mmo', 'shooter', 'strategy', 'horror', 'survival', 'simulation', 'adventure']
+    ['rpg', 'mmo', 'shooter', 'strategy', 'horror', 'survival', 'simulation', 'adventure', 'creative', 'coding', 'conversation']
   );
 });
 

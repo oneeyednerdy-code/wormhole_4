@@ -9,6 +9,7 @@ import {
 
 test('phones automatically receive the mobile layout', () => {
   assert.equal(detectDeviceLayout({ width: 390 }), DEVICE_LAYOUTS.MOBILE);
+  assert.equal(detectDeviceLayout({ width: 360 }), DEVICE_LAYOUTS.MOBILE);
 });
 
 test('layout overrides accept auto and known layouts only', () => {

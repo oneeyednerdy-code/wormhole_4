@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { prepareTagDisplay } from '../js/tag-display.js';
+import { getSearchedTagMatch, prepareTagDisplay } from '../js/tag-display.js';
 
 test('result tag display includes all channel tags and marks shared tags', () => {
   const tags = prepareTagDisplay(
@@ -41,4 +41,12 @@ test('GenAIOptedOut receives searched-tag highlighting', () => {
       { label: 'English', shared: false, searched: false, language: true },
     ]
   );
+});
+
+test('typed tag matching tolerates hash prefixes, spaces, and punctuation', () => {
+  assert.deepEqual(getSearchedTagMatch(['GenAIOptedOut', 'Arts & Crafts'], ['#gen ai opted out', 'arts-and-crafts']), {
+    searchedTagMatchCount: 2,
+    searchedTagMatchPercent: 100,
+  });
+  assert.equal(prepareTagDisplay(['GenAIOptedOut'], [], ['#gen ai opted out'])[0].searched, true);
 });

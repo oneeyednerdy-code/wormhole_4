@@ -169,10 +169,23 @@ export function initializeUiControls(documentRef = document, storage = localStor
 
   const accessibilityDialog = documentRef.getElementById('accessibility-dialog');
   documentRef.querySelectorAll?.('[data-open-accessibility]').forEach((button) => {
-    button.addEventListener('click', () => accessibilityDialog?.showModal?.());
+    button.addEventListener('click', () => {
+      button.closest?.('details')?.removeAttribute?.('open');
+      accessibilityDialog?.showModal?.();
+    });
   });
   documentRef.getElementById('accessibility-dialog-close')?.addEventListener('click', () => {
     accessibilityDialog?.close?.();
+  });
+
+  const mobileAccountMenu = documentRef.getElementById('mobile-account-menu');
+  documentRef.addEventListener?.('click', (event) => {
+    if (mobileAccountMenu?.open && !mobileAccountMenu.contains?.(event.target)) {
+      mobileAccountMenu.removeAttribute('open');
+    }
+  });
+  documentRef.addEventListener?.('keydown', (event) => {
+    if (event.key === 'Escape') mobileAccountMenu?.removeAttribute?.('open');
   });
   return true;
 }

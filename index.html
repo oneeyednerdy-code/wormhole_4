@@ -2,23 +2,23 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv https://www.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
   <title>Wormhole Networking Tool by OneEyedNerdy</title>
   <meta name="application-name" content="Wormhole Networking Tool by OneEyedNerdy" />
-  <meta name="wormhole-release" content="0.0.69" />
-  <meta name="wormhole-cache-version" content="69" />
-  <link rel="icon" href="assets/favicon.ico?v=69" sizes="any" />
-  <script src="js/appearance-boot.js?v=69"></script>
-  <script type="module" src="js/version-check.js?v=69"></script>
+  <meta name="wormhole-release" content="0.0.73" />
+  <meta name="wormhole-cache-version" content="73" />
+  <link rel="icon" href="assets/favicon.ico?v=73" sizes="any" />
+  <script src="js/appearance-boot.js?v=73"></script>
+  <script type="module" src="js/version-check.js?v=73"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=69" />
-  <link rel="stylesheet" href="css/mobile.css?v=69" />
+  <link rel="stylesheet" href="css/styles.css?v=73" />
+  <link rel="stylesheet" href="css/mobile.css?v=73" />
 </head>
 <body>
 
@@ -26,10 +26,10 @@
   <main id="login-view" class="login-view">
     <div class="login-card">
       <div class="login-card__mark">
-        <img src="assets/wormhole-logo.svg?v=69" alt="" aria-hidden="true" />
+        <img src="assets/wormhole-logo.svg?v=73" alt="" aria-hidden="true" />
       </div>
       <h1 class="login-card__title">Wormhole</h1>
-      <p class="build-version">Beta-0.0.69</p>
+      <p class="build-version">Beta-0.0.73</p>
       <p class="login-card__subtitle">
         Sign off with a raid that actually fits — matched by game,
         viewer count, and how long you've both been live.
@@ -41,13 +41,6 @@
         <button class="btn btn--ghost btn--small" type="button" data-open-accessibility>Accessibility settings</button>
       </div>
       <p id="login-error" class="login-card__error" role="alert"></p>
-      <details class="login-card__setup">
-        <summary>Login setup help</summary>
-        <p>Twitch must have this exact OAuth Redirect URL registered:</p>
-        <code id="oauth-redirect-uri"></code>
-        <p>If Twitch reports a redirect mismatch, copy this value exactly, including the trailing slash. Preview and production hostnames are different redirect URLs.</p>
-        <p>The Twitch application must use <strong>Confidential</strong> client type for this redirect login. Never add its client secret to Wormhole.</p>
-      </details>
     </div>
   </main>
 
@@ -56,7 +49,7 @@
     <a class="skip-link" href="#discovery-view">Skip to main content</a>
     <header class="topbar">
       <a class="topbar__brand" href="./" aria-label="Wormhole home">
-        <img class="topbar__brand-logo" src="assets/wormhole-logo.svg?v=69" alt="" aria-hidden="true" />
+        <img class="topbar__brand-logo" src="assets/wormhole-logo.svg?v=73" alt="" aria-hidden="true" />
         <span>Wormhole</span>
       </a>
       <div class="topbar__account">
@@ -65,10 +58,21 @@
           <img id="user-avatar" class="topbar__avatar" alt="" />
           <span id="user-name" class="topbar__name"></span>
         </div>
-        <button id="theme-toggle" class="btn btn--ghost btn--small" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
-        <button id="contrast-toggle" class="btn btn--ghost btn--small" type="button" data-contrast-toggle aria-pressed="false">High contrast</button>
-        <button class="btn btn--ghost btn--small" type="button" data-open-accessibility>Accessibility</button>
-        <button id="logout-btn" class="btn btn--ghost btn--small">Log out</button>
+        <div class="topbar__desktop-actions">
+          <button id="theme-toggle" class="btn btn--ghost btn--small" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
+          <button id="contrast-toggle" class="btn btn--ghost btn--small" type="button" data-contrast-toggle aria-pressed="false">High contrast</button>
+          <button class="btn btn--ghost btn--small" type="button" data-open-accessibility>Accessibility</button>
+          <button id="logout-btn" class="btn btn--ghost btn--small" type="button" data-logout>Log out</button>
+        </div>
+        <details id="mobile-account-menu" class="mobile-account-menu">
+          <summary aria-label="Open account and display menu">Menu</summary>
+          <div class="mobile-account-menu__panel">
+            <button class="btn btn--ghost" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
+            <button class="btn btn--ghost" type="button" data-contrast-toggle aria-pressed="false">High contrast</button>
+            <button class="btn btn--ghost" type="button" data-open-accessibility>Accessibility settings</button>
+            <button class="btn btn--ghost" type="button" data-logout>Log out</button>
+          </div>
+        </details>
       </div>
     </header>
 
@@ -233,6 +237,39 @@
             placeholder="e.g. GenAIOptedOut, speedrun, cozy…"
             autocomplete="off"
           />
+          <div id="suggested-tags" class="suggested-tags" aria-label="Suggested Twitch tags">
+            <span class="suggested-tags__label">Suggested tags</span>
+            <button type="button" data-suggested-tag="GenAIOptedOut" aria-pressed="false">#GenAIOptedOut</button>
+            <button type="button" data-suggested-tag="AIOptedOut" aria-pressed="false">#AIOptedOut</button>
+            <button type="button" data-suggested-tag="MatureContent" aria-pressed="false">#MatureContent</button>
+            <button type="button" data-suggested-tag="18Plus" aria-pressed="false">#18Plus</button>
+            <button type="button" data-suggested-tag="LurkerFriendly" aria-pressed="false">#LurkerFriendly</button>
+            <button type="button" data-suggested-tag="LGBTQIAPlus" aria-pressed="false">#LGBTQIAPlus</button>
+            <button type="button" data-suggested-tag="Chatty" aria-pressed="false">#Chatty</button>
+            <button type="button" data-suggested-tag="AMA" aria-pressed="false">#AMA</button>
+            <button type="button" data-suggested-tag="Cozy" aria-pressed="false">#Cozy</button>
+            <button type="button" data-suggested-tag="FirstPlaythrough" aria-pressed="false">#FirstPlaythrough</button>
+            <button type="button" data-suggested-tag="NoBackseating" aria-pressed="false">#NoBackseating</button>
+            <button type="button" data-suggested-tag="VTuber" aria-pressed="false">#VTuber</button>
+          </div>
+          <p class="filter-row__hint filter-row__hint--left">Suggested tags are channel-defined Twitch tags and are separate from Twitch content classification labels.</p>
+        </div>
+        <div class="filter-row filter-row--stack">
+          <div class="filter-row__top">
+            <span class="filter-row__label">Content warnings</span>
+            <span class="filter-row__hint-inline">require or exclude Twitch labels</span>
+          </div>
+          <div id="content-label-filters" class="content-label-filters">
+            <label><span>Mature audience setting</span><select data-content-label="MatureAudience"><option value="any">Any</option><option value="include">Require</option><option value="exclude">Exclude</option></select></label>
+            <label><span>Politics and sensitive social issues</span><select data-content-label="DebatedSocialIssuesAndPolitics"><option value="any">Any</option><option value="include">Require</option><option value="exclude">Exclude</option></select></label>
+            <label><span>Drugs or intoxication</span><select data-content-label="DrugsIntoxication"><option value="any">Any</option><option value="include">Require</option><option value="exclude">Exclude</option></select></label>
+            <label><span>Sexual themes</span><select data-content-label="SexualThemes"><option value="any">Any</option><option value="include">Require</option><option value="exclude">Exclude</option></select></label>
+            <label><span>Graphic violence</span><select data-content-label="ViolentGraphic"><option value="any">Any</option><option value="include">Require</option><option value="exclude">Exclude</option></select></label>
+            <label><span>Gambling</span><select data-content-label="Gambling"><option value="any">Any</option><option value="include">Require</option><option value="exclude">Exclude</option></select></label>
+            <label><span>Profanity or vulgarity</span><select data-content-label="ProfanityVulgarity"><option value="any">Any</option><option value="include">Require</option><option value="exclude">Exclude</option></select></label>
+            <label><span>Mature-rated game</span><select data-content-label="MatureGame"><option value="any">Any</option><option value="include">Require</option><option value="exclude">Exclude</option></select></label>
+          </div>
+          <p class="filter-row__hint filter-row__hint--left">A channel must match at least one required label. A channel matching any excluded label is removed. Labels come from Twitch; Mature audience uses Twitch’s stream setting.</p>
         </div>
         <div class="filter-row">
           <span class="filter-row__label">Automatic tag matching</span>
@@ -259,6 +296,9 @@
             <label class="toggle"><input type="checkbox" value="survival" /><span class="toggle__box"></span><span class="toggle__text">Survival</span></label>
             <label class="toggle"><input type="checkbox" value="simulation" /><span class="toggle__box"></span><span class="toggle__text">Simulation</span></label>
             <label class="toggle"><input type="checkbox" value="adventure" /><span class="toggle__box"></span><span class="toggle__text">Adventure</span></label>
+            <label class="toggle"><input type="checkbox" value="creative" /><span class="toggle__box"></span><span class="toggle__text">Creative</span></label>
+            <label class="toggle"><input type="checkbox" value="coding" /><span class="toggle__box"></span><span class="toggle__text">Coding &amp; Tech</span></label>
+            <label class="toggle"><input type="checkbox" value="conversation" /><span class="toggle__box"></span><span class="toggle__text">Conversation</span></label>
           </div>
           <div class="genre-actions">
             <button id="add-genres-btn" class="btn btn--ghost" type="button">Apply selected genre games</button>
@@ -284,6 +324,15 @@
           </div>
           <div id="selected-categories" class="chip-row"></div>
         </div>
+        <div class="filter-row">
+          <span class="filter-row__label">Your live category</span>
+          <label class="toggle">
+            <input type="checkbox" id="include-current-category" checked />
+            <span class="toggle__box"></span>
+            <span class="toggle__text">Include my current category</span>
+          </label>
+        </div>
+        <p class="filter-row__hint filter-row__hint--left">Turn this off to discover live channels in other categories. Added categories and typed tags still apply.</p>
         <div class="filter-preset-actions">
           <button id="save-filter-preset" class="btn btn--ghost" type="button">Save current filters</button>
           <button id="load-filter-preset" class="btn btn--ghost" type="button">Load saved filters</button>
@@ -317,6 +366,7 @@
             <select id="results-sort" class="results-pagination__select">
               <option value="recommended">Recommended</option>
               <option value="following-first" selected>Following First</option>
+              <option value="tag-match">Tag Match</option>
               <option value="viewers-high">Viewers: High to Low</option>
               <option value="viewers-low">Viewers: Low to High</option>
               <option value="ending-soon">Ending Soon (Longest Live)</option>
@@ -361,6 +411,7 @@
         <div class="raid-destination__actions">
           <button id="raid-destination-back-btn" class="btn btn--ghost" type="button">Back to Wormhole</button>
           <a id="raid-destination-open-link" class="btn btn--outline" href="https://twitch.tv" target="_blank" rel="noopener noreferrer">Open on Twitch ↗</a>
+          <a id="raid-destination-dashboard-link" class="btn btn--primary" href="https://dashboard.twitch.tv" target="_blank" rel="noopener noreferrer">Open Twitch Dashboard ↗</a>
         </div>
       </header>
       <div class="raid-destination__grid">
@@ -441,17 +492,10 @@
     </section>
     <p id="raid-ad-status-note" class="raid-message-choice__note"><strong>Target ad status unavailable:</strong> Twitch only lets a broadcaster read their own ad schedule. Preview the destination before confirming, but remember that ads may differ between viewers.</p>
     <div class="raid-message-choice">
-      <label class="toggle raid-message-choice__toggle" for="raid-message-opt-in">
-        <input id="raid-message-opt-in" type="checkbox" />
-        <span class="toggle__box" aria-hidden="true"></span>
-        <span class="toggle__text">Send a Raid Completed message after Twitch confirms the raid</span>
-      </label>
-      <div class="raid-message-preview" aria-labelledby="raid-message-preview-label">
-        <span id="raid-message-preview-label">Message preview</span>
-        <q id="raid-message-preview"></q>
-      </div>
-      <p class="raid-message-choice__note">This is off by default. EventSub confirmation must match this destination before Wormhole can send the message.</p>
-      <p class="raid-message-choice__note"><strong>Shared Chat notice:</strong> Twitch may display a user-token message in every channel participating in the destination’s Shared Chat session.</p>
+      <label for="raid-message-preview"><strong>Optional message to copy into chat</strong></label>
+      <textarea id="raid-message-preview" class="text-input raid-message-editor" maxlength="450" rows="3"></textarea>
+      <button id="raid-message-copy" class="btn btn--ghost btn--small" type="button">Copy message</button>
+      <p class="raid-message-choice__note">Edit this before copying it. Wormhole does not automatically post raid-completed messages.</p>
     </div>
     <div class="dialog__actions">
       <button id="raid-cancel-btn" class="btn btn--ghost">Cancel</button>
@@ -483,7 +527,27 @@
     <p class="raid-progress__note">After Twitch confirms the completed raid, Wormhole will open the channel and chat here without leaving the app.</p>
     <div class="dialog__actions">
       <button id="raid-progress-cancel-btn" class="btn btn--ghost" type="button">Cancel raid</button>
+      <a id="raid-progress-watch-link" class="btn btn--outline" href="https://www.twitch.tv" target="_blank" rel="noopener noreferrer">Watch on Twitch ↗</a>
       <a id="raid-controls-link" class="btn btn--primary" href="https://dashboard.twitch.tv" target="_blank" rel="noopener noreferrer">Open Twitch Raid Controls ↗</a>
+    </div>
+  </dialog>
+
+  <dialog id="diagnostics-dialog" class="dialog diagnostics-dialog" aria-labelledby="diagnostics-title" aria-describedby="diagnostics-description">
+    <div class="compare-dialog__header">
+      <div>
+        <p class="section-eyebrow">Troubleshooting</p>
+        <h2 id="diagnostics-title">Diagnostics</h2>
+      </div>
+      <button id="diagnostics-close" class="icon-btn" type="button" aria-label="Close diagnostics">×</button>
+    </div>
+    <p id="diagnostics-description">This privacy-safe plain-text log helps troubleshoot browser and Twitch request errors. It excludes tokens, OAuth values, URL queries, chat messages, and channel identities.</p>
+    <p>Download the log, then post it in the <strong>#bug-reports</strong> channel in the Wormhole Discord. We will try to solve the problem or guide you to a solution.</p>
+    <p id="diagnostics-storage-status" class="diagnostics-dialog__status" role="status" aria-live="polite"></p>
+    <pre id="diagnostics-preview" class="diagnostics-dialog__preview" tabindex="0" aria-label="Recent diagnostic events"></pre>
+    <div class="dialog__actions">
+      <button id="diagnostics-download" class="btn btn--primary" type="button">Download text log</button>
+      <button id="diagnostics-copy" class="btn btn--ghost" type="button">Copy log</button>
+      <button id="diagnostics-clear" class="btn btn--ghost" type="button">Clear log</button>
     </div>
   </dialog>
 
@@ -524,7 +588,11 @@
       <span aria-hidden="true">·</span>
       <button type="button" data-open-storage-settings>Privacy settings</button>
       <span aria-hidden="true">·</span>
+      <button id="open-diagnostics" type="button">Diagnostics</button>
+      <span aria-hidden="true">·</span>
       <a href="privacy.html">Storage policy</a>
+      <span aria-hidden="true">·</span>
+      <a href="sponsorship.html">Sponsorship</a>
     </p>
     <label class="site-footer__layout" for="layout-override">
       Layout
@@ -537,9 +605,9 @@
     </label>
   </footer>
 
-  <script type="module" src="js/device-layout.js?v=69"></script>
-  <script type="module" src="js/storage-consent-ui.js?v=69"></script>
-  <script type="module" src="js/ui-controls.js?v=69"></script>
-  <script type="module" src="js/wormhole-app-v69.js?v=69"></script>
+  <script type="module" src="js/device-layout.js?v=73"></script>
+  <script type="module" src="js/storage-consent-ui.js?v=73"></script>
+  <script type="module" src="js/ui-controls.js?v=73"></script>
+  <script type="module" src="js/wormhole-app-v73.js?v=73"></script>
 </body>
 </html>

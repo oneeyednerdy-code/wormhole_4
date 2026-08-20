@@ -2,20 +2,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; object-src 'none'; base-uri 'self'" />
   <title>Privacy &amp; Storage | Wormhole Networking Tool by OneEyedNerdy</title>
   <meta name="application-name" content="Wormhole Networking Tool by OneEyedNerdy" />
-  <meta name="wormhole-release" content="0.0.69" />
-  <meta name="wormhole-cache-version" content="69" />
-  <link rel="icon" href="assets/favicon.ico?v=69" sizes="any" />
-  <script src="js/appearance-boot.js?v=69"></script>
-  <script type="module" src="js/version-check.js?v=69"></script>
+  <meta name="wormhole-release" content="0.0.73" />
+  <meta name="wormhole-cache-version" content="73" />
+  <link rel="icon" href="assets/favicon.ico?v=73" sizes="any" />
+  <script src="js/appearance-boot.js?v=73"></script>
+  <script type="module" src="js/version-check.js?v=73"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=69" />
-  <link rel="stylesheet" href="css/mobile.css?v=69" media="(max-width: 1024px), (hover: none) and (pointer: coarse)" />
+  <link rel="stylesheet" href="css/styles.css?v=73" />
+  <link rel="stylesheet" href="css/mobile.css?v=73" media="(max-width: 1024px), (hover: none) and (pointer: coarse)" />
 </head>
 <body class="privacy-page">
   <main class="privacy-document">
@@ -34,14 +34,14 @@
     </ul>
 
     <h2>Optional local history</h2>
-    <p>If you choose <strong>Allow local history</strong>, Wormhole stores rolling viewer-count samples, observed channel/category snapshots, and up to five previous-stream references. These improve estimated averages, activity details, and offline matching.</p>
+    <p>If you choose <strong>Allow local history</strong>, Wormhole stores rolling viewer-count samples, observed channel/category snapshots, up to five previous-stream references, and the latest 150 privacy-sanitized diagnostic events. These improve estimated averages, activity details, offline matching, and troubleshooting.</p>
 
     <h2>Third-party services</h2>
-    <p>Signing in and searching sends requests directly to Twitch. Twitch live-player content loads after you choose a preview or after Twitch confirms a completed raid; the completed-raid view also loads Twitch's embedded chat. If you explicitly opt in for that raid, Wormhole uses the authorized Twitch account to send the disclosed completion message only after Twitch confirms the selected destination. Twitch may distribute user-token messages across an active Shared Chat session. Google Fonts provides the interface fonts. External Ko-fi and creator links open only when selected.</p>
+    <p>Signing in and searching sends requests directly to Twitch. Twitch live-player content loads after you choose a preview or after Twitch confirms a completed raid; the completed-raid view also loads Twitch's embedded chat. Wormhole does not automatically post raid-completed chat messages. Google Fonts provides the interface fonts. External Ko-fi and creator links open only when selected.</p>
 
     <h2>Your controls</h2>
-    <p>Open <strong>Privacy settings</strong> in the Wormhole footer to change your choice or permanently delete locally stored viewer, channel, and previous-stream history.</p>
+    <p>Open <strong>Privacy settings</strong> in the Wormhole footer to change your choice or permanently delete locally stored viewer, channel, previous-stream, and diagnostic history. Diagnostics can also be cleared separately from the footer.</p>
   </main>
-  <script type="module" src="js/device-layout.js?v=69"></script>
+  <script type="module" src="js/device-layout.js?v=73"></script>
 </body>
 </html>

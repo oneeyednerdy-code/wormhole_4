@@ -59,26 +59,26 @@ test('an old page clears outdated Wormhole caches and reloads with the latest ve
     },
     storage: new MemoryStorage({ [RELEASE_STORAGE_KEY]: '0.0.58' }),
     cacheStorage: {
-      keys: async () => ['wormhole-58', 'wormhole-59', 'unrelated-cache', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63'],
+      keys: async () => ['wormhole-58', 'wormhole-59', 'unrelated-cache', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-69', 'wormhole-70'],
       delete: async (name) => { deleted.push(name); return true; },
     },
-    fetchImpl: async () => manifestResponse('0.0.69', '69'),
+    fetchImpl: async () => manifestResponse('0.0.73', '71'),
   });
   assert.equal(result.reloading, true);
-  assert.deepEqual(deleted.sort(), ['wormhole-58', 'wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63']);
+  assert.deepEqual(deleted.sort(), ['wormhole-58', 'wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-69', 'wormhole-70']);
   const next = new URL(replaced);
-  assert.equal(next.searchParams.get('wormhole_version'), '0.0.69');
+  assert.equal(next.searchParams.get('wormhole_version'), '0.0.73');
   assert.equal(next.hash, '#access_token=preserved');
 });
 
 test('cache cleanup never removes unrelated or current caches', async () => {
   const deleted = [];
   const cleared = await clearOutdatedWormholeCaches({
-    keys: async () => ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65', 'wormhole-66', 'wormhole-67', 'wormhole-68', 'another-app'],
+    keys: async () => ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65', 'wormhole-66', 'wormhole-67', 'wormhole-68', 'wormhole-69', 'wormhole-70', 'another-app'],
     delete: async (name) => { deleted.push(name); return true; },
   });
-  assert.deepEqual(cleared, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65', 'wormhole-66', 'wormhole-67', 'wormhole-68']);
-  assert.deepEqual(deleted, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65', 'wormhole-66', 'wormhole-67', 'wormhole-68']);
+  assert.deepEqual(cleared, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65', 'wormhole-66', 'wormhole-67', 'wormhole-68', 'wormhole-69', 'wormhole-70']);
+  assert.deepEqual(deleted, ['wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-64', 'wormhole-65', 'wormhole-66', 'wormhole-67', 'wormhole-68', 'wormhole-69', 'wormhole-70']);
 });
 
 test('offline version checks safely use the version already loaded', async () => {

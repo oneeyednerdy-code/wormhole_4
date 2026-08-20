@@ -1,24 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  buildRaidCompletionMessage,
   getRaidDestinationEmbedUrls,
   getTwitchRaidControlsUrl,
   isMatchingRaidConfirmation,
-  RAID_COMPLETION_MESSAGE,
 } from '../js/raid-completion.js';
-
-test('publishes the exact completion message requested for confirmed raids', () => {
-  assert.equal(RAID_COMPLETION_MESSAGE, 'Wormhole Networking Tool has completed the Raid');
-});
-
-test('includes the validated raid destination in the previewed completion message', () => {
-  assert.equal(
-    buildRaidCompletionMessage('Raid_Friend'),
-    'Wormhole Networking Tool has completed the Raid to @raid_friend'
-  );
-  assert.throws(() => buildRaidCompletionMessage('bad/channel'), /Invalid Twitch channel login/);
-});
 
 test('accepts only Twitch confirmations for the active raid destination', () => {
   const activeRaid = { userId: 'destination-1' };

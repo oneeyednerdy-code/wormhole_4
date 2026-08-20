@@ -11,13 +11,9 @@ test('creates Twitch\'s 90-second raid countdown from the API timestamp', () => 
   const raid = createRaidCountdown({
     userId: '42', userName: 'Raid Friend', userLogin: 'raidfriend',
     createdAt: '2026-08-17T12:00:00Z',
-    sendCompletionMessage: true,
-    completionMessage: 'Approved message',
   });
   assert.equal(raid.deadline - raid.startedAt, RAID_COUNTDOWN_MS);
   assert.equal(raid.userLogin, 'raidfriend');
-  assert.equal(raid.sendCompletionMessage, true);
-  assert.equal(raid.completionMessage, 'Approved message');
 });
 
 test('reports remaining seconds, progress, and completion', () => {

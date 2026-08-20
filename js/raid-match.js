@@ -1,5 +1,6 @@
-import { ViewerHistory } from './viewer-history.js?v=69';
-import { isLanguageTag } from './language-tags.js?v=69';
+import { ViewerHistory } from './viewer-history.js?v=73';
+import { isLanguageTag } from './language-tags.js?v=73';
+import { getSearchedTagMatch, normalizeTagKey } from './tag-display.js?v=73';
 
 // Base weights are used when automatic tag comparison is disabled or the
 // logged-in stream has no meaningful non-language tags. When tags are
@@ -34,7 +35,8 @@ function normalizeTags(tags) {
   const byKey = new Map();
   for (const tag of tags ?? []) {
     const clean = String(tag ?? '').trim();
-    if (clean && !byKey.has(clean.toLowerCase())) byKey.set(clean.toLowerCase(), clean);
+    const key = normalizeTagKey(clean);
+    if (clean && key && !byKey.has(key)) byKey.set(key, clean);
   }
   return byKey;
 }
@@ -47,8 +49,8 @@ export function compareStreamTags(myTags, candidateTags) {
   const meaningfulSharedTags = sharedTags.filter((tag) => !isLanguageTag(tag));
   const meaningfulTheirs = [...theirs.values()].filter((tag) => !isLanguageTag(tag));
   const unionSize = new Set([
-    ...meaningfulMine.map((tag) => tag.toLowerCase()),
-    ...meaningfulTheirs.map((tag) => tag.toLowerCase()),
+    ...meaningfulMine.map(normalizeTagKey),
+    ...meaningfulTheirs.map(normalizeTagKey),
   ]).size;
   const recall = meaningfulMine.length
     ? meaningfulSharedTags.length / meaningfulMine.length
@@ -117,7 +119,7 @@ export function applyHardFilters(
 ) {
   const typeFilter = allowedBroadcasterTypes ? new Set(allowedBroadcasterTypes) : null;
   const tagFilter = requiredTags?.length
-    ? new Set(requiredTags.map((t) => String(t).trim().toLowerCase()).filter(Boolean))
+    ? new Set(requiredTags.map(normalizeTagKey).filter(Boolean))
     : null;
   const languageKey = String(requiredLanguageTag ?? '').trim().toLowerCase();
 
@@ -128,7 +130,7 @@ export function applyHardFilters(
     if (requireFollowed && s.is_followed !== true) return false;
     if (requireSharedTeam && !(s.shared_team_names?.length > 0)) return false;
     if (tagFilter) {
-      const streamTags = (s.tags ?? []).map((t) => String(t).trim().toLowerCase());
+      const streamTags = (s.tags ?? []).map(normalizeTagKey);
       if (!streamTags.some((t) => tagFilter.has(t))) return false;
     }
     if (languageKey) {
@@ -232,6 +234,7 @@ export function findRaidMatches(
       durationDiffMs,
     });
     const tagComparison = compareStreamTags(myStream.tags, candidate.tags);
+    const searchedTagMatch = getSearchedTagMatch(candidate.tags, requiredTags ?? []);
     const tagComparisonApplied = compareTags && Number.isFinite(tagComparison.similarityPercent);
     let matchScore = combinedScore(
       scoreComponents,
@@ -279,6 +282,7 @@ export function findRaidMatches(
       meaningfulSharedTags: tagComparison.meaningfulSharedTags,
       tagSimilarityPercent: tagComparison.similarityPercent,
       tagComparisonApplied,
+      ...searchedTagMatch,
       categoryMatchApplied,
       isPrimaryCategory,
       matchPreset,

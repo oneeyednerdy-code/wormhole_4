@@ -1,4 +1,4 @@
-import { StorageConsent } from './storage-consent.js?v=69';
+import { StorageConsent } from './storage-consent.js?v=73';
 
 const STORAGE_KEY = 'wormhole_viewer_history_v2';
 const MAX_SAMPLES_PER_CHANNEL = 50;

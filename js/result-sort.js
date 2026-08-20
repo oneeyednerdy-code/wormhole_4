@@ -1,6 +1,7 @@
 export const RESULT_SORT_OPTIONS = [
   'recommended',
   'following-first',
+  'tag-match',
   'viewers-high',
   'viewers-low',
   'ending-soon',
@@ -42,6 +43,13 @@ export function sortRaidMatches(matches, mode = 'recommended') {
     case 'following-first':
       return sorted.sort((a, b) =>
         Number(Boolean(b?.stream?.is_followed)) - Number(Boolean(a?.stream?.is_followed)) ||
+        recommendedFirst(a, b)
+      );
+    case 'tag-match':
+      return sorted.sort((a, b) =>
+        Number(b?.searchedTagMatchPercent ?? 0) - Number(a?.searchedTagMatchPercent ?? 0) ||
+        Number(b?.searchedTagMatchCount ?? 0) - Number(a?.searchedTagMatchCount ?? 0) ||
+        Number(b?.meaningfulSharedTags?.length ?? 0) - Number(a?.meaningfulSharedTags?.length ?? 0) ||
         recommendedFirst(a, b)
       );
     case 'viewers-high':

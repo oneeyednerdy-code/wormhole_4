@@ -12,10 +12,24 @@ test('normalizes unsafe or unsupported filter settings', () => {
   assert.deepEqual(preset.statuses, ['partner']);
   assert.deepEqual(preset.categories, [{ id: '1', name: 'Game', source: 'manual' }]);
   assert.equal(preset.openChatOnly, true);
+  assert.equal(preset.includeCurrentCategory, true);
 });
 
 test('an explicitly disabled restricted-chat filter remains disabled', () => {
   assert.equal(normalizeFilterPreset({ openChatOnly: false }).openChatOnly, false);
+});
+
+test('an explicitly disabled live category remains disabled', () => {
+  assert.equal(normalizeFilterPreset({ includeCurrentCategory: false }).includeCurrentCategory, false);
+});
+
+test('content-label include and exclusion choices are safely normalized', () => {
+  assert.deepEqual(normalizeFilterPreset({
+    contentLabels: {
+      include: ['Gambling', 'bogus'],
+      exclude: ['Gambling', 'SexualThemes'],
+    },
+  }).contentLabels, { include: [], exclude: ['Gambling', 'SexualThemes'] });
 });
 
 test('saves and reloads one explicit local filter preset', () => {

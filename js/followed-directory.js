@@ -1,5 +1,7 @@
+import { getSearchedTagMatch } from './tag-display.js?v=73';
+
 /** Converts followed live streams into the result-card shape without applying matching filters. */
-export function buildFollowedDirectoryMatches(streams) {
+export function buildFollowedDirectoryMatches(streams, searchedTags = []) {
   return (streams ?? []).map((stream) => ({
     stream,
     directoryListing: true,
@@ -13,5 +15,6 @@ export function buildFollowedDirectoryMatches(streams) {
     streamDurationDiffMs: Number.POSITIVE_INFINITY,
     estimatedAverageViewers: Number(stream.viewer_count) || 0,
     averageIsHistorical: false,
+    ...getSearchedTagMatch(stream.tags, searchedTags),
   }));
 }

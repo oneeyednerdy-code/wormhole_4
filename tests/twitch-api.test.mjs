@@ -25,6 +25,22 @@ test('resolves an exact streamer login through Twitch users', async () => {
   assert.equal(requestedUrl.searchParams.get('login'), 'example');
 });
 
+test('reports API failures without exposing query values or credentials', async () => {
+  const reported = [];
+  const api = new TwitchApi('private-token', {
+    requestManager: { request: async () => { throw Object.assign(new Error('failed'), { status: 503 }); } },
+    onError: (event) => reported.push(event),
+  });
+  await assert.rejects(() => api.getUserByLogin('private-channel'));
+  assert.deepEqual(reported, [{
+    message: 'Twitch API request failed',
+    endpoint: '/helix/users',
+    method: 'GET',
+    status: 503,
+  }]);
+  assert.doesNotMatch(JSON.stringify(reported), /private-token|private-channel/);
+});
+
 test('loads content classification labels from channel information in batches', async () => {
   const requestedUrls = [];
   globalThis.fetch = async (url) => {
@@ -116,34 +132,6 @@ test('starts a raid and returns Twitch\'s countdown timestamp', async () => {
   assert.equal(requestedUrl.searchParams.get('from_broadcaster_id'), 'from-1');
   assert.equal(requestedUrl.searchParams.get('to_broadcaster_id'), 'to-2');
   assert.equal(raid.created_at, '2026-08-17T12:00:00Z');
-});
-
-test('sends the raid completion chat message as the logged-in user', async () => {
-  let requestedUrl;
-  let requestedOptions;
-  globalThis.fetch = async (url, options) => {
-    requestedUrl = new URL(url);
-    requestedOptions = options;
-    return {
-      ok: true,
-      async json() {
-        return { data: [{ message_id: 'message-1', is_sent: true, drop_reason: null }] };
-      },
-    };
-  };
-
-  const api = new TwitchApi('test-token');
-  const result = await api.sendChatMessage('destination-1', 'sender-1', 'Raid completed');
-
-  assert.equal(requestedUrl.pathname, '/helix/chat/messages');
-  assert.equal(requestedOptions.method, 'POST');
-  assert.equal(requestedOptions.headers['Content-Type'], 'application/json');
-  assert.deepEqual(JSON.parse(requestedOptions.body), {
-    broadcaster_id: 'destination-1',
-    sender_id: 'sender-1',
-    message: 'Raid completed',
-  });
-  assert.equal(result.is_sent, true);
 });
 
 test('cancels the logged-in broadcaster\'s pending raid', async () => {

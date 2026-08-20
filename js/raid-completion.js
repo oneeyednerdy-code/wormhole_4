@@ -1,14 +1,7 @@
-export const RAID_COMPLETION_MESSAGE = 'Wormhole Networking Tool has completed the Raid';
-
 function normalizeChannelLogin(channelLogin) {
   const login = String(channelLogin ?? '').trim().toLowerCase();
   if (!/^[a-z0-9_]{1,25}$/.test(login)) throw new Error('Invalid Twitch channel login.');
   return login;
-}
-
-export function buildRaidCompletionMessage(channelLogin) {
-  const login = normalizeChannelLogin(channelLogin);
-  return `${RAID_COMPLETION_MESSAGE} to @${login}`;
 }
 
 export function isMatchingRaidConfirmation(activeRaid, event) {

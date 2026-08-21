@@ -3,8 +3,11 @@ import { el } from '../app/elements.js?v=90';
 import { escapeHtml } from '../app/format.js?v=90';
 import { getGenreGameNames, getGenreLabelsForGame } from '../genre-presets.js?v=90';
 import { isLanguageTag, parseTagInput } from '../language-tags.js?v=90';
-import { normalizeContentLabelFilter } from '../content-label-filter.js?v=90';
+import { CONTENT_FILTER_LABELS, normalizeContentLabelFilter } from '../content-label-filter.js?v=90';
+import { describeViewerRange, parseViewerTolerance } from '../viewer-tolerance.js?v=90';
 import { loadFilterPreset, saveFilterPreset } from '../filter-preset-storage.js?v=90';
+
+const STATUS_LABELS = Object.freeze({ partner: 'Partner', affiliate: 'Affiliate', none: 'Non-affiliate' });
 
 let deps = null;
 export function configureFiltersController(value) { deps = value; }

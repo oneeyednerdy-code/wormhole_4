@@ -12,3 +12,11 @@ test('filters module owns labels it renders', () => {
   assert.match(source, /CONTENT_FILTER_LABELS/);
   assert.match(source, /const STATUS_LABELS/);
 });
+
+
+test('filters module imports all helpers used by interactive tag and genre controls', () => {
+  assert.match(source, /import \{ normalizeTagKey \} from '\.\.\/tag-display\.js\?v=90';/);
+  assert.match(source, /import \{ logger \} from '\.\.\/app\/logger\.js\?v=90';/);
+  assert.match(source, /import \{ startLoading, finishLoading \} from '\.\.\/loading-state\.js\?v=90';/);
+  assert.match(source, /function invalidateSearch\(\.\.\.args\) \{ return requireDeps\(\)\.invalidateSearch\(\.\.\.args\); \}/);
+});

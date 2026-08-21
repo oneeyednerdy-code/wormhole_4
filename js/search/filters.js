@@ -6,6 +6,9 @@ import { isLanguageTag, parseTagInput } from '../language-tags.js?v=90';
 import { CONTENT_FILTER_LABELS, normalizeContentLabelFilter } from '../content-label-filter.js?v=90';
 import { describeViewerRange, parseViewerTolerance } from '../viewer-tolerance.js?v=90';
 import { loadFilterPreset, saveFilterPreset } from '../filter-preset-storage.js?v=90';
+import { normalizeTagKey } from '../tag-display.js?v=90';
+import { logger } from '../app/logger.js?v=90';
+import { startLoading, finishLoading } from '../loading-state.js?v=90';
 
 const STATUS_LABELS = Object.freeze({ partner: 'Partner', affiliate: 'Affiliate', none: 'Non-affiliate' });
 
@@ -19,6 +22,7 @@ function runCategorySearch(...args) { return requireDeps().runCategorySearch(...
 function renderSelectedCategories(...args) { return requireDeps().renderSelectedCategories(...args); }
 function showToast(...args) { return requireDeps().showToast(...args); }
 function updateViewerHint(...args) { return requireDeps().updateViewerHint(...args); }
+function invalidateSearch(...args) { return requireDeps().invalidateSearch(...args); }
 
 // Re-run the search automatically when a filter changes, but only if
 // results are already showing: no point searching before the first click.

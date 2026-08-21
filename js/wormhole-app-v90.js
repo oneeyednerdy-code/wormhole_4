@@ -149,6 +149,7 @@ configureFiltersController({
   renderSelectedCategories: (...args) => renderSelectedCategories(...args),
   showToast,
   updateViewerHint: (...args) => updateViewerHint(...args),
+  invalidateSearch: (...args) => invalidateSearch(...args),
 });
 configureSearchUi({ runSearch: (...args) => runSearch(...args) });
 

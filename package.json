@@ -6,9 +6,12 @@
   "scripts": {
     "test": "node --test",
     "build": "node build.mjs",
-    "check": "npm test && npm run build"
+    "check": "npm test && npm run build",
+    "deploy": "wrangler deploy --config ./wrangler.jsonc",
+    "preview": "wrangler dev --config ./wrangler.jsonc"
   },
   "devDependencies": {
-    "esbuild": "^0.25.9"
+    "esbuild": "^0.25.9",
+    "wrangler": "^4.125.0"
   }
 }

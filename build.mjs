@@ -49,7 +49,7 @@ for (const css of ['styles.css','mobile.css']) {
   byEntry[css==='styles.css'?'styles':'mobile']='/assets/'+name;
 }
 
-for (const dir of ['assets','functions']) await cp(path.join(root,dir),path.join(dist,dir),{recursive:true});
+await cp(path.join(root,'assets'),path.join(dist,'assets'),{recursive:true});
 for (const file of ['_headers','version.json']) await cp(path.join(root,file),path.join(dist,file));
 
 for (const page of ['index.html','privacy.html','signal.html','sponsorship.html']) {

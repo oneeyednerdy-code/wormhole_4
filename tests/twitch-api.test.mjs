@@ -6,6 +6,7 @@ globalThis.window = {
 };
 
 const { TwitchApi } = await import('../js/twitch-api.js');
+const { RequestError } = await import('../js/browser-request-v90.js');
 
 test('resolves an exact streamer login through Twitch users', async () => {
   let requestedUrl;
@@ -37,6 +38,7 @@ test('reports API failures without exposing query values or credentials', async 
     endpoint: '/helix/users',
     method: 'GET',
     status: 503,
+    failureType: 'http',
   }]);
   assert.doesNotMatch(JSON.stringify(reported), /private-token|private-channel/);
 });
@@ -109,6 +111,31 @@ test('loads and caches public chat settings with limited-concurrency results', a
   assert.equal(second.get('channel-1').follower_mode_duration, 10);
   assert.equal(requestedUrls.length, 2);
   assert.equal(requestedUrls[0].pathname, '/helix/chat/settings');
+});
+
+test('collapses optional chat-settings failures into one warning and caches them briefly', async () => {
+  const reported = [];
+  let requests = 0;
+  const api = new TwitchApi('test-token', {
+    requestManager: {
+      request: async () => {
+        requests += 1;
+        throw new RequestError('The browser could not reach Twitch.', { code: 'network' });
+      },
+    },
+    onError: (event) => reported.push(event),
+  });
+
+  const first = await api.getChatSettingsForUsers(['channel-1', 'channel-2', 'channel-3']);
+  const second = await api.getChatSettingsForUsers(['channel-1', 'channel-2']);
+
+  assert.equal(requests, 3);
+  assert.equal(first.get('channel-1'), null);
+  assert.equal(second.get('channel-1'), null);
+  assert.equal(reported.length, 1);
+  assert.equal(reported[0].level, 'warning');
+  assert.equal(reported[0].failureType, 'network');
+  assert.equal(reported[0].failedRequests, 3);
 });
 
 test('starts a raid and returns Twitch\'s countdown timestamp', async () => {

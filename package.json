@@ -1,9 +1,14 @@
 {
   "name": "wormhole-twitch-raid-matcher",
-  "version": "0.0.73",
+  "version": "0.0.90",
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "build": "node build.mjs",
+    "check": "npm test && npm run build"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.9"
   }
 }

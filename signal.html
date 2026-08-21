@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#6d28d9" />
+  <meta name="wormhole-release" content="0.0.90" />
+  <meta name="wormhole-cache-version" content="90" />
+  <title>Lost Signal | Wormhole Networking Tool by OneEyedNerdy</title>
+  <meta name="description" content="Explore the Eventide, uncover what happened to its crew, and choose one of three endings in this text adventure." />
+  <link rel="icon" href="assets/favicon.ico?v=90" sizes="any" />
+  <script src="js/appearance-boot.js?v=90"></script>
+  <script type="module" src="js/version-check.js?v=90"></script>
+  <link rel="stylesheet" href="css/signal.css?v=90" />
+</head>
+<body class="signal-page">
+  <main class="signal-shell">
+    <header class="signal-header">
+      <a class="signal-brand" href="index.html" aria-label="Return to Wormhole Networking Tool">
+        <img src="assets/wormhole-logo.svg?v=90" alt="" aria-hidden="true" />
+        <span><strong>Wormhole: Lost Signal</strong><span>Recovered transmission 80</span></span>
+      </a>
+      <a class="signal-back" href="index.html">Return to Wormhole</a>
+    </header>
+
+    <section class="signal-terminal" aria-labelledby="game-title">
+      <h1 id="game-title" class="screen-reader-only">Wormhole: Lost Signal text adventure</h1>
+      <div class="terminal-bar">
+        <div class="terminal-status" aria-label="Game status">
+          <span>Location: <strong id="game-location">Cryobay</strong></span>
+          <span>Moves: <strong id="game-moves">0</strong></span>
+        </div>
+        <button id="clear-transcript" class="signal-button signal-button--quiet" type="button">Clear text</button>
+      </div>
+
+      <div id="game-output" class="terminal-output" role="log" aria-label="Game transcript" aria-live="off" tabindex="0"></div>
+      <div id="game-announcer" class="screen-reader-only" aria-live="polite" aria-atomic="true"></div>
+
+      <form id="command-form" class="command-form">
+        <label class="screen-reader-only" for="command-input">Enter a game command</label>
+        <span class="command-prompt" aria-hidden="true">&gt;</span>
+        <input id="command-input" class="command-input" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="command-help" />
+        <button class="signal-button" type="submit">Enter command</button>
+      </form>
+
+      <div class="quick-commands" aria-label="Quick commands">
+        <button type="button" data-game-command="look">Look</button>
+        <button type="button" data-game-command="inventory">Inventory</button>
+        <button type="button" data-game-command="status">Status</button>
+        <button type="button" data-game-command="hint">Hint</button>
+        <button type="button" data-game-command="help">Help</button>
+        <button type="button" data-game-command="save">Save</button>
+        <button type="button" data-game-command="load">Load</button>
+      </div>
+    </section>
+
+    <p id="command-help" class="signal-note">Use typed commands such as LOOK, GO EAST, TAKE FUSE, or EXAMINE CONSOLE. SAVE stores only game progress in this browser. Nothing is downloaded.</p>
+  </main>
+  <script type="module" src="js/lost-signal-game.js?v=90"></script>
+</body>
+</html>

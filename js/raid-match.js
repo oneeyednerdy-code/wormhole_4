@@ -1,6 +1,6 @@
-import { ViewerHistory } from './viewer-history.js?v=73';
-import { isLanguageTag } from './language-tags.js?v=73';
-import { getSearchedTagMatch, normalizeTagKey } from './tag-display.js?v=73';
+import { ViewerHistory } from './viewer-history.js?v=90';
+import { isLanguageTag } from './language-tags.js?v=90';
+import { getSearchedTagMatch, normalizeTagKey } from './tag-display.js?v=90';
 
 // Base weights are used when automatic tag comparison is disabled or the
 // logged-in stream has no meaningful non-language tags. When tags are
@@ -87,7 +87,7 @@ function combinedScore(scores, tagSimilarityPercent) {
  * - minViewers / maxViewers: current live viewer count bounds.
  * - allowedBroadcasterTypes: Set/array of 'partner' | 'affiliate' | 'none'
  *   to include. Candidates need a `broadcaster_type` field set by the
- *   caller (Twitch's /streams endpoint doesn't include it — see
+ *   caller (Twitch's /streams endpoint doesn't include it: see
  *   TwitchApi.getBroadcasterTypes).
  * - requireSharedTeam: only keep candidates with a non-empty
  *   `shared_team_names` array, set by the caller (see
@@ -96,7 +96,7 @@ function combinedScore(scores, tagSimilarityPercent) {
  *   per-channel) team lookup, rather than fetching teams for everyone.
  * - requireFollowed: only keep candidates whose follow lookup set
  *   `is_followed` to true.
- * - requiredTags: array of tag strings (case-insensitive) — a candidate
+ * - requiredTags: array of tag strings (case-insensitive): a candidate
  *   must have at least one of these in its own `tags` array (the free-text
  *   tags Twitch streamers set, e.g. "Speedrun", "Cozy", "English").
  * - requiredLanguageTag: an independently required language tag. This keeps
@@ -156,7 +156,7 @@ export function applyHardFilters(
  * count closeness, stream-duration closeness, and estimated average
  * viewership.
  *
- * See applyHardFilters for the filter options accepted here — they're
+ * See applyHardFilters for the filter options accepted here: they're
  * applied again internally so callers can pass raw candidates directly
  * if they don't need to pre-filter for a team lookup.
  */
@@ -177,7 +177,6 @@ export function findRaidMatches(
     compareTags = true,
     categoryMatchApplied = true,
     primaryCategoryId = myStream.game_id,
-    matchPreset = 'similar',
   } = {}
 ) {
   const filtered = applyHardFilters(candidates, {
@@ -205,9 +204,13 @@ export function findRaidMatches(
   }
   ViewerHistory.recordSamples(samples);
 
+  const averages = ViewerHistory.getAverages([
+    ...(myStream.isHistoricalReference ? [] : [myStream.user_id]),
+    ...filtered.map((candidate) => candidate.user_id),
+  ]);
   const myAvgRecord = myStream.isHistoricalReference
     ? null
-    : ViewerHistory.getAverage(myStream.user_id);
+    : averages.get(myStream.user_id);
   const myEstimatedAverage = myAvgRecord?.average ?? myStream.viewer_count;
 
   const results = [];
@@ -215,7 +218,7 @@ export function findRaidMatches(
   for (const candidate of filtered) {
     if (candidate.user_id === myStream.user_id) continue;
 
-    const avgRecord = ViewerHistory.getAverage(candidate.user_id);
+    const avgRecord = averages.get(candidate.user_id);
     const estimatedAverage = avgRecord?.average ?? candidate.viewer_count;
     const averageIsHistorical = (avgRecord?.sampleCount ?? 0) >= 3;
 
@@ -242,30 +245,6 @@ export function findRaidMatches(
     );
     const isPrimaryCategory = Boolean(primaryCategoryId) && candidate.game_id === primaryCategoryId;
     if (categoryMatchApplied) matchScore += isPrimaryCategory ? 5 : 0;
-    let goalMatchReason = null;
-    if (matchPreset === 'growth') {
-      const ratio = candidate.viewer_count / Math.max(myStream.viewer_count, 1);
-      const growthScore = Math.max(0, 100 - Math.abs(1.5 - ratio) * 100);
-      matchScore = matchScore * 0.4 + growthScore * 0.6;
-      goalMatchReason = `Growth goal: ${Math.round(ratio * 100)}% of your live audience`;
-    } else if (matchPreset === 'familiar') {
-      const familiarityScore =
-        (candidate.is_followed ? 70 : 0) +
-        (candidate.shared_team_names?.length ? 20 : 0) +
-        Math.min(10, tagComparison.meaningfulSharedTags.length * 5);
-      matchScore = matchScore * 0.6 + familiarityScore * 0.4;
-      if (candidate.is_followed) goalMatchReason = 'Familiar goal: channel you already follow';
-      else if (candidate.shared_team_names?.length) goalMatchReason = 'Familiar goal: shared Twitch team';
-      else if (tagComparison.meaningfulSharedTags.length) goalMatchReason = 'Familiar goal: shared community tags';
-    } else if (matchPreset === 'explore') {
-      const isNewChannel = !candidate.is_followed;
-      const isNewCategory = Boolean(primaryCategoryId) && !isPrimaryCategory;
-      const noveltyScore = (isNewChannel ? 60 : 0) + (isNewCategory ? 40 : 0);
-      matchScore = matchScore * 0.6 + noveltyScore * 0.4;
-      if (isNewChannel && isNewCategory) goalMatchReason = 'Explore goal: new channel and category';
-      else if (isNewChannel) goalMatchReason = 'Explore goal: channel you do not follow';
-      else if (isNewCategory) goalMatchReason = 'Explore goal: different category';
-    }
     matchScore = Math.min(100, matchScore);
 
     results.push({
@@ -274,6 +253,7 @@ export function findRaidMatches(
       averageIsHistorical,
       historyConfidence: avgRecord?.confidence ?? 'New estimate',
       historySessionCount: avgRecord?.sessionCount ?? 0,
+      historyWindowDays: avgRecord?.windowDays ?? 30,
       matchScore,
       viewerCountDiffPercent: liveViewerDiffPercent,
       averageViewerCountDiffPercent: averageViewerDiffPercent,
@@ -285,8 +265,6 @@ export function findRaidMatches(
       ...searchedTagMatch,
       categoryMatchApplied,
       isPrimaryCategory,
-      matchPreset,
-      goalMatchReason,
     });
   }
 

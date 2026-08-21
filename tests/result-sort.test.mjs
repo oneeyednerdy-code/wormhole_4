@@ -17,7 +17,7 @@ const matches = [
 
 test('publishes every results sorting option', () => {
   assert.deepEqual(RESULT_SORT_OPTIONS, [
-    'recommended', 'following-first', 'tag-match', 'viewers-high', 'viewers-low', 'ending-soon', 'just-started',
+    'recommended', 'following-first', 'tag-match', 'viewers-high', 'viewers-low', 'average-high', 'average-low', 'ending-soon', 'just-started',
   ]);
 });
 
@@ -46,6 +46,16 @@ test('sorts by recommendation and viewer count in both directions', () => {
   assert.deepEqual(sortRaidMatches(matches, 'recommended').map((m) => m.stream.user_id), ['middle', 'newest', 'oldest']);
   assert.deepEqual(sortRaidMatches(matches, 'viewers-high').map((m) => m.stream.user_id), ['oldest', 'middle', 'newest']);
   assert.deepEqual(sortRaidMatches(matches, 'viewers-low').map((m) => m.stream.user_id), ['newest', 'middle', 'oldest']);
+});
+
+test('sorts by rolling 30-day average in both directions', () => {
+  const source = [
+    { ...matches[0], estimatedAverageViewers: 35 },
+    { ...matches[1], estimatedAverageViewers: 120 },
+    { ...matches[2], estimatedAverageViewers: 10 },
+  ];
+  assert.deepEqual(sortRaidMatches(source, 'average-high').map((m) => m.stream.user_id), ['oldest', 'middle', 'newest']);
+  assert.deepEqual(sortRaidMatches(source, 'average-low').map((m) => m.stream.user_id), ['newest', 'middle', 'oldest']);
 });
 
 test('uses longest live as ending-soon proxy and newest start for just-started', () => {

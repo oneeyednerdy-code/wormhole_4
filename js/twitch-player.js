@@ -1,4 +1,4 @@
-import { normalizeTwitchLogin } from './direct-search.js?v=73';
+import { normalizeTwitchLogin } from './direct-search.js?v=90';
 
 function normalizeHost(hostname) {
   return String(hostname ?? '').trim().toLowerCase();

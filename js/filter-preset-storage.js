@@ -1,6 +1,5 @@
 const STORAGE_KEY = 'wormhole_filter_preset_v1';
 const ALLOWED_TOLERANCES = new Set(['50', '75', '100', 'all']);
-const ALLOWED_GOALS = new Set(['similar', 'growth', 'familiar', 'explore']);
 const ALLOWED_CONTENT_LABELS = new Set([
   'MatureAudience', 'DebatedSocialIssuesAndPolitics', 'DrugsIntoxication',
   'SexualThemes', 'ViolentGraphic', 'Gambling', 'ProfanityVulgarity', 'MatureGame',
@@ -18,7 +17,6 @@ export function normalizeFilterPreset(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   return {
     viewerTolerance: ALLOWED_TOLERANCES.has(String(value.viewerTolerance)) ? String(value.viewerTolerance) : '50',
-    matchPreset: ALLOWED_GOALS.has(value.matchPreset) ? value.matchPreset : 'similar',
     statuses: Array.isArray(value.statuses)
       ? value.statuses.filter((status) => ['partner', 'affiliate'].includes(status))
       : ['partner', 'affiliate'],

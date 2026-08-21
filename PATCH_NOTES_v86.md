@@ -1,0 +1,72 @@
+# Wormhole Patch Notes: Alpha-0.0.90
+
+- Added a fixed loading panel with an animated bar, spinner, and plain-language task status.
+- Loading status now appears during session checks, live-status refreshes, streamer lookup, followed-channel loading, category lookup, discovery searches, card details, activity details, and raid checks.
+- Kept the loading panel non-blocking and added reduced-motion, mobile, high-contrast, and screen-reader support.
+- Changed viewer history to parse stored data once and calculate many channel averages from one snapshot.
+- Capped viewer history at a safe storage size and made quota failures harmless to discovery.
+- Added batch channel-history recording so one results page causes one storage write instead of one write per card.
+- Deferred follower counts, follow-back checks, and card chat details until result cards approach the viewport.
+- Increased the chat-settings cache from one minute to five minutes to avoid immediate repeat requests.
+- Combined selected game and genre category searches into one paginated Twitch request stream.
+- Added off-screen card rendering containment and removed result-card entrance animation on mobile.
+- Stopped rebuilding the results grid when only the shortlist selection changes.
+- Reduced raid countdown updates from four times per second to once per second.
+- Added immutable browser caching for versioned JavaScript, CSS, and image files.
+- Reviewed the text people see on the login, discovery, results, privacy, support, raid, diagnostic, and Lost Signal screens.
+- Rewrote canned product language in a more direct, personal voice.
+- Made filter and error messages say what Wormhole did, what Twitch returned, and what the user can try next.
+- Rewrote the Nerdspace Labs support page in OneEyedNerdy's first-person voice.
+- Expanded the copy test to catch more stock marketing phrases.
+- Removed the external browser-audit configuration and its setup document.
+- Kept the independent metadata, accessibility, safe-link, mobile, and copy-quality tests.
+- Added one shared Final Transmission to all three Lost Signal endings.
+- The final warning tells the player that the wormhole knows their voice and to tell no one what they learned.
+- Confirmed that Lost Signal creates no ending file, reward code, or browser download.
+- Added regression tests that verify every ending shows the warning and the browser game contains no download mechanism.
+- Reworked the Lost Signal logs and endings around the missing crew, their choices, isolation, rescue, and loss.
+- Removed the out-of-story Twitch reference from the game help text.
+- Added unique search descriptions to the main, privacy, and Lost Signal pages.
+- Set the project phase label to Alpha while keeping version 0.0.90.
+- Updated the login page, diagnostic reports, documentation, tests, release folder, and download filename for the Alpha phase.
+- Rebuilt the sponsorship page around Nerdspace Labs, the umbrella for Wormhole, NerdSync, and future creator tools.
+- Added five monthly Ko-fi supporter tiers from $5 to $100.
+- Added one shared benefits section so every tier receives the listed Discord, recognition, support, and preview benefits.
+- Added a clear statement that tools remain free and supporter payments do not affect match rankings or recommendations.
+- Added an opt-in note for public supporter names and creator links.
+- Added a responsive tier layout with accessible headings, lists, and action links.
+- Added sponsorship-page tests covering the Nerdspace Labs introduction, every tier, every price, benefits, and funding boundaries.
+- Reworked interface, game, policy, documentation, and diagnostic text to use plain, direct language.
+- Removed em dashes, en dashes, decorative ellipses, and smart quotation marks from project text.
+- Replaced promotional and vague phrases with specific descriptions of what each feature does.
+- Added a copy-style regression test to stop the removed punctuation from returning.
+
+- Added the hidden Signal detected footer entrance to Wormhole: Lost Signal.
+- Added a standalone science-fiction parser adventure inspired by classic interactive fiction.
+- Added eight explorable ship locations, object examination, directional movement, inventory, puzzles, contextual hints, and three endings.
+- Added shorthand commands including N, S, E, W, U, D, L, I, and X.
+- Added optional manual save and load commands that store only game progress in the current browser.
+- Added command-history navigation with the keyboard's Up and Down arrow keys.
+- Added mobile terminal styling, quick-command controls, screen-reader announcements, visible focus, high contrast, saved appearance preferences, and reduced-motion support.
+- Kept the game isolated from Twitch authentication, discovery data, and raid controls.
+- Added automated parser, puzzle-path, save-format, page-isolation, accessibility, and cache-version tests.
+- Changed the standard Twitch login to request read-only discovery permissions by default.
+- Added a separate Enable Raid Controls authorization step for `channel:manage:raids`.
+- Preserved an existing discovery session if the streamer declines the optional raid permission.
+- Added Twitch token validation at startup and every hour while Wormhole remains open.
+- Added fresh token, scope, Client ID, and broadcaster-identity validation before every raid request.
+- Added live-status and exact-identity checks for both the sending and destination channels immediately before raiding.
+- Added a tested raid-action lock that blocks duplicate submissions while a raid request is processing.
+- Continued to prevent automatic retries of raid mutations.
+- Added Cloudflare Pages response headers for CSP, clickjacking protection, MIME protection, referrer privacy, and browser-feature restrictions.
+- Added no-store cache rules for the application shell, version manifest, privacy page, and sponsorship page.
+- Added an owner-operated Cloudflare Access checklist for protecting development preview deployments.
+- Added focused security regression tests without adding runtime dependencies or a build step.
+
+
+## TwitchTracker 30-day summary integration
+- After Twitch login resolves the authenticated profile, Wormhole uses that profile's `login` value as the TwitchTracker channel name.
+- A Cloudflare Pages Function at `/api/twitchtracker-summary` requests TwitchTracker's 30-day channel summary. The Twitch OAuth token is never forwarded.
+- TwitchTracker average viewers now appears in the live stream panel when available and is preferred as the suggested viewer baseline for a previous stream.
+- Existing locally observed Wormhole averages remain the fallback if TwitchTracker is unavailable.
+- The proxy validates Twitch channel names and caches successful upstream responses for five minutes to reduce repeated third-party requests.

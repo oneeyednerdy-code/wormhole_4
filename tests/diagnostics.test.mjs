@@ -27,7 +27,7 @@ test('diagnostics redact credentials, OAuth values, queries, and sensitive field
 
 test('diagnostics are capped and stay in memory without storage consent', () => {
   const storage = new MemoryStorage();
-  const log = new DiagnosticsLog({ version: '0.0.73', storage, maxEntries: 2, canPersist: () => false });
+  const log = new DiagnosticsLog({ version: '0.0.88', storage, maxEntries: 2, canPersist: () => false });
   log.record({ message: 'one' });
   log.record({ message: 'two' });
   log.record({ message: 'three' });
@@ -38,10 +38,10 @@ test('diagnostics are capped and stay in memory without storage consent', () => 
 test('diagnostics persist only when allowed and clear cleanly', () => {
   const storage = new MemoryStorage();
   let allowed = true;
-  const log = new DiagnosticsLog({ version: '0.0.73', storage, canPersist: () => allowed });
+  const log = new DiagnosticsLog({ version: '0.0.88', storage, canPersist: () => allowed });
   log.record({ area: 'twitch-api', message: 'Request failed', details: { endpoint: '/helix/users', status: 500 } });
   assert.ok(storage.getItem(DIAGNOSTICS_STORAGE_KEY));
-  const restored = new DiagnosticsLog({ version: '0.0.73', storage, canPersist: () => allowed });
+  const restored = new DiagnosticsLog({ version: '0.0.88', storage, canPersist: () => allowed });
   assert.equal(restored.entries().length, 1);
   allowed = false;
   restored.setPersistenceEnabled(false);
@@ -53,7 +53,7 @@ test('diagnostics persist only when allowed and clear cleanly', () => {
 test('reports contain coarse environment data but not the raw user agent', () => {
   const ua = 'Mozilla/5.0 (Windows NT 10.0) Chrome/125.0 identifying-detail';
   const log = new DiagnosticsLog({
-    version: '0.0.73',
+    version: '0.0.88',
     storage: new MemoryStorage(),
     canPersist: () => false,
     navigatorRef: { userAgent: ua, onLine: true },
@@ -64,10 +64,11 @@ test('reports contain coarse environment data but not the raw user agent', () =>
 });
 
 test('plain-text error logs include Discord support directions and no raw credentials', () => {
-  const log = new DiagnosticsLog({ version: '0.0.73', storage: new MemoryStorage(), canPersist: () => false });
+  const log = new DiagnosticsLog({ version: '0.0.88', storage: new MemoryStorage(), canPersist: () => false });
   log.record({ message: 'Bearer secret-value failed' });
   const text = log.toText();
   assert.match(text, /#bug-reports channel in the Wormhole Discord/);
   assert.match(text, /Wormhole Networking Tool - Error Log/);
+  assert.match(text, /Version: Alpha-0\.0\.88/);
   assert.doesNotMatch(text, /secret-value/);
 });

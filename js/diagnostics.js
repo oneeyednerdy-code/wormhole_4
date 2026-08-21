@@ -138,7 +138,7 @@ export class DiagnosticsLog {
     const report = this.buildReport();
     const lines = [
       'Wormhole Networking Tool - Error Log',
-      `Version: Beta-${report.version}`,
+      `Version: Alpha-${report.version}`,
       `Generated: ${report.generatedAt}`,
       `Environment: ${report.environment.browser} on ${report.environment.os}; ${report.environment.online ? 'online' : 'offline'}`,
       '',

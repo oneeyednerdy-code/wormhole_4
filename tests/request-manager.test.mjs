@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { RequestManager, RequestError } from '../js/browser-request-v73.js';
+import { RequestManager, RequestError } from '../js/browser-request-v90.js';
 
 function response(status, headers = {}) {
   return {
@@ -71,4 +71,18 @@ test('binds browser fetch to the global receiver', async () => {
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+test('normalizes browser fetch failures into a privacy-safe network error', async () => {
+  const manager = new RequestManager({
+    fetchImpl: async () => { throw new TypeError('Failed to fetch'); },
+    maxRetries: 0,
+  });
+  await assert.rejects(
+    manager.request('https://example.test/private?token=secret'),
+    (error) => error instanceof RequestError
+      && error.status === 0
+      && error.code === 'network'
+      && error.message === 'The browser could not reach Twitch.'
+  );
 });

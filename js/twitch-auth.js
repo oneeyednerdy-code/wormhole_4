@@ -1,4 +1,4 @@
-import { TWITCH_CONFIG } from './twitch-config-v73.js?v=73';
+import { TWITCH_CONFIG } from './twitch-config-v90.js?v=90';
 
 const TOKEN_KEY = 'wormhole_access_token';
 const LEGACY_TOKEN_KEY = 'raid_finder_token';
@@ -6,6 +6,7 @@ const OAUTH_STATE_KEY = 'wormhole_oauth_state';
 const OAUTH_STATE_CREATED_KEY = 'wormhole_oauth_state_created';
 const OAUTH_STATE_COOKIE = 'wormhole_oauth_verifier';
 const OAUTH_STATE_MAX_AGE_MS = 30 * 60 * 1000;
+const TOKEN_VALIDATION_TIMEOUT_MS = 10 * 1000;
 
 function browserStorage(name) {
   try {
@@ -118,12 +119,12 @@ function createOAuthState() {
 
 /**
  * Handles the Twitch OAuth implicit-grant flow using a plain browser
- * redirect (no popups, no custom URL schemes needed — this is the native
+ * redirect (no popups, no custom URL schemes needed: this is the native
  * environment for Twitch's OAuth design).
  */
 export const TwitchAuth = {
   /** Sends the browser to Twitch's authorize page. */
-  redirectToLogin() {
+  redirectToLogin({ includeRaidPermission = false } = {}) {
     const state = createOAuthState();
     const savedInSession = safelySet(browserStorage('sessionStorage'), OAUTH_STATE_KEY, state);
     // Also persist the short-lived verifier across browsing contexts. Some
@@ -141,7 +142,10 @@ export const TwitchAuth = {
     url.searchParams.set('client_id', TWITCH_CONFIG.clientId);
     url.searchParams.set('redirect_uri', TWITCH_CONFIG.redirectUri);
     url.searchParams.set('response_type', 'token');
-    url.searchParams.set('scope', TWITCH_CONFIG.scopes.join(' '));
+    const scopes = includeRaidPermission
+      ? [...TWITCH_CONFIG.discoveryScopes, ...TWITCH_CONFIG.raidScopes]
+      : TWITCH_CONFIG.discoveryScopes;
+    url.searchParams.set('scope', scopes.join(' '));
     url.searchParams.set('state', state);
     // Forces Twitch to show a fresh consent screen. This prevents an older
     // authorization from silently returning without newly added scopes.
@@ -197,33 +201,48 @@ export const TwitchAuth = {
     return legacy;
   },
 
-  async validateToken(token) {
+  async validateToken(token, { requiredScopes = TWITCH_CONFIG.discoveryScopes } = {}) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TOKEN_VALIDATION_TIMEOUT_MS);
     try {
       const res = await fetch(TWITCH_CONFIG.validateUrl, {
         headers: { Authorization: `OAuth ${token}` },
         cache: 'no-store',
+        signal: controller.signal,
       });
-      if (!res.ok) return { valid: false, reason: 'invalid' };
+      if (!res.ok) {
+        return res.status === 401
+          ? { valid: false, reason: 'invalid' }
+          : { valid: false, reason: 'unavailable' };
+      }
       const validation = await res.json();
       if (validation.client_id !== TWITCH_CONFIG.clientId) {
         return { valid: false, reason: 'wrong_client' };
       }
       const grantedScopes = new Set(validation.scopes ?? []);
-      if (!TWITCH_CONFIG.scopes.every((scope) => grantedScopes.has(scope))) {
+      if (!requiredScopes.every((scope) => grantedScopes.has(scope))) {
         return {
           valid: false,
           reason: 'missing_scopes',
-          missingScopes: TWITCH_CONFIG.scopes.filter((scope) => !grantedScopes.has(scope)),
+          missingScopes: requiredScopes.filter((scope) => !grantedScopes.has(scope)),
+          validation,
         };
       }
       return { valid: true, validation };
     } catch {
       return { valid: false, reason: 'unavailable' };
+    } finally {
+      clearTimeout(timeout);
     }
   },
 
   async isTokenValid(token) {
     return (await this.validateToken(token)).valid;
+  },
+
+  hasScopes(validation, scopes) {
+    const granted = new Set(validation?.scopes ?? []);
+    return scopes.every((scope) => granted.has(scope));
   },
 
   userFromValidation(validation) {

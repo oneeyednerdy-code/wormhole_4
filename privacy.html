@@ -5,43 +5,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; object-src 'none'; base-uri 'self'" />
   <title>Privacy &amp; Storage | Wormhole Networking Tool by OneEyedNerdy</title>
+  <meta name="description" content="Read what Wormhole stores in your browser, what remains optional, and how to clear local history." />
   <meta name="application-name" content="Wormhole Networking Tool by OneEyedNerdy" />
-  <meta name="wormhole-release" content="0.0.73" />
-  <meta name="wormhole-cache-version" content="73" />
-  <link rel="icon" href="assets/favicon.ico?v=73" sizes="any" />
-  <script src="js/appearance-boot.js?v=73"></script>
-  <script type="module" src="js/version-check.js?v=73"></script>
+  <meta name="wormhole-release" content="0.0.90" />
+  <meta name="wormhole-cache-version" content="90" />
+  <link rel="icon" href="assets/favicon.ico?v=90" sizes="any" />
+  <script src="js/appearance-boot.js?v=90"></script>
+  <script type="module" src="js/version-check.js?v=90"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=73" />
-  <link rel="stylesheet" href="css/mobile.css?v=73" media="(max-width: 1024px), (hover: none) and (pointer: coarse)" />
+  <link rel="stylesheet" href="css/styles.css?v=90" />
+  <link rel="stylesheet" href="css/mobile.css?v=90" media="(max-width: 1024px), (hover: none) and (pointer: coarse)" />
 </head>
 <body class="privacy-page">
   <main class="privacy-document">
     <a class="privacy-document__back" href="./">← Back to Wormhole</a>
     <p class="section-eyebrow">Privacy &amp; storage</p>
     <h1>What Wormhole stores</h1>
-    <p>Wormhole does not use advertising trackers or sell browser data. Information described as local stays in this browser and is not uploaded by Wormhole.</p>
+    <p>Wormhole has no advertising trackers and does not sell your data. Anything described as local stays in this browser.</p>
 
     <h2>Essential storage</h2>
-    <p>This is used without an optional-history choice because it is needed for requested features or accessibility:</p>
+    <p>Wormhole uses the following storage only when a feature needs it:</p>
     <ul>
       <li>Twitch OAuth state in browser storage or a short-lived SameSite cookie fallback, plus the temporary Twitch access token used during the current browser session.</li>
       <li>Your storage choice so Wormhole remembers whether optional history is allowed.</li>
       <li>Your explicitly selected light/dark theme, high-contrast preference, text size, relaxed spacing, reduced-motion choice, underlined-link choice, simplified-result preference, and manual device-layout override.</li>
       <li>One filter preset only when you explicitly select <strong>Save current filters</strong>.</li>
+      <li>Lost Signal game progress only when you explicitly use the game's <strong>Save</strong> command. It is stored under a separate key and never contains Twitch information.</li>
     </ul>
 
     <h2>Optional local history</h2>
-    <p>If you choose <strong>Allow local history</strong>, Wormhole stores rolling viewer-count samples, observed channel/category snapshots, up to five previous-stream references, and the latest 150 privacy-sanitized diagnostic events. These improve estimated averages, activity details, offline matching, and troubleshooting.</p>
+    <p>If you choose <strong>Allow local history</strong>, Wormhole keeps viewer-count samples for up to 30 days, channel and category snapshots, up to five past-stream references, and the latest 150 privacy-sanitized diagnostic events. Wormhole uses this history for viewer averages, channel activity, offline matching, and troubleshooting.</p>
 
     <h2>Third-party services</h2>
-    <p>Signing in and searching sends requests directly to Twitch. Twitch live-player content loads after you choose a preview or after Twitch confirms a completed raid; the completed-raid view also loads Twitch's embedded chat. Wormhole does not automatically post raid-completed chat messages. Google Fonts provides the interface fonts. External Ko-fi and creator links open only when selected.</p>
+    <p>Signing in or searching sends requests directly to Twitch. After login, Wormhole also sends your public Twitch channel name through a same-origin Cloudflare Pages Function to TwitchTracker to request its 30-day channel summary. Your Twitch access token is never sent to TwitchTracker. The Twitch player loads only when you open a preview or Twitch confirms a raid. The completed-raid screen also loads Twitch chat. Wormhole does not post a raid-completed chat message. Google Fonts supplies the interface fonts. Ko-fi and creator links open only when you select them.</p>
 
     <h2>Your controls</h2>
-    <p>Open <strong>Privacy settings</strong> in the Wormhole footer to change your choice or permanently delete locally stored viewer, channel, previous-stream, and diagnostic history. Diagnostics can also be cleared separately from the footer.</p>
+    <p>Open <strong>Privacy settings</strong> in the footer to change your choice or delete stored viewer, channel, past-stream, and diagnostic history. You can also clear diagnostics separately from the footer. Lost Signal creates progress only when you use its Save command. Saving again replaces it, and your browser's site-data controls can remove it.</p>
   </main>
-  <script type="module" src="js/device-layout.js?v=73"></script>
+  <script type="module" src="js/device-layout.js?v=90"></script>
 </body>
 </html>

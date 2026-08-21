@@ -1,7 +1,13 @@
 # Wormhole (web)
 
-Current release: **Beta-0.0.73**. During beta development, each feature build
-increments the patch number (`Beta-0.0.71`, `Beta-0.0.72`, and so on).
+Current release: **Alpha-0.0.90**. During alpha development, each feature build
+increments the patch number.
+
+Long Twitch operations display a non-blocking loading panel with a progress bar,
+spinner, and current-task message. The indicator supports screen readers,
+reduced motion, high contrast, and narrow mobile screens. Result-card details
+load as cards approach the viewport instead of loading every selected page item
+at once.
 
 The responsive layout automatically switches to a compact phone interface at
 600 CSS pixels or below. Narrow phones use a single-column layout, a compact
@@ -23,46 +29,48 @@ checkmark identifies a tag shared with the logged-in stream, a pound sign
 identifies a manually searched tag, and both symbols identify a tag satisfying
 both conditions. Matching tags are ordered before neutral channel tags.
 
-A static website — plain HTML/CSS/JS, no build step, no framework — that
-logs in with Twitch and finds you a good channel to raid, matched on:
+Wormhole is a static website built with plain HTML, CSS, and JavaScript. It has
+no framework or build step. It signs in with Twitch and finds possible raid
+matches using:
 
-- **Game / category** — search and add extra games/categories, not just your
+- **Game / category**: search and add extra games/categories, not just your
   current one
-- **Genre groups** — add curated gaming presets plus Creative, Coding & Tech,
+- **Genre groups**: add curated gaming presets plus Creative, Coding & Tech,
   and Conversation groups for non-gaming Twitch categories
-- **Viewer count** — choose channels within ±50%, ±75%, or ±100% of your
+- **Viewer count**: choose channels within ±50%, ±75%, or ±100% of your
   current live viewers, or show every viewer count; ±50% remains the default
-- **Channel status** — additive Partner/Affiliate toggles on top of an
+- **Channel status**: additive Partner/Affiliate toggles on top of an
   always-included non-affiliate pool
-- **Chat access** — display current chat modes and, by default, exclude channels
+- **Chat access**: display current chat modes and, by default, exclude channels
   using followers-only, subscribers-only, or emote-only chat
-- **Team** — optionally only show channels sharing one of your Twitch Teams
-- **Tags** — optionally require candidates to have at least one of the tags
+- **Team**: optionally only show channels sharing one of your Twitch Teams
+- **Tags**: optionally require candidates to have at least one of the tags
   you type; Following Only refreshes while typing and normalizes common
   spacing/punctuation differences
-- **Language** — defaults to English and offers popular language choices;
+- **Language**: defaults to English and offers popular language choices;
   it is applied independently from custom tags, while **Any language** removes
   the language restriction without deleting your other tag choices
-- **Suggested tags** — one-click shortcuts add or remove common Twitch tags,
+- **Suggested tags**: one-click shortcuts add or remove common Twitch tags,
   including GenAIOptedOut, AIOptedOut, MatureContent, 18Plus, LurkerFriendly,
   LGBTQIAPlus, Chatty, AMA, Cozy, FirstPlaythrough, NoBackseating, and VTuber
-- **Content warnings** — independently set each Twitch content classification
+- **Content warnings**: independently set each Twitch content classification
   label or the mature-audience stream setting to Any, Require, or Exclude.
   Multiple required labels use an at-least-one match, while matching any
   excluded label removes the channel. If Twitch cannot return classification
   data during a filtered search, Wormhole omits that uncertain result.
-- **Automatic tag matching** — compares the logged-in stream's Twitch tags
+- **Automatic tag matching**: compares the logged-in stream's Twitch tags
   with every candidate, shows shared tags on result cards, and uses meaningful
   overlap in the recommendation score; language tags are shown but scored
   separately so a shared language cannot overpower community/content matches
-- **Average viewership** — see note below on how this is estimated
-- **Stream duration** — how long the candidate has been live, vs. you
+- **Average viewership**: see note below on how this is estimated
+- **Stream duration**: how long the candidate has been live, vs. you
 
 Results render as a grid of cards, each with a click-to-play live preview
 (Twitch's own embedded player) alongside the stats. Results are paginated with
 a selector for 12 through 100 cards per page. They can be sorted by recommended
-match, followed channels first, tag match, viewers high-to-low or low-to-high, longest
-live (the best available "ending soon" proxy), or most recently started. It
+match, followed channels first, tag match, live viewers high-to-low or low-to-high,
+rolling 30-day average high-to-low or low-to-high, longest live (the best
+available "ending soon" proxy), or most recently started. It
 can also **start the raid** for you directly, via the Twitch API. After a raid
 starts, Wormhole displays Twitch's 90-second countdown with a cancel option.
 When the countdown finishes, Wormhole waits for Twitch's actual `channel.raid`
@@ -70,9 +78,11 @@ EventSub confirmation. The confirmation opens an in-app destination view with
 the official Twitch player and chat embeds. Wormhole no longer posts an
 automatic completion message; optional raid text is editable and copy-only.
 
-Version 44 adds four matching goals (Similar Community, Growth Opportunity,
-Familiar Channels, and Explore Something New), explicit save/load controls for
-one local filter preset, and a three-channel shortlist comparison. Individual
+Wormhole uses one consistent recommendation score based on compatible audience
+size, observed average viewers, stream duration, categories, and meaningful
+shared tags. The former Matching Goal selector and its alternate scoring modes
+have been removed. Explicit save/load controls remain available for one local
+filter preset, along with a three-channel shortlist comparison. Individual
 results can be refreshed or hidden without rerunning the entire search. The
 toolbar reports when data was fetched and how many candidates were removed by
 the active filters. Historical audience estimates now group samples by stream,
@@ -124,7 +134,7 @@ category, and remembers that correction for the next time you choose that VOD.
 
 Why plain HTML/JS instead of a framework: Twitch's OAuth flow is designed
 around a browser redirect (`response_type=token`), which a static site
-handles natively — no popups, no custom URL schemes, no build tooling.
+handles natively: no popups, no custom URL schemes, no build tooling.
 
 ---
 
@@ -132,7 +142,7 @@ handles natively — no popups, no custom URL schemes, no build tooling.
 
 1. Go to https://dev.twitch.tv/console/apps → **Register Your Application**.
 2. Name it anything (e.g. "Wormhole").
-3. **OAuth Redirect URLs**: add the exact URL you'll serve this site from —
+3. **OAuth Redirect URLs**: add the exact URL where you will serve this site.
    for example:
    - `http://localhost:8000/` for local testing
    - `https://yourname.github.io/wormhole/` for GitHub Pages
@@ -146,29 +156,31 @@ handles natively — no popups, no custom URL schemes, no build tooling.
    generated client secret in Wormhole or any frontend file.
 5. Save, then copy the **Client ID**.
 
-Open `js/twitch-config-v73.js` and paste it in:
+Open `js/twitch-config-v90.js` and paste it in:
 
 ```js
 clientId: 'YOUR_TWITCH_CLIENT_ID',
 ```
 
-The redirect URI itself doesn't need editing — it's computed automatically
+The redirect URI itself doesn't need editing: it's computed automatically
 from wherever the page is being served (`window.location.origin +
 window.location.pathname`), as long as it matches something you registered
 in step 3.
 
 Wormhole normalizes `/index.html` to its containing directory so the callback
-is stable. Expand **Login setup help** on the login screen and copy the exact
-URL shown there into Twitch's OAuth Redirect URLs. Twitch requires an exact
-match, including HTTPS, hostname, path, and trailing slash.
+is stable. Register the exact public directory URL in Twitch's OAuth Redirect
+URLs. Twitch requires an exact match, including HTTPS, hostname, path, and
+trailing slash.
 
 If your host exposes the app through several aliases or rewrites, set
-`redirectUriOverride` in `js/twitch-config-v73.js` to the one production callback you
+`redirectUriOverride` in `js/twitch-config-v90.js` to the one production callback you
 registered with Twitch. Production and preview hostnames are different origins
 and must not be treated as interchangeable.
 
-Login requests force a fresh Twitch approval screen so newly added permissions
-cannot be skipped by an older authorization. The CSRF verifier is retained for
+The standard login requests only the read permissions needed for discovery.
+`channel:manage:raids` is requested separately when a signed-in streamer selects
+**Enable raid controls**. Login requests force a fresh Twitch approval screen so
+newly added permissions cannot be skipped by an older authorization. The CSRF verifier is retained for
 up to 30 minutes in session storage, local storage, and a short-lived SameSite
 cookie fallback; the access token itself remains in session storage only.
 
@@ -192,7 +204,7 @@ python3 -m http.server 8000
 # then open http://localhost:8000/
 ```
 
-or `npx serve .`, or the VS Code "Live Server" extension — anything that
+or `npx serve .`, or the VS Code "Live Server" extension: anything that
 serves static files.
 
 ---
@@ -203,10 +215,17 @@ Any static host works, since there's no server-side code:
 
 - **GitHub Pages**: push this folder to a repo, enable Pages on it.
 - **Vercel or another static host**: upload the folder or connect the repo.
-- **Any web host**: it's just static files — upload as-is.
+- **Any web host**: it's just static files: upload as-is.
 
 Whatever URL it ends up live at, make sure that exact URL is registered as
 an OAuth Redirect URL on your Twitch app (step 1).
+
+Cloudflare Pages reads the included `_headers` file and applies the production
+Content Security Policy, clickjacking protection, MIME-sniffing protection,
+privacy policy, browser-feature restrictions, and no-store rules for HTML and
+`version.json`. For development previews, follow
+`CLOUDFLARE_ACCESS_SETUP.md`; the actual Access allow-list must be configured by
+the Cloudflare account owner.
 
 ## Reliability and safety
 
@@ -214,7 +233,12 @@ an OAuth Redirect URL on your Twitch app (step 1).
   Twitch failures, rate-limit header tracking, and cancellation when a newer
   search replaces an older one.
 - Raid and chat mutations are never retried automatically.
-- The selected destination is checked again immediately before raid start.
+- Twitch tokens are validated at startup and once per hour while Wormhole is
+  open. A confirmed invalid token ends the session; a temporary validation
+  outage keeps the session but blocks new raids that cannot be verified.
+- Immediately before a raid, Wormhole freshly validates the token, required
+  raid scope, and broadcaster identity; confirms that both channels remain
+  live; and locks the action against duplicate submissions.
 - The EventSub connection exposes its current state. Completion-message opt-in
   is unavailable unless confirmation is connected; Twitch reconnect
   instructions are honored and duplicate messages are ignored.
@@ -234,7 +258,7 @@ an OAuth Redirect URL on your Twitch app (step 1).
 ---
 
 > **Note:** "Helix" is the name Twitch itself gives its public API (it's
-> baked into the real endpoint, `api.twitch.tv/helix`) — it isn't part of
+> baked into the real endpoint, `api.twitch.tv/helix`): it isn't part of
 > this app's branding and can't be renamed without breaking every request.
 > Everywhere else in this project, "Wormhole" is the product name.
 
@@ -263,53 +287,53 @@ an OAuth Redirect URL on your Twitch app (step 1).
 - Every match card shows the channel's Twitch tags. Tags shared with the
   selected live or previous stream are marked with a check and highlighted.
 - By default, only channels from 50% to 150% of your current live viewer count
-  qualify. The wider options expand that band to 25%–175% or 0%–200%.
+  qualify. The wider options expand that band to 25% to 175% or 0% to 200%.
   **All** removes the hard limit while retaining viewer similarity in ranking.
 - The **Filters** panel adds several hard filters (candidates outside these
   are excluded entirely, not just scored lower):
-  - **Viewer count** — automatically shows the selected ±50%, ±75%, or ±100%
+  - **Viewer count**: automatically shows the selected ±50%, ±75%, or ±100%
     range calculated from your audience, with an **All** option. The active
     range also appears as a removable filter chip.
-  - **Channel status** — Partner and Affiliate are *additive* toggles on
+  - **Channel status**: Partner and Affiliate are *additive* toggles on
     top of an always-included non-affiliate pool (most of Twitch). There's
-    no separate "non-affiliate" checkbox — unchecking both Partner and
+    no separate "non-affiliate" checkbox: unchecking both Partner and
     Affiliate just stops adding those tiers on top, it never hides anyone.
     Since Twitch's `/streams` endpoint doesn't include broadcaster status
     at all, the app makes one extra batched call to `/users` per search to
     look it up.
-  - **Following only** — ignores the logged-in stream's game plus all selected
+  - **Following only**: ignores the logged-in stream's game plus all selected
     game and genre categories, then paginates through every followed channel
     currently live. Typed tags, status, and team filters still apply. When the
     logged-in channel is offline and no previous-stream baseline is selected,
     Following Only remains available; category and viewer-range matching are
     skipped while typed tags and the remaining usable filters continue to work.
-  - **Exclude restricted chat** — enabled by default; checks current public
+  - **Exclude restricted chat**: enabled by default; checks current public
     chat settings and removes channels using followers-only, subscribers-only,
     or emote-only chat. Cards also
     show followers-only duration, subscribers-only, emote-only, slow, unique,
     open, or unavailable chat status. Twitch exposes one channel per request,
     so Wormhole caches these lookups and runs them with limited concurrency.
-  - **Team** — only show channels sharing one of your Twitch Teams. (Twitch
-    doesn't have "guilds" — Teams are the closest equivalent: a named group
+  - **Team**: only show channels sharing one of your Twitch Teams. (Twitch
+    doesn't have "guilds": Teams are the closest equivalent: a named group
     of channels shown on each member's About page.) Twitch has no batch
     endpoint for team membership, so this makes one request per candidate
-    channel — to keep that reasonable, it only runs *after* the viewer-count
+    channel: to keep that reasonable, it only runs *after* the viewer-count
     and channel-status filters have already narrowed the list, and fires
     those requests with limited concurrency. If you're not on a team, this
     filter is disabled with an explanatory note.
-  - **Tags** — type any number of comma-separated tags (Twitch's free-text
+  - **Tags**: type any number of comma-separated tags (Twitch's free-text
     stream tags, e.g. "Speedrun", "Cozy", "English"); a candidate matches if
     it has *at least one* of the tags you typed, case-insensitively.
-  - **Match my stream tags** — enabled by default; compares the logged-in
+  - **Match my stream tags**: enabled by default; compares the logged-in
     stream's current tags to each candidate as a recommendation signal rather
     than excluding channels. Shared tags appear on each card. Previously
     observed tags are saved with stream history for offline matching.
-  - **Categories** — search box to add other games/categories to the search,
+  - **Categories**: search box to add other games/categories to the search,
     beyond your own current one. See the IGDB note below for why this uses
     Twitch instead of calling IGDB directly. The dropdown combines Twitch's
     exact-name Games lookup with up to 20 fuzzy category matches, ensuring an
     exact valid category is not hidden outside a short suggestion list.
-  - **Genre groups** — broad presets based on IGDB's genre, theme, and game-mode
+  - **Genre groups**: broad presets based on IGDB's genre, theme, and game-mode
     concepts. Checkbox changes apply automatically. Wormhole resolves curated
     game names through small Twitch `/games` batches and falls back to Twitch's
     category search for naming variations. It visually marks added categories
@@ -371,19 +395,19 @@ an OAuth Redirect URL on your Twitch app (step 1).
   the device and browser where Wormhole is used and is capped to 300 channels.
 - Each result card shows a click-to-play live preview using Twitch's own
   embedded player (`player.twitch.tv`). A dedicated **Preview stream** button
-  appears beside the raid button, so you can actually watch a few
-  seconds of the stream before deciding to raid — plus an "Open on Twitch ↗"
+  appears beside the raid button, so you can watch part of the stream before
+  deciding to raid. An "Open on Twitch ↗"
   link as a fallback if the embed doesn't load (ad blockers sometimes catch
   it). The embed only needs a `parent` URL parameter matching whatever
-  domain is serving the page — no extra Twitch app registration required
+  domain is serving the page: no extra Twitch app registration required
   beyond the OAuth redirect URL you already set up.
 
 ### A note on IGDB
 
-Twitch owns IGDB and Twitch's category IDs are sourced from IGDB's game
-database — but IGDB's *own* API can't be called from a browser-only app
+Twitch owns IGDB, and Twitch category IDs come from the IGDB game database.
+The IGDB API cannot be called safely from a browser-only app
 like this one: it has no CORS support (confirmed by developers hitting
-exactly this wall — see
+exactly this wall: see
 [twitchtv/igdb-api-node#39](https://github.com/twitchtv/igdb-api-node/issues/39)),
 and its OAuth requires a client secret, which can never safely live in
 front-end JavaScript with no backend to hide it behind.
@@ -391,7 +415,7 @@ front-end JavaScript with no backend to hide it behind.
 What this app uses instead is Twitch's own `Search Categories` endpoint
 (`/helix/search/categories`), which queries that same underlying database,
 is fully CORS-enabled, and works with the same user token the rest of the
-app already has. That's what powers the "Categories" filter — search for
+app already has. That's what powers the "Categories" filter: search for
 another game or category by name and add it to your search, rather than an
 automatic "similar games" suggestion (which would need IGDB's genre/
 similar-games fields specifically).
@@ -402,7 +426,7 @@ IGDB genres; MMO corresponds to a game mode; Horror and Survival are treated as
 themes. This avoids shipping an IGDB client secret in public JavaScript. The
 mapping can be updated as games become more or less relevant on Twitch.
 
-If you do want true IGDB genre-based matching, it's possible — but it needs
+True IGDB genre-based matching needs
 a small backend (even a single serverless function) to hold the client
 secret and proxy the request with the right CORS headers. That's outside
 the scope of this no-backend static site, but straightforward to bolt on
@@ -411,19 +435,19 @@ similar.
 
 ### A note on "average viewership"
 
-Twitch's public API only exposes a channel's **current, live** viewer count
-— it doesn't expose historical averages (that lives behind third-party
-analytics sites, not the official API). To approximate a real average
-instead of a single snapshot, this app keeps a small local history of
-viewer-count samples for every channel it's seen when you choose **Allow local
-history** in the first-visit storage panel. Those samples stay in your browser's
-`localStorage`, and the app averages them once it has at least a few. Samples
-are recorded no more than once every five minutes per channel, so repeated
-filter changes do not distort the estimate.
-Until a channel's been seen a few times, its "average" falls back to its
-current live viewer count, and result cards mark that with **"(est.)"**.
-The more you use the app, the better these estimates get. This history is
-local to your browser — it isn't sent anywhere.
+Twitch's public API only exposes a channel's **current, live** viewer count.
+It does not expose a broadcaster's historical average concurrent viewers;
+VOD view counts are replay views and cannot be used as a substitute. Wormhole
+therefore builds a rolling 30-day observed average when you choose **Allow local
+history** in the first-visit storage panel.
+
+Viewer snapshots are recorded no more than once every five minutes while a
+channel is seen live. Wormhole first averages the snapshots within each stream
+session, then gives every observed session equal weight. This prevents a stream
+seen repeatedly from overpowering a stream seen once. Observations older than
+30 days are excluded and pruned. Until enough observations exist, the value is
+clearly marked as an early estimate and falls back to the current live count.
+The history stays in this browser and is never uploaded by Wormhole.
 
 ### Privacy and storage choices
 
@@ -445,8 +469,10 @@ storage policy.
 ## Sending the actual raid
 
 The **Raid this channel** button calls `POST /helix/raids`, which requires
-your login to have granted the `channel:manage:raids` scope (already
-requested at login). It asks for confirmation first, then Twitch shows the
+your login to have granted the `channel:manage:raids` scope. Discovery login
+does not request this permission. Select **Enable raid controls** and approve
+the additional permission through Twitch when you are ready to use raid
+actions. Wormhole asks for confirmation first, then Twitch shows the
 usual raid countdown in your dashboard/chat. The local countdown never sends
 a message by itself. Wormhole waits for the outgoing `channel.raid` EventSub
 notification for the exact selected destination. Before accepting a raid, the
@@ -466,12 +492,16 @@ not attempt to imitate or bypass that protected Twitch action.
 ```
 index.html          # Page shell, both views (login + app)
 privacy.html        # Storage and privacy policy
+signal.html         # Hidden Lost Signal text adventure
+_headers            # Cloudflare Pages security and cache headers
+CLOUDFLARE_ACCESS_SETUP.md # Owner steps for protecting preview deployments
 assets/
   wormhole-logo.svg  # Single-color hourglass-wormhole mark
   favicon.ico        # 16, 32, and 48 px browser/bookmark icon
 css/styles.css       # All styling
+css/signal.css       # Standalone text-adventure terminal styling
 js/
-  twitch-config-v73.js # Client ID, scopes, redirect URI
+  twitch-config-v90.js # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   direct-search.js    # Normalizes exact streamer usernames and URLs
@@ -482,12 +512,33 @@ js/
   appearance-boot.js   # Applies saved theme before first paint
   raid-listener.js    # Confirms completed outgoing raids through EventSub
   raid-match.js       # Filtering and scoring algorithm
-  wormhole-app-v73.js # Wires everything together, renders the UI
+  lost-signal-engine.js # Parser, world state, puzzles, and endings
+  lost-signal-game.js # Text-adventure browser interface and manual saves
+  wormhole-app-v90.js # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
   twitch-auth.test.mjs # Twitch login security and redirect tests
 ```
 
+
 There are no runtime dependencies and no build step. `package.json` only
 provides the local test command. The only external page resources are Google
 Fonts (Space Grotesk, Inter, IBM Plex Mono).
+
+## Alpha-0.0.90 architecture
+
+The browser application is being separated into small UI modules and service boundaries before production bundling. Expensive creator detail requests now live in `js/services/creator-details.js`; recent activity rendering lives in `js/results/recent-activity.js`; shared logging lives in `js/app/logger.js`. The Cloudflare Pages Function under `functions/` remains server-side and is not browser code.
+
+## Alpha-0.0.90 production build
+
+The readable files in `js/` and `css/` remain the development source. Production assets are generated with esbuild.
+
+```bash
+npm install
+npm test
+npm run build
+```
+
+`npm run build` creates `dist/`, bundles/minifies the browser JavaScript, minifies CSS, generates content-hashed asset names, rewrites the HTML entry points, copies static assets, and keeps the Cloudflare Pages `functions/` tree separate from browser code.
+
+For a production deployment, publish the generated `dist/` output rather than editing files inside `dist/` by hand. Source maps are intentionally disabled for the public alpha build.

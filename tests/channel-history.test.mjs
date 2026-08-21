@@ -4,9 +4,10 @@ import assert from 'node:assert/strict';
 class MemoryStorage {
   constructor() {
     this.data = new Map([['wormhole_storage_choice_v1', 'history']]);
+    this.writes = 0;
   }
   getItem(key) { return this.data.has(key) ? this.data.get(key) : null; }
-  setItem(key, value) { this.data.set(key, String(value)); }
+  setItem(key, value) { this.writes += 1; this.data.set(key, String(value)); }
   removeItem(key) { this.data.delete(key); }
 }
 
@@ -44,4 +45,20 @@ test('channel history avoids duplicate snapshots within twelve hours', () => {
   ChannelHistory.record(stream, 50, new Date('2026-08-01T00:00:00Z'));
   ChannelHistory.record(stream, 51, new Date('2026-08-01T02:00:00Z'));
   assert.equal(ChannelHistory.getSummary('channel-2').sampleCount, 1);
+});
+
+test('channel history batches visible result snapshots into one storage write', () => {
+  ChannelHistory.clearAll();
+  globalThis.localStorage.writes = 0;
+  ChannelHistory.recordMany(Array.from({ length: 12 }, (_, index) => ({
+    stream: {
+      user_id: `batch-${index}`,
+      user_name: `Batch ${index}`,
+      game_id: 'game-1',
+      game_name: 'Example Game',
+      viewer_count: 10 + index,
+    },
+    followerCount: 100 + index,
+  })), new Date('2026-08-02T00:00:00Z'));
+  assert.equal(globalThis.localStorage.writes, 1);
 });

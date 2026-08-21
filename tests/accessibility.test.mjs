@@ -3,7 +3,12 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const app = await readFile(new URL('../js/wormhole-app-v73.js', import.meta.url), 'utf8');
+const appMain = await readFile(new URL('../js/wormhole-app-v90.js', import.meta.url), 'utf8');
+const resultsController = await readFile(new URL('../js/results/controller.js', import.meta.url), 'utf8');
+const raidController = await readFile(new URL('../js/raid/controller.js', import.meta.url), 'utf8');
+const searchController = await readFile(new URL('../js/search/controller.js', import.meta.url), 'utf8');
+const filtersController = await readFile(new URL('../js/search/filters.js', import.meta.url), 'utf8');
+const app = `${appMain}\n${resultsController}\n${raidController}\n${searchController}\n${filtersController}`;
 const css = await readFile(new URL('../css/styles.css', import.meta.url), 'utf8');
 
 function luminance(hex) {

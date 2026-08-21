@@ -4,6 +4,8 @@ export const RESULT_SORT_OPTIONS = [
   'tag-match',
   'viewers-high',
   'viewers-low',
+  'average-high',
+  'average-low',
   'ending-soon',
   'just-started',
 ];
@@ -14,6 +16,11 @@ function score(match) {
 
 function viewers(match) {
   const count = Number(match?.stream?.viewer_count);
+  return Number.isFinite(count) ? count : 0;
+}
+
+function averageViewers(match) {
+  const count = Number(match?.estimatedAverageViewers);
   return Number.isFinite(count) ? count : 0;
 }
 
@@ -56,6 +63,10 @@ export function sortRaidMatches(matches, mode = 'recommended') {
       return sorted.sort((a, b) => viewers(b) - viewers(a) || recommendedFirst(a, b));
     case 'viewers-low':
       return sorted.sort((a, b) => viewers(a) - viewers(b) || recommendedFirst(a, b));
+    case 'average-high':
+      return sorted.sort((a, b) => averageViewers(b) - averageViewers(a) || recommendedFirst(a, b));
+    case 'average-low':
+      return sorted.sort((a, b) => averageViewers(a) - averageViewers(b) || recommendedFirst(a, b));
     case 'ending-soon':
       return sorted.sort((a, b) => compareStarts(a, b, false));
     case 'just-started':

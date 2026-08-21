@@ -1,7 +1,7 @@
-import { TWITCH_CONFIG } from './twitch-config-v73.js?v=73';
-import { RequestError, RequestManager } from './browser-request-v73.js?v=73';
+import { TWITCH_CONFIG } from './twitch-config-v90.js?v=90';
+import { RequestError, RequestManager } from './browser-request-v90.js?v=90';
 
-const CHAT_SETTINGS_CACHE_TTL_MS = 60 * 1000;
+const CHAT_SETTINGS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 function normalizeGameName(name) {
   return String(name ?? '')
@@ -47,19 +47,27 @@ export class TwitchApi {
   }
 
   async _request(url, options = {}, requestOptions = {}) {
+    const { reportError = true, ...managerOptions } = requestOptions;
     try {
-      return await this.requestManager.request(url, options, requestOptions);
+      return await this.requestManager.request(url, options, managerOptions);
     } catch (error) {
       const parsedUrl = new URL(url, globalThis.location?.origin ?? 'http://localhost');
-      try {
-        this.onError?.({
-          message: 'Twitch API request failed',
-          endpoint: parsedUrl.pathname,
-          method: options.method ?? 'GET',
-          status: Number(error?.status) || null,
-        });
-      } catch {
-        // Error reporting must never interfere with Twitch requests.
+      if (reportError) {
+        try {
+          this.onError?.({
+            message: 'Twitch API request failed',
+            endpoint: parsedUrl.pathname,
+            method: options.method ?? 'GET',
+            status: Number(error?.status) || null,
+            failureType: error?.code === 'timeout'
+              ? 'timeout'
+              : error?.code === 'network' || !Number(error?.status)
+                ? 'network'
+                : 'http',
+          });
+        } catch {
+          // Error reporting must never interfere with Twitch requests.
+        }
       }
       if (error instanceof RequestError) {
         throw new TwitchApiError(
@@ -71,12 +79,16 @@ export class TwitchApi {
     }
   }
 
-  async _get(path, query = {}, { signal } = {}) {
+  async _get(path, query = {}, requestOptions = {}) {
     const url = new URL(TWITCH_CONFIG.apiBaseUrl + path);
     for (const [k, v] of Object.entries(query)) {
       if (v !== undefined && v !== null) url.searchParams.set(k, v);
     }
-    const res = await this._request(url, { headers: this.headers, cache: 'no-store' }, { signal });
+    const res = await this._request(
+      url,
+      { headers: this.headers, cache: 'no-store' },
+      requestOptions
+    );
     return res.json();
   }
 
@@ -154,7 +166,7 @@ export class TwitchApi {
   /**
    * Looks up broadcaster_type ('partner', 'affiliate', or '' for
    * non-affiliate) for a batch of user IDs. Streams returned by
-   * /streams don't include this — it only lives on /users — so this is
+   * /streams don't include this: it only lives on /users: so this is
    * a separate lookup, batched in groups of 100 (Twitch's per-request cap).
    * Returns a Map of userId -> broadcaster_type.
    */
@@ -204,7 +216,7 @@ export class TwitchApi {
 
   /**
    * Returns the Twitch Team(s) a broadcaster belongs to. Twitch doesn't
-   * have a "guild" concept — Teams are the closest equivalent (a named
+   * have a "guild" concept: Teams are the closest equivalent (a named
    * group of channels, shown on each member's About page). A broadcaster
    * usually belongs to zero or one team, but the API allows for more.
    *
@@ -263,15 +275,22 @@ export class TwitchApi {
 
     const request = this._get('/chat/settings', {
       broadcaster_id: broadcasterId,
-    }, { signal }).then((json) => json.data?.[0] ?? null);
+    }, { signal, retries: 0, reportError: false }).then((json) => json.data?.[0] ?? null);
 
     this.chatSettingsCache.set(broadcasterId, request);
     this.chatSettingsCacheTimestamps.set(broadcasterId, Date.now());
     try {
       return await request;
     } catch (error) {
-      this.chatSettingsCache.delete(broadcasterId);
-      this.chatSettingsCacheTimestamps.delete(broadcasterId);
+      if (error?.name === 'AbortError') {
+        this.chatSettingsCache.delete(broadcasterId);
+        this.chatSettingsCacheTimestamps.delete(broadcasterId);
+        throw error;
+      }
+      // Chat-mode metadata is optional. Cache an unavailable result briefly so
+      // results-card enrichment does not immediately retry a failed filter lookup.
+      this.chatSettingsCache.set(broadcasterId, Promise.resolve(null));
+      this.chatSettingsCacheTimestamps.set(broadcasterId, Date.now());
       throw error;
     }
   }
@@ -280,6 +299,7 @@ export class TwitchApi {
   async getChatSettingsForUsers(userIds, { concurrency = 6, signal } = {}) {
     const results = new Map();
     const queue = [...new Set(userIds)].filter(Boolean);
+    const failures = [];
 
     const worker = async () => {
       while (queue.length) {
@@ -288,7 +308,7 @@ export class TwitchApi {
           results.set(id, await this.getChatSettings(id, { signal }));
         } catch (error) {
           if (error?.name === 'AbortError') throw error;
-          console.error(error);
+          failures.push(error);
           results.set(id, null);
         }
       }
@@ -297,6 +317,26 @@ export class TwitchApi {
     await Promise.all(
       Array.from({ length: Math.min(concurrency, queue.length) }, () => worker())
     );
+    if (failures.length) {
+      const firstError = failures[0];
+      try {
+        this.onError?.({
+          level: 'warning',
+          message: 'Some Twitch chat settings were unavailable',
+          endpoint: '/helix/chat/settings',
+          method: 'GET',
+          status: Number(firstError?.status) || null,
+          failureType: firstError?.code === 'timeout'
+            ? 'timeout'
+            : firstError?.code === 'network' || !Number(firstError?.status)
+              ? 'network'
+              : 'http',
+          failedRequests: failures.length,
+        });
+      } catch {
+        // Optional diagnostics must never interfere with search results.
+      }
+    }
     return results;
   }
 

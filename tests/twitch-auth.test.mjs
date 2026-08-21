@@ -30,8 +30,8 @@ globalThis.window = {
   history: { replaceState() {} },
 };
 
-const { getOAuthRedirectUri } = await import('../js/twitch-config-v73.js');
-const { TWITCH_CONFIG } = await import('../js/twitch-config-v73.js');
+const { getOAuthRedirectUri } = await import('../js/twitch-config-v90.js');
+const { TWITCH_CONFIG } = await import('../js/twitch-config-v90.js');
 const { TwitchAuth } = await import('../js/twitch-auth.js');
 
 test('normalizes index.html to a stable OAuth callback directory', () => {
@@ -64,9 +64,18 @@ test('login creates a valid Twitch authorization URL and durable verifier', () =
   assert.equal(url.searchParams.get('force_verify'), 'true');
   assert.ok(!url.searchParams.get('scope').split(' ').includes('user:write:chat'));
   assert.ok(url.searchParams.get('scope').split(' ').includes('moderator:read:followers'));
+  assert.ok(!url.searchParams.get('scope').split(' ').includes('channel:manage:raids'));
   assert.ok(state);
   assert.equal(sessionStorage.getItem('wormhole_oauth_state'), state);
   assert.equal(localStorage.getItem('wormhole_oauth_state'), state);
+});
+
+test('raid controls request the additional raid scope only when explicitly enabled', () => {
+  TwitchAuth.redirectToLogin({ includeRaidPermission: true });
+  const scopes = new URL(window.location.href).searchParams.get('scope').split(' ');
+  assert.ok(scopes.includes('user:read:follows'));
+  assert.ok(scopes.includes('moderator:read:followers'));
+  assert.ok(scopes.includes('channel:manage:raids'));
 });
 
 test('OAuth state can fall back to a short-lived SameSite cookie', () => {
@@ -140,7 +149,7 @@ test('OAuth callback errors are shown and cleared instead of silently ignored', 
   window.location.search = '';
 });
 
-test('token validation checks client identity and every requested scope', async () => {
+test('token validation checks client identity and only the scopes required for the action', async () => {
   globalThis.fetch = async () => ({
     ok: true,
     async json() {
@@ -157,12 +166,30 @@ test('token validation checks client identity and every requested scope', async 
   });
   const status = await TwitchAuth.validateToken('token');
   assert.equal(status.reason, 'missing_scopes');
-  assert.deepEqual(status.missingScopes, ['channel:manage:raids', 'moderator:read:followers']);
+  assert.deepEqual(status.missingScopes, ['moderator:read:followers']);
+
+  const raidStatus = await TwitchAuth.validateToken('token', {
+    requiredScopes: TWITCH_CONFIG.scopes,
+  });
+  assert.equal(raidStatus.reason, 'missing_scopes');
+  assert.deepEqual(raidStatus.missingScopes, ['moderator:read:followers', 'channel:manage:raids']);
+});
+
+test('granted Twitch permissions can be checked without exposing the token', () => {
+  const validation = { scopes: ['user:read:follows', 'channel:manage:raids'] };
+  assert.equal(TwitchAuth.hasScopes(validation, ['channel:manage:raids']), true);
+  assert.equal(TwitchAuth.hasScopes(validation, ['moderator:read:followers']), false);
 });
 
 test('temporary validation outages preserve the session for retry', async () => {
   globalThis.fetch = async () => { throw new Error('offline'); };
   assert.equal((await TwitchAuth.validateToken('token')).reason, 'unavailable');
+
+  globalThis.fetch = async () => ({ ok: false, status: 503 });
+  assert.equal((await TwitchAuth.validateToken('token')).reason, 'unavailable');
+
+  globalThis.fetch = async () => ({ ok: false, status: 401 });
+  assert.equal((await TwitchAuth.validateToken('token')).reason, 'invalid');
 });
 
 test('validated Twitch identity can provide a limited profile fallback', () => {

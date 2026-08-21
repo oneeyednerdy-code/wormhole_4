@@ -1,4 +1,4 @@
-import { isLanguageTag } from './language-tags.js?v=73';
+import { isLanguageTag } from './language-tags.js?v=90';
 
 /** Twitch tags are compared without case, spaces, punctuation, or hash prefixes. */
 export function normalizeTagKey(tag) {

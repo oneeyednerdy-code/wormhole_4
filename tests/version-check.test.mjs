@@ -62,12 +62,12 @@ test('an old page clears outdated Wormhole caches and reloads with the latest ve
       keys: async () => ['wormhole-58', 'wormhole-59', 'unrelated-cache', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-69', 'wormhole-70'],
       delete: async (name) => { deleted.push(name); return true; },
     },
-    fetchImpl: async () => manifestResponse('0.0.73', '71'),
+    fetchImpl: async () => manifestResponse('0.0.88', '71'),
   });
   assert.equal(result.reloading, true);
   assert.deepEqual(deleted.sort(), ['wormhole-58', 'wormhole-59', 'wormhole-60', 'wormhole-61', 'wormhole-62', 'wormhole-63', 'wormhole-69', 'wormhole-70']);
   const next = new URL(replaced);
-  assert.equal(next.searchParams.get('wormhole_version'), '0.0.73');
+  assert.equal(next.searchParams.get('wormhole_version'), '0.0.88');
   assert.equal(next.hash, '#access_token=preserved');
 });
 

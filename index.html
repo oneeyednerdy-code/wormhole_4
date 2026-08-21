@@ -5,43 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://api.twitch.tv https://id.twitch.tv wss://eventsub.wss.twitch.tv; frame-src https://player.twitch.tv https://www.twitch.tv; object-src 'none'; base-uri 'self'; form-action 'self' https://id.twitch.tv" />
   <title>Wormhole Networking Tool by OneEyedNerdy</title>
+  <meta name="description" content="Find Twitch raid matches using viewer count, categories, tags, language, chat settings, and channels you already follow." />
   <meta name="application-name" content="Wormhole Networking Tool by OneEyedNerdy" />
-  <meta name="wormhole-release" content="0.0.73" />
-  <meta name="wormhole-cache-version" content="73" />
-  <link rel="icon" href="assets/favicon.ico?v=73" sizes="any" />
-  <script src="js/appearance-boot.js?v=73"></script>
-  <script type="module" src="js/version-check.js?v=73"></script>
+  <meta name="wormhole-release" content="0.0.90" />
+  <meta name="wormhole-cache-version" content="90" />
+  <link rel="icon" href="assets/favicon.ico?v=90" sizes="any" />
+  <script src="js/appearance-boot.js?v=90"></script>
+  <script type="module" src="js/version-check.js?v=90"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap"
     rel="stylesheet"
   />
-  <link rel="stylesheet" href="css/styles.css?v=73" />
-  <link rel="stylesheet" href="css/mobile.css?v=73" />
+  <link rel="stylesheet" href="css/styles.css?v=90" />
+  <link rel="stylesheet" href="css/mobile.css?v=90" />
 </head>
 <body>
 
+  <div id="global-loading" class="global-loading" role="status" aria-live="polite" aria-atomic="true" aria-busy="false" hidden>
+    <div class="global-loading__bar" aria-hidden="true"><span></span></div>
+    <div class="global-loading__message">
+      <span class="global-loading__spinner" aria-hidden="true"></span>
+      <span id="global-loading-text">Loading...</span>
+    </div>
+  </div>
+
   <!-- LOGIN VIEW -->
   <main id="login-view" class="login-view">
-    <div class="login-card">
-      <div class="login-card__mark">
-        <img src="assets/wormhole-logo.svg?v=73" alt="" aria-hidden="true" />
+    <section class="login-landing" aria-labelledby="login-title">
+      <div class="login-landing__intro">
+        <div class="login-card__mark">
+          <img src="assets/wormhole-logo.svg?v=90" alt="" aria-hidden="true" />
+        </div>
+        <p class="login-landing__eyebrow">Twitch discovery, without the guesswork.</p>
+        <h1 id="login-title" class="login-landing__title">Find your people.</h1>
+        <p class="build-version">Wormhole · Alpha-0.0.90</p>
+        <p class="login-landing__lead">Wormhole is a discovery and networking tool built for Twitch streamers. Finding someone to raid or collaborate with shouldn't mean scrolling through hundreds of channels and hoping you land on the right person.</p>
+        <p class="login-landing__body">Wormhole looks at the things that actually matter: what you're streaming, audience size, tags, language, content labels, and other channel information available through Twitch. It gives you better information so you can decide who feels like a good fit.</p>
+        <p class="login-landing__promise"><strong>No promises of growth. No magic algorithm.</strong> Just better information to help you make the decision yourself.</p>
       </div>
-      <h1 class="login-card__title">Wormhole</h1>
-      <p class="build-version">Beta-0.0.73</p>
-      <p class="login-card__subtitle">
-        Sign off with a raid that actually fits — matched by game,
-        viewer count, and how long you've both been live.
-      </p>
-      <button id="login-btn" class="btn btn--primary btn--block">Log in with Twitch</button>
-      <div class="login-card__appearance" aria-label="Display options">
-        <button id="login-theme-toggle" class="btn btn--ghost btn--small login-card__theme" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
-        <button id="login-contrast-toggle" class="btn btn--ghost btn--small" type="button" data-contrast-toggle aria-pressed="false">High contrast</button>
-        <button class="btn btn--ghost btn--small" type="button" data-open-accessibility>Accessibility settings</button>
+
+      <div class="login-landing__features" aria-label="What Wormhole can do">
+        <article class="login-feature">
+          <h2>Find creators around your size</h2>
+          <p>Look for live channels based on your current or average audience instead of sorting through everyone streaming a category.</p>
+        </article>
+        <article class="login-feature">
+          <h2>Find common ground</h2>
+          <p>Compare games, tags, languages, content labels, and other public channel information.</p>
+        </article>
+        <article class="login-feature">
+          <h2>Get a little more context</h2>
+          <p>See current Twitch information alongside available historical audience data before deciding whether someone feels like a good match.</p>
+        </article>
+        <article class="login-feature">
+          <h2>Find someone to raid</h2>
+          <p>Narrow down who's live right now without turning choosing a raid into a 20-minute research project.</p>
+        </article>
       </div>
-      <p id="login-error" class="login-card__error" role="alert"></p>
-    </div>
+
+      <aside class="login-connect" aria-labelledby="login-connect-title">
+        <p class="section-eyebrow">Ready when you are</p>
+        <h2 id="login-connect-title">Why connect Twitch?</h2>
+        <p>Wormhole needs to know who you are before it can compare your channel with anyone else. Signing in lets Wormhole read the channel information needed to build your matches.</p>
+        <p class="login-connect__privacy"><strong>Your Twitch password is never given to Wormhole.</strong> Discovery uses read-only Twitch permissions. Raid permission is requested only if you choose to enable raid controls later.</p>
+        <p class="login-connect__statement">Your data isn't the product.</p>
+        <p class="login-connect__small">We're building tools for streamers, not a database of streamers.</p>
+        <button id="login-btn" class="btn btn--primary btn--block login-connect__button">Connect with Twitch</button>
+        <div class="login-card__appearance" aria-label="Display options">
+          <button id="login-theme-toggle" class="btn btn--ghost btn--small" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
+          <button id="login-contrast-toggle" class="btn btn--ghost btn--small" type="button" data-contrast-toggle aria-pressed="false">High contrast</button>
+          <button class="btn btn--ghost btn--small" type="button" data-open-accessibility>Accessibility settings</button>
+        </div>
+        <p id="login-error" class="login-card__error" role="alert"></p>
+        <p class="login-connect__alpha">Wormhole is in Alpha. Things may occasionally be weird. If you find something broken, please tell us.</p>
+      </aside>
+    </section>
   </main>
 
   <!-- APP VIEW -->
@@ -49,7 +89,7 @@
     <a class="skip-link" href="#discovery-view">Skip to main content</a>
     <header class="topbar">
       <a class="topbar__brand" href="./" aria-label="Wormhole home">
-        <img class="topbar__brand-logo" src="assets/wormhole-logo.svg?v=73" alt="" aria-hidden="true" />
+        <img class="topbar__brand-logo" src="assets/wormhole-logo.svg?v=90" alt="" aria-hidden="true" />
         <span>Wormhole</span>
       </a>
       <div class="topbar__account">
@@ -62,6 +102,7 @@
           <button id="theme-toggle" class="btn btn--ghost btn--small" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
           <button id="contrast-toggle" class="btn btn--ghost btn--small" type="button" data-contrast-toggle aria-pressed="false">High contrast</button>
           <button class="btn btn--ghost btn--small" type="button" data-open-accessibility>Accessibility</button>
+          <button class="btn btn--ghost btn--small" type="button" data-enable-raid-permission>Enable raid controls</button>
           <button id="logout-btn" class="btn btn--ghost btn--small" type="button" data-logout>Log out</button>
         </div>
         <details id="mobile-account-menu" class="mobile-account-menu">
@@ -70,6 +111,7 @@
             <button class="btn btn--ghost" type="button" data-theme-toggle aria-pressed="false">Light mode</button>
             <button class="btn btn--ghost" type="button" data-contrast-toggle aria-pressed="false">High contrast</button>
             <button class="btn btn--ghost" type="button" data-open-accessibility>Accessibility settings</button>
+            <button class="btn btn--ghost" type="button" data-enable-raid-permission>Enable raid controls</button>
             <button class="btn btn--ghost" type="button" data-logout>Log out</button>
           </div>
         </details>
@@ -83,7 +125,7 @@
         <div class="direct-search-panel__copy">
           <p class="section-eyebrow">Direct lookup</p>
           <h2 id="direct-search-title">Find a specific streamer</h2>
-          <p>Enter an exact Twitch username. Direct lookup bypasses discovery filters but still compares the live channel with your current or previous-stream baseline.</p>
+          <p>Enter a Twitch username or channel URL. Wormhole opens that live channel directly and compares it with your current stream or selected past stream.</p>
         </div>
         <form id="direct-streamer-form" class="direct-search-form">
           <label class="sr-only" for="direct-streamer-input">Twitch username or channel URL</label>
@@ -97,7 +139,7 @@
         <div class="followed-live-panel__copy">
           <p class="section-eyebrow">Your Twitch network</p>
           <h2 id="followed-live-title">Live channels you follow</h2>
-          <p>Load every channel you follow that is live now, regardless of game, category, audience size, tags, or other discovery filters.</p>
+          <p>See every channel you follow that is live now. Game, viewer count, tags, and other discovery filters are ignored.</p>
         </div>
         <button id="show-followed-live-btn" class="btn btn--outline" type="button" disabled>Show all live followed channels</button>
         <p id="followed-live-status" class="followed-live-status" role="status" aria-live="polite">Connect to Twitch to load your live followed channels.</p>
@@ -107,24 +149,12 @@
         <div class="filters-panel__header">
           <div>
             <p class="section-eyebrow">Discovery controls</p>
-            <h2 class="filters-panel__title">Find the right community</h2>
+            <h2 class="filters-panel__title">Choose who appears in results</h2>
           </div>
           <button id="filters-toggle" class="btn btn--ghost btn--small" type="button" aria-expanded="true" aria-controls="filters-content">Hide filters</button>
         </div>
 
         <div id="filters-content" class="filters-panel__content">
-
-        <h3 class="filter-section-title">Matching goal</h3>
-        <div class="filter-row filter-row--stack">
-          <label class="filter-row__label" for="match-preset">What kind of raid are you looking for?</label>
-          <select id="match-preset" class="text-input" aria-describedby="match-preset-hint">
-            <option value="similar" selected>Similar Community</option>
-            <option value="growth">Growth Opportunity</option>
-            <option value="familiar">Familiar Channels</option>
-            <option value="explore">Explore Something New</option>
-          </select>
-          <p id="match-preset-hint" class="filter-row__hint filter-row__hint--left" aria-live="polite">Prioritizes channels with viewer counts, average audiences, stream lengths, categories, and tags similar to yours.</p>
-        </div>
 
         <h3 class="filter-section-title">Audience</h3>
         <div class="filter-row filter-row--stack">
@@ -136,21 +166,30 @@
             <legend class="sr-only">Viewer-count matching range</legend>
             <label class="viewer-range-option">
               <input type="radio" name="viewer-tolerance" value="50" checked />
-              <span>±50%</span><small>Recommended</small>
+              <span class="viewer-range-option__name">Similar audience</span>
+              <strong class="viewer-range-option__range" data-viewer-range-value="50">Calculating range...</strong>
+              <small class="viewer-range-option__description" data-viewer-range-description="50">Within ±50% of your audience</small>
             </label>
             <label class="viewer-range-option">
               <input type="radio" name="viewer-tolerance" value="75" />
-              <span>±75%</span><small>Wider</small>
+              <span class="viewer-range-option__name">Wider audience</span>
+              <strong class="viewer-range-option__range" data-viewer-range-value="75">Calculating range...</strong>
+              <small class="viewer-range-option__description" data-viewer-range-description="75">Within ±75% of your audience</small>
             </label>
             <label class="viewer-range-option">
               <input type="radio" name="viewer-tolerance" value="100" />
-              <span>±100%</span><small>Broad</small>
+              <span class="viewer-range-option__name">Broad audience</span>
+              <strong class="viewer-range-option__range" data-viewer-range-value="100">Calculating range...</strong>
+              <small class="viewer-range-option__description" data-viewer-range-description="100">From zero to twice your audience</small>
             </label>
             <label class="viewer-range-option">
               <input type="radio" name="viewer-tolerance" value="all" />
-              <span>All</span><small>No limit</small>
+              <span class="viewer-range-option__name">Any audience size</span>
+              <strong class="viewer-range-option__range" data-viewer-range-value="all">No viewer limit</strong>
+              <small class="viewer-range-option__description" data-viewer-range-description="all">No viewer-count restriction</small>
             </label>
           </fieldset>
+          <p class="filter-row__hint filter-row__hint--left">Wormhole builds a rolling 30-day average from live viewer snapshots when local history is allowed. Twitch does not provide historical average concurrent viewers through its public API.</p>
         </div>
 
         <h3 class="filter-section-title">Community</h3>
@@ -169,7 +208,7 @@
             </label>
           </div>
         </div>
-        <p class="filter-row__hint filter-row__hint--left">Non-affiliate channels are always included — these two just add Partner and/or Affiliate on top.</p>
+        <p class="filter-row__hint filter-row__hint--left">Non-affiliate channels are always included. Select Partner or Affiliate to include those channels too.</p>
 
         <div class="filter-row">
           <span class="filter-row__label">Following</span>
@@ -234,7 +273,7 @@
             type="text"
             class="text-input"
             value=""
-            placeholder="e.g. GenAIOptedOut, speedrun, cozy…"
+            placeholder="e.g. GenAIOptedOut, speedrun, cozy..."
             autocomplete="off"
           />
           <div id="suggested-tags" class="suggested-tags" aria-label="Suggested Twitch tags">
@@ -269,7 +308,7 @@
             <label><span>Profanity or vulgarity</span><select data-content-label="ProfanityVulgarity"><option value="any">Any</option><option value="include">Require</option><option value="exclude">Exclude</option></select></label>
             <label><span>Mature-rated game</span><select data-content-label="MatureGame"><option value="any">Any</option><option value="include">Require</option><option value="exclude">Exclude</option></select></label>
           </div>
-          <p class="filter-row__hint filter-row__hint--left">A channel must match at least one required label. A channel matching any excluded label is removed. Labels come from Twitch; Mature audience uses Twitch’s stream setting.</p>
+          <p class="filter-row__hint filter-row__hint--left">A channel must match at least one required label. A channel matching any excluded label is removed. Labels come from Twitch; Mature audience uses Twitch's stream setting.</p>
         </div>
         <div class="filter-row">
           <span class="filter-row__label">Automatic tag matching</span>
@@ -317,7 +356,7 @@
               id="category-search-input"
               type="text"
               class="text-input"
-              placeholder="Add another game or category…"
+              placeholder="Add another game or category..."
               autocomplete="off"
             />
             <ul id="category-suggestions" class="category-suggestions hidden"></ul>
@@ -354,8 +393,8 @@
       <section id="results-panel" class="panel results-panel hidden">
         <div class="results-heading">
           <div>
-            <p class="section-eyebrow">Live recommendations</p>
-            <h2>Potential raid destinations</h2>
+            <p class="section-eyebrow">Your matches</p>
+            <h2>Channels you could raid</h2>
           </div>
         </div>
         <div id="results-status" class="results-status hidden" role="status" aria-live="polite"></div>
@@ -369,6 +408,8 @@
               <option value="tag-match">Tag Match</option>
               <option value="viewers-high">Viewers: High to Low</option>
               <option value="viewers-low">Viewers: Low to High</option>
+              <option value="average-high">30-Day Average: High to Low</option>
+              <option value="average-low">30-Day Average: Low to High</option>
               <option value="ending-soon">Ending Soon (Longest Live)</option>
               <option value="just-started">Just Started</option>
             </select>
@@ -488,7 +529,7 @@
     <section class="raid-target-preview" aria-labelledby="raid-confirm-preview-title">
       <h3 id="raid-confirm-preview-title">Preview the destination</h3>
       <iframe id="raid-confirm-preview" src="about:blank" title="Twitch raid destination preview" allow="autoplay; fullscreen" allowfullscreen></iframe>
-      <p>Play the preview and wait for the stream’s content before continuing. This can help you avoid entering during an ad, but Twitch may serve different ads to different viewers.</p>
+      <p>Play the preview and wait for the stream's content before continuing. This can help you avoid entering during an ad, but Twitch may serve different ads to different viewers.</p>
     </section>
     <p id="raid-ad-status-note" class="raid-message-choice__note"><strong>Target ad status unavailable:</strong> Twitch only lets a broadcaster read their own ad schedule. Preview the destination before confirming, but remember that ads may differ between viewers.</p>
     <div class="raid-message-choice">
@@ -507,7 +548,7 @@
   <dialog id="raid-progress-dialog" class="dialog raid-progress-dialog" aria-labelledby="raid-progress-title" aria-describedby="raid-progress-text raid-progress-audience">
     <p class="raid-progress__eyebrow">Raid in progress</p>
     <img id="raid-progress-avatar" class="raid-progress__avatar" alt="" />
-    <h2 id="raid-progress-title" class="raid-progress__title">Preparing raid…</h2>
+    <h2 id="raid-progress-title" class="raid-progress__title">Preparing raid...</h2>
     <p id="raid-progress-text" class="dialog__text" aria-live="polite"></p>
     <p id="raid-progress-audience" class="raid-progress__audience"></p>
     <section class="raid-target-preview" aria-labelledby="raid-progress-preview-title">
@@ -593,6 +634,8 @@
       <a href="privacy.html">Storage policy</a>
       <span aria-hidden="true">·</span>
       <a href="sponsorship.html">Sponsorship</a>
+      <span aria-hidden="true">·</span>
+      <a class="site-footer__signal" href="signal.html" title="A signal is hiding beyond the interface">Signal detected</a>
     </p>
     <label class="site-footer__layout" for="layout-override">
       Layout
@@ -605,9 +648,9 @@
     </label>
   </footer>
 
-  <script type="module" src="js/device-layout.js?v=73"></script>
-  <script type="module" src="js/storage-consent-ui.js?v=73"></script>
-  <script type="module" src="js/ui-controls.js?v=73"></script>
-  <script type="module" src="js/wormhole-app-v73.js?v=73"></script>
+  <script type="module" src="js/device-layout.js?v=90"></script>
+  <script type="module" src="js/storage-consent-ui.js?v=90"></script>
+  <script type="module" src="js/ui-controls.js?v=90"></script>
+  <script type="module" src="js/wormhole-app-v90.js?v=90"></script>
 </body>
 </html>

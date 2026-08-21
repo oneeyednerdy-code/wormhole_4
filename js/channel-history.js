@@ -1,59 +1,85 @@
-import { StorageConsent } from './storage-consent.js?v=73';
+import { StorageConsent } from './storage-consent.js?v=90';
 
 const STORAGE_KEY = 'wormhole_channel_history_v1';
 const MAX_CHANNELS = 300;
 const MAX_SAMPLES_PER_CHANNEL = 20;
 const MIN_SAMPLE_INTERVAL_MS = 12 * 60 * 60 * 1000;
+let memoryCache = null;
 
 function loadAll() {
-  if (!StorageConsent.allowsLocalHistory()) return {};
-  try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
-  } catch {
+  if (!StorageConsent.allowsLocalHistory()) {
+    memoryCache = null;
     return {};
   }
+  if (memoryCache) return memoryCache;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    memoryCache = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    memoryCache = {};
+  }
+  return memoryCache;
 }
 
 function saveAll(all) {
-  if (!StorageConsent.allowsLocalHistory()) return;
+  if (!StorageConsent.allowsLocalHistory()) return false;
   const entries = Object.entries(all)
     .sort((a, b) => new Date(b[1]?.lastSeenAt ?? 0) - new Date(a[1]?.lastSeenAt ?? 0))
     .slice(0, MAX_CHANNELS);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(Object.fromEntries(entries)));
+  memoryCache = Object.fromEntries(entries);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryCache));
+    return true;
+  } catch {
+    // Channel history is optional and must not break the results page.
+    return false;
+  }
+}
+
+function recordInto(all, stream, followerCount, sampledAt) {
+  if (!stream?.user_id) return;
+  const entry = all[stream.user_id] ?? { samples: [] };
+  const samples = Array.isArray(entry.samples) ? entry.samples : [];
+  const last = samples.at(-1);
+  const now = sampledAt.getTime();
+  const lastAt = new Date(last?.sampledAt ?? 0).getTime();
+  const categoryChanged = last?.gameId !== stream.game_id;
+
+  if (!last || categoryChanged || now - lastAt >= MIN_SAMPLE_INTERVAL_MS) {
+    samples.push({
+      sampledAt: sampledAt.toISOString(),
+      gameId: stream.game_id || null,
+      gameName: stream.game_name || 'Uncategorized',
+      followerCount: Number.isFinite(followerCount) ? followerCount : null,
+      viewerCount: Number.isFinite(stream.viewer_count) ? stream.viewer_count : null,
+    });
+    if (samples.length > MAX_SAMPLES_PER_CHANNEL) samples.shift();
+  } else if (Number.isFinite(followerCount) && !Number.isFinite(last.followerCount)) {
+    last.followerCount = followerCount;
+  }
+
+  all[stream.user_id] = {
+    displayName: stream.user_name || entry.displayName || '',
+    lastSeenAt: sampledAt.toISOString(),
+    samples,
+  };
 }
 
 /** Local snapshots fill gaps that Twitch's API does not expose historically. */
 export const ChannelHistory = {
   record(stream, followerCount, sampledAt = new Date()) {
     if (!StorageConsent.allowsLocalHistory()) return;
-    if (!stream?.user_id) return;
     const all = loadAll();
-    const entry = all[stream.user_id] ?? { samples: [] };
-    const samples = Array.isArray(entry.samples) ? entry.samples : [];
-    const last = samples.at(-1);
-    const now = sampledAt.getTime();
-    const lastAt = new Date(last?.sampledAt ?? 0).getTime();
-    const categoryChanged = last?.gameId !== stream.game_id;
+    recordInto(all, stream, followerCount, sampledAt);
+    saveAll(all);
+  },
 
-    if (!last || categoryChanged || now - lastAt >= MIN_SAMPLE_INTERVAL_MS) {
-      samples.push({
-        sampledAt: sampledAt.toISOString(),
-        gameId: stream.game_id || null,
-        gameName: stream.game_name || 'Uncategorized',
-        followerCount: Number.isFinite(followerCount) ? followerCount : null,
-        viewerCount: Number.isFinite(stream.viewer_count) ? stream.viewer_count : null,
-      });
-      if (samples.length > MAX_SAMPLES_PER_CHANNEL) samples.shift();
-    } else if (Number.isFinite(followerCount) && !Number.isFinite(last.followerCount)) {
-      last.followerCount = followerCount;
+  recordMany(entries, sampledAt = new Date()) {
+    if (!StorageConsent.allowsLocalHistory()) return;
+    const all = loadAll();
+    for (const entry of entries ?? []) {
+      recordInto(all, entry?.stream, entry?.followerCount, sampledAt);
     }
-
-    all[stream.user_id] = {
-      displayName: stream.user_name || entry.displayName || '',
-      lastSeenAt: sampledAt.toISOString(),
-      samples,
-    };
     saveAll(all);
   },
 
@@ -79,6 +105,11 @@ export const ChannelHistory = {
   },
 
   clearAll() {
-    localStorage.removeItem(STORAGE_KEY);
+    memoryCache = null;
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+  },
+
+  invalidateCache() {
+    memoryCache = null;
   },
 };

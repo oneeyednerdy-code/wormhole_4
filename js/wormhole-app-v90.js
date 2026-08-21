@@ -1173,10 +1173,14 @@ el.showFollowedLiveBtn.addEventListener('click', async () => {
     state.resultsMode = 'followed-live';
     el.resultsList.innerHTML = '';
     el.followedLiveStatus.textContent = 'Could not load followed live channels.';
+    const status = Number(error?.status) || null;
+    const authorizationFailure = status === 401 || status === 403;
     showResultNotice({
       title: 'Followed channels unavailable',
-      message: 'Wormhole could not load your live followed channels. Log out and back in if Twitch needs the follow permission.',
-      retry: false,
+      message: authorizationFailure
+        ? 'Twitch could not authorize access to your followed channels. Reconnect Twitch and approve the follow permission.'
+        : 'Wormhole could not load your live followed channels right now. Your Twitch connection is still active; try again in a moment.',
+      retry: !authorizationFailure,
     });
   } finally {
     finishLoading(loadingId);

@@ -173,22 +173,31 @@ export async function runSearch() {
       }
     } catch (e) {
       logger.error(e);
-      for (const s of candidatesToEnrich) s.is_followed = false;
+      // Follow state is enrichment. A failed lookup must not mark every
+      // creator as "not followed" or interrupt ordinary matching.
+      for (const s of candidatesToEnrich) {
+        s.is_followed = null;
+        s.followed_at = null;
+      }
+      const status = Number(e?.status) || null;
+      const authorizationFailure = status === 401 || status === 403;
       if (wantsOnlyFollowing) {
         el.resultsList.innerHTML = '';
         state.matches = [];
         showResultNotice({
           title: 'Follow list unavailable',
-          message: 'Wormhole could not load the channels you follow. Log out and back in if Twitch needs the follow permission.',
-          retry: true,
+          message: authorizationFailure
+            ? 'Twitch could not authorize access to your follow list. Reconnect Twitch and approve the follow permission.'
+            : 'Wormhole could not load your follow list right now. Your Twitch connection is still active; try the search again in a moment.',
+          retry: !authorizationFailure,
         });
         return;
       }
-      if (!state.followStatusWarningShown) {
-        showToast(
-          'Follow status is unavailable. Log out and back in if Twitch needs the follow permission.',
-          true
-        );
+      // Normal discovery does not need follow status. Only surface an action
+      // when Twitch explicitly reports an authorization problem; transient
+      // API/network failures degrade quietly.
+      if (authorizationFailure && !state.followStatusWarningShown) {
+        showToast('Reconnect Twitch to check which channels you already follow.', true);
         state.followStatusWarningShown = true;
       }
     }

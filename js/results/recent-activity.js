@@ -1,5 +1,5 @@
-import { estimateStreamEnd } from '../stream-end-estimate.js?v=90';
-import { escapeHtml, fmtDate, fmtDuration, fmtNumber } from '../app/format.js?v=90';
+import { estimateStreamEnd } from '../stream-end-estimate.js?v=91';
+import { escapeHtml, fmtDate, fmtDuration, fmtNumber } from '../app/format.js?v=91';
 
 export function recentActivityHtml({ stream, match, videos, clips, scheduleContext, profile, history, trackerSummary }) {
   const recentVods = videos.slice(0, 3);

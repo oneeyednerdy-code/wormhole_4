@@ -1,6 +1,6 @@
-import { ViewerHistory } from './viewer-history.js?v=90';
-import { isLanguageTag } from './language-tags.js?v=90';
-import { getSearchedTagMatch, normalizeTagKey } from './tag-display.js?v=90';
+import { ViewerHistory } from './viewer-history.js?v=91';
+import { isLanguageTag } from './language-tags.js?v=91';
+import { getSearchedTagMatch, normalizeTagKey } from './tag-display.js?v=91';
 
 // Base weights are used when automatic tag comparison is disabled or the
 // logged-in stream has no meaningful non-language tags. When tags are

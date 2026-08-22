@@ -1,5 +1,5 @@
-import { el } from '../app/elements.js?v=90';
-import { escapeHtml } from '../app/format.js?v=90';
+import { el } from '../app/elements.js?v=91';
+import { escapeHtml } from '../app/format.js?v=91';
 let deps = null;
 export function configureSearchUi(value) { deps = value; }
 function runSearch(...args) { if (!deps) throw new Error('Search UI is not configured.'); return deps.runSearch(...args); }

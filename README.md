@@ -1,6 +1,6 @@
 # Wormhole (web)
 
-Current release: **Alpha-0.0.90**. During alpha development, each feature build
+Current release: **Alpha-0.0.91**. During alpha development, each feature build
 increments the patch number.
 
 Long Twitch operations display a non-blocking loading panel with a progress bar,
@@ -156,7 +156,7 @@ handles natively: no popups, no custom URL schemes, no build tooling.
    generated client secret in Wormhole or any frontend file.
 5. Save, then copy the **Client ID**.
 
-Open `js/twitch-config-v90.js` and paste it in:
+Open `js/twitch-config-v91.js` and paste it in:
 
 ```js
 clientId: 'YOUR_TWITCH_CLIENT_ID',
@@ -173,7 +173,7 @@ URLs. Twitch requires an exact match, including HTTPS, hostname, path, and
 trailing slash.
 
 If your host exposes the app through several aliases or rewrites, set
-`redirectUriOverride` in `js/twitch-config-v90.js` to the one production callback you
+`redirectUriOverride` in `js/twitch-config-v91.js` to the one production callback you
 registered with Twitch. Production and preview hostnames are different origins
 and must not be treated as interchangeable.
 
@@ -501,7 +501,7 @@ assets/
 css/styles.css       # All styling
 css/signal.css       # Standalone text-adventure terminal styling
 js/
-  twitch-config-v90.js # Client ID, scopes, redirect URI
+  twitch-config-v91.js # Client ID, scopes, redirect URI
   twitch-auth.js      # OAuth redirect flow, CSRF state check, session token storage
   twitch-api.js       # Twitch API calls (users, streams, raids)
   direct-search.js    # Normalizes exact streamer usernames and URLs
@@ -514,7 +514,7 @@ js/
   raid-match.js       # Filtering and scoring algorithm
   lost-signal-engine.js # Parser, world state, puzzles, and endings
   lost-signal-game.js # Text-adventure browser interface and manual saves
-  wormhole-app-v90.js # Wires everything together, renders the UI
+  wormhole-app-v91.js # Wires everything together, renders the UI
 tests/
   raid-match.test.mjs # Core matching behavior tests
   twitch-auth.test.mjs # Twitch login security and redirect tests
@@ -542,3 +542,7 @@ npm run build
 `npm run build` creates `dist/`, bundles/minifies the browser JavaScript, minifies CSS, generates content-hashed asset names, rewrites the HTML entry points, copies static assets, and keeps the Cloudflare Pages `functions/` tree separate from browser code.
 
 For a production deployment, publish the generated `dist/` output rather than editing files inside `dist/` by hand. Source maps are intentionally disabled for the public alpha build.
+
+## Alpha-0.0.91 Road to D1: Twitch API gateway
+
+Twitch Helix data requests now use the same-origin `/api/twitch/helix/*` Worker gateway. The Worker allowlists supported Helix routes and forwards the current Twitch bearer token only for the upstream request. No D1 database is used in this release. See `SETUP_0.0.91.txt` for deployment and verification steps.

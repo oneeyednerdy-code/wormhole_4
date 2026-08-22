@@ -38,8 +38,8 @@ test('all game assets and imports use the current cache version', () => {
     'js/version-check.js',
     'js/lost-signal-game.js',
   ]) {
-    assert.match(page, new RegExp(`${asset.replaceAll('.', '\\.')}\\?v=90`));
+    assert.match(page, new RegExp(`${asset.replaceAll('.', '\\.')}\\?v=91`));
   }
-  assert.match(browserGame, /lost-signal-engine\.js\?v=90/);
+  assert.match(browserGame, /lost-signal-engine\.js\?v=91/);
   assert.match(headers, /\/signal\.html\s+Cache-Control: no-store, max-age=0/);
 });

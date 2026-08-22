@@ -1,11 +1,11 @@
-import { state } from '../app/state.js?v=90';
-import { el } from '../app/elements.js?v=90';
-import { escapeHtml, fmtNumber } from '../app/format.js?v=90';
-import { logger } from '../app/logger.js?v=90';
-import { createRaidCountdown, getRaidCountdownSnapshot } from '../raid-countdown.js?v=90';
-import { getRaidDestinationEmbedUrls, getTwitchRaidControlsUrl, isMatchingRaidConfirmation } from '../raid-completion.js?v=90';
-import { getRaidAuthorizationFailure, getRaidChannelFailure, releaseRaidActionLock, tryAcquireRaidActionLock } from '../raid-security.js?v=90';
-import { startLoading, finishLoading } from '../loading-state.js?v=90';
+import { state } from '../app/state.js?v=91';
+import { el } from '../app/elements.js?v=91';
+import { escapeHtml, fmtNumber } from '../app/format.js?v=91';
+import { logger } from '../app/logger.js?v=91';
+import { createRaidCountdown, getRaidCountdownSnapshot } from '../raid-countdown.js?v=91';
+import { getRaidDestinationEmbedUrls, getTwitchRaidControlsUrl, isMatchingRaidConfirmation } from '../raid-completion.js?v=91';
+import { getRaidAuthorizationFailure, getRaidChannelFailure, releaseRaidActionLock, tryAcquireRaidActionLock } from '../raid-security.js?v=91';
+import { startLoading, finishLoading } from '../loading-state.js?v=91';
 
 let deps = null;
 export function configureRaidController(value) { deps = value; }

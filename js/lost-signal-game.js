@@ -5,7 +5,7 @@ import {
   executeCommand,
   HELP_TEXT,
   serializeGame,
-} from './lost-signal-engine.js?v=90';
+} from './lost-signal-engine.js?v=91';
 
 const SAVE_KEY = 'wormhole_lost_signal_save_v1';
 const output = document.querySelector('#game-output');

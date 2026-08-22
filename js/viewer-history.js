@@ -1,4 +1,4 @@
-import { StorageConsent } from './storage-consent.js?v=90';
+import { StorageConsent } from './storage-consent.js?v=91';
 
 const STORAGE_KEY = 'wormhole_viewer_history_v2';
 export const VIEWER_HISTORY_WINDOW_DAYS = 30;

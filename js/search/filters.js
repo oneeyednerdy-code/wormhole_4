@@ -1,14 +1,14 @@
-import { state } from '../app/state.js?v=90';
-import { el } from '../app/elements.js?v=90';
-import { escapeHtml } from '../app/format.js?v=90';
-import { getGenreGameNames, getGenreLabelsForGame } from '../genre-presets.js?v=90';
-import { isLanguageTag, parseTagInput } from '../language-tags.js?v=90';
-import { CONTENT_FILTER_LABELS, normalizeContentLabelFilter } from '../content-label-filter.js?v=90';
-import { describeViewerRange, parseViewerTolerance } from '../viewer-tolerance.js?v=90';
-import { loadFilterPreset, saveFilterPreset } from '../filter-preset-storage.js?v=90';
-import { normalizeTagKey } from '../tag-display.js?v=90';
-import { logger } from '../app/logger.js?v=90';
-import { startLoading, finishLoading } from '../loading-state.js?v=90';
+import { state } from '../app/state.js?v=91';
+import { el } from '../app/elements.js?v=91';
+import { escapeHtml } from '../app/format.js?v=91';
+import { getGenreGameNames, getGenreLabelsForGame } from '../genre-presets.js?v=91';
+import { isLanguageTag, parseTagInput } from '../language-tags.js?v=91';
+import { CONTENT_FILTER_LABELS, normalizeContentLabelFilter } from '../content-label-filter.js?v=91';
+import { describeViewerRange, parseViewerTolerance } from '../viewer-tolerance.js?v=91';
+import { loadFilterPreset, saveFilterPreset } from '../filter-preset-storage.js?v=91';
+import { normalizeTagKey } from '../tag-display.js?v=91';
+import { logger } from '../app/logger.js?v=91';
+import { startLoading, finishLoading } from '../loading-state.js?v=91';
 
 const STATUS_LABELS = Object.freeze({ partner: 'Partner', affiliate: 'Affiliate', none: 'Non-affiliate' });
 

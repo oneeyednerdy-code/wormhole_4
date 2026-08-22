@@ -8,7 +8,7 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 
 test('the entry point and complete browser module graph share one cache version', async () => {
   const indexHtml = await readFile(path.join(projectRoot, 'index.html'), 'utf8');
-  const entryVersion = indexHtml.match(/js\/wormhole-app-v90\.js\?v=(\d+)/)?.[1];
+  const entryVersion = indexHtml.match(/js\/wormhole-app-v91\.js\?v=(\d+)/)?.[1];
   assert.ok(entryVersion, 'index.html must version the app entry point');
   const manifest = JSON.parse(await readFile(path.join(projectRoot, 'version.json'), 'utf8'));
   const packageJson = JSON.parse(await readFile(path.join(projectRoot, 'package.json'), 'utf8'));

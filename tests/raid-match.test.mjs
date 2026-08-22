@@ -24,7 +24,7 @@ class MemoryStorage {
 globalThis.localStorage = new MemoryStorage();
 
 const { compareStreamTags, findRaidMatches } = await import('../js/raid-match.js');
-const { ViewerHistory } = await import('../js/viewer-history.js?v=90');
+const { ViewerHistory } = await import('../js/viewer-history.js?v=91');
 
 function clearHistory() {
   localStorage.clear();

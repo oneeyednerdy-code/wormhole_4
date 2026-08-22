@@ -1,0 +1,170 @@
+WORMHOLE ALPHA-0.0.91 - SETUP AND DEPLOYMENT INSTRUCTIONS
+
+WHAT THIS PATCH DOES
+Alpha-0.0.91 moves Twitch Helix API traffic behind the existing Cloudflare Worker. It does NOT deploy Cloudflare D1 and does NOT require a database.
+
+IMPORTANT REPOSITORY LAYOUT
+The CONTENTS of this package must be at the root of the GitHub repository.
+You should see these items directly in the repository root:
+
+  package.json
+  build.mjs
+  wrangler.jsonc
+  worker.js
+  index.html
+  js/
+  css/
+  functions/
+  tests/
+
+Do not place all of those inside another version-named folder unless Cloudflare's Root directory is changed to that folder.
+
+LOCAL WINDOWS / POWERSHELL SETUP
+1. Extract the ZIP.
+2. Open PowerShell in the extracted project folder.
+3. Install project dependencies:
+
+   npm install
+
+4. Run the automated tests:
+
+   npm test
+
+5. Build the production site:
+
+   npm run build
+
+6. After a successful build, a dist folder will exist. Do not manually copy node_modules into dist.
+
+OPTIONAL LOCAL CLOUDFLARE PREVIEW
+To run the Worker and production assets locally:
+
+   npm run preview
+
+Wrangler will print the localhost address. Open that address in your browser.
+
+If Twitch login is being tested locally, the exact localhost OAuth callback URL must also be registered in the Twitch Developer Console. Do not remove the production callback URL when adding a local callback.
+
+GITHUB
+Commit the source project, including:
+
+  wrangler.jsonc
+  worker.js
+  package.json
+  build.mjs
+  functions/
+  js/
+  css/
+  tests/
+
+Do NOT commit:
+
+  node_modules/
+  dist/
+  .wrangler/
+  .dev.vars
+  .env
+
+The included .gitignore excludes those local/generated items.
+
+CLOUDFLARE WORKERS BUILDS SETTINGS
+Use these settings in the existing Wormhole Cloudflare project:
+
+  Production branch: main
+  Root directory: /
+  Build command: npm run build
+  Deploy command: npm run deploy
+
+The committed wrangler.jsonc tells Wrangler to deploy static assets ONLY from:
+
+  ./dist
+
+It also routes /api/* through worker.js before falling back to static assets.
+
+TWITCH CLIENT ID
+The current Twitch Client ID is included in wrangler.jsonc as TWITCH_CLIENT_ID. A Twitch Client ID is public application identification, not a client secret.
+
+If the Twitch application Client ID changes later, update BOTH:
+
+  1. js/twitch-config-v91.js
+  2. TWITCH_CLIENT_ID in wrangler.jsonc
+
+Do not put a Twitch Client Secret in browser JavaScript or in GitHub.
+
+NO D1 SETUP IS REQUIRED
+Do not create a D1 database for Alpha-0.0.91. There are no D1 bindings, migrations, or persistent server-side creator records in this patch.
+
+HOW THE API FLOW NOW WORKS
+Browser:
+  /api/twitch/helix/users
+  /api/twitch/helix/streams
+  /api/twitch/helix/channels
+  etc.
+
+Cloudflare Worker:
+  validates the requested endpoint
+  -> forwards approved requests to https://api.twitch.tv/helix/*
+  -> returns Twitch's response to Wormhole
+
+TwitchTracker remains:
+  Browser -> /api/twitchtracker-summary -> Worker -> TwitchTracker
+
+OAuth remains:
+  Browser <-> Twitch OAuth
+
+This separation is intentional. Server-side OAuth/session management is a later Road to D1 patch and should not be mixed into this gateway migration.
+
+AFTER DEPLOYMENT - SMOKE TEST
+Test these in order:
+
+1. Open Wormhole while logged out.
+2. Confirm the login page says Alpha-0.0.91.
+3. Connect with Twitch.
+4. Confirm the logged-in Twitch profile loads.
+5. Confirm live/offline state loads correctly.
+6. Run a normal match search.
+7. Click Tags and confirm suggested tags toggle normally.
+8. Click Game Genre and confirm categories load.
+9. Open a creator's View Details panel.
+10. Confirm Twitch data loads.
+11. Confirm TwitchTracker historical data loads when available.
+12. Test Following Only.
+13. If raid controls are enabled, test the raid confirmation flow carefully.
+14. Open Lost Signal and confirm its styling loads.
+15. Download a diagnostic log if anything fails.
+
+BROWSER DEVTOOLS CHECK
+In the Network tab, normal Twitch Helix data requests should now appear under your Wormhole domain with paths beginning:
+
+  /api/twitch/helix/
+
+You should no longer see normal Wormhole Helix data requests going directly from the browser to api.twitch.tv.
+
+TROUBLESHOOTING
+If Cloudflare reports node_modules/workerd as an oversized asset, Wrangler is not using the committed configuration. Confirm:
+
+  - wrangler.jsonc is at the repository root.
+  - Cloudflare Root directory points at that same root.
+  - Deploy command is npm run deploy.
+  - wrangler.jsonc says "directory": "./dist".
+
+If npm run build reports that esbuild cannot be found, run:
+
+  npm install
+
+and then:
+
+  npm run build
+
+If Twitch API calls return "Twitch Client ID is not configured", confirm TWITCH_CLIENT_ID exists in wrangler.jsonc and redeploy.
+
+ROLLBACK
+If the release needs to be rolled back, use Cloudflare's deployment history to restore the previous known-good deployment, or revert the Alpha-0.0.91 commit in GitHub and redeploy.
+
+TESTING NOTE
+The 0.0.91 test suite intentionally scans Wormhole source files for copy/style regressions, but it does not scan third-party/generated directories: node_modules, dist, .git, or .wrangler. Running npm install before npm test is supported.
+
+
+TEST HOTFIX
+- Copy-style tests ignore package-lock.json because it is generated by npm and contains third-party package metadata that Wormhole does not control.
+- node_modules, dist, .git, and .wrangler remain excluded from copy-style scanning.

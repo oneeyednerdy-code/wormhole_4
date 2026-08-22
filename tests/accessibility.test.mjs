@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const appMain = await readFile(new URL('../js/wormhole-app-v90.js', import.meta.url), 'utf8');
+const appMain = await readFile(new URL('../js/wormhole-app-v91.js', import.meta.url), 'utf8');
 const resultsController = await readFile(new URL('../js/results/controller.js', import.meta.url), 'utf8');
 const raidController = await readFile(new URL('../js/raid/controller.js', import.meta.url), 'utf8');
 const searchController = await readFile(new URL('../js/search/controller.js', import.meta.url), 'utf8');

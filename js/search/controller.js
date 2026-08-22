@@ -1,13 +1,13 @@
-import { state } from '../app/state.js?v=90';
-import { el } from '../app/elements.js?v=90';
-import { logger } from '../app/logger.js?v=90';
-import { applyHardFilters, findRaidMatches } from '../raid-match.js?v=90';
-import { PreviousStreamHistory } from '../previous-stream-history.js?v=90';
-import { calculateViewerRange } from '../viewer-tolerance.js?v=90';
-import { resolveDiscoveryMode } from '../discovery-mode.js?v=90';
-import { filterStreamsByContentLabels } from '../content-label-filter.js?v=90';
-import { buildFollowedDirectoryMatches } from '../followed-directory.js?v=90';
-import { startLoading, finishLoading } from '../loading-state.js?v=90';
+import { state } from '../app/state.js?v=91';
+import { el } from '../app/elements.js?v=91';
+import { logger } from '../app/logger.js?v=91';
+import { applyHardFilters, findRaidMatches } from '../raid-match.js?v=91';
+import { PreviousStreamHistory } from '../previous-stream-history.js?v=91';
+import { calculateViewerRange } from '../viewer-tolerance.js?v=91';
+import { resolveDiscoveryMode } from '../discovery-mode.js?v=91';
+import { filterStreamsByContentLabels } from '../content-label-filter.js?v=91';
+import { buildFollowedDirectoryMatches } from '../followed-directory.js?v=91';
+import { startLoading, finishLoading } from '../loading-state.js?v=91';
 
 let deps = null;
 let searchGeneration = 0;

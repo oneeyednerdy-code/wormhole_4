@@ -1,13 +1,13 @@
-import { state } from '../app/state.js?v=90';
-import { el } from '../app/elements.js?v=90';
-import { escapeHtml, fmtDate, fmtDuration, fmtNumber } from '../app/format.js?v=90';
-import { paginate } from '../pagination.js?v=90';
-import { sortRaidMatches } from '../result-sort.js?v=90';
-import { getSearchedTagMatch, normalizeTagKey, prepareTagDisplay } from '../tag-display.js?v=90';
-import { ChannelHistory } from '../channel-history.js?v=90';
-import { loadCreatorDetails } from '../services/creator-details.js?v=90';
-import { recentActivityHtml } from './recent-activity.js?v=90';
-import { startLoading, finishLoading } from '../loading-state.js?v=90';
+import { state } from '../app/state.js?v=91';
+import { el } from '../app/elements.js?v=91';
+import { escapeHtml, fmtDate, fmtDuration, fmtNumber } from '../app/format.js?v=91';
+import { paginate } from '../pagination.js?v=91';
+import { sortRaidMatches } from '../result-sort.js?v=91';
+import { getSearchedTagMatch, normalizeTagKey, prepareTagDisplay } from '../tag-display.js?v=91';
+import { ChannelHistory } from '../channel-history.js?v=91';
+import { loadCreatorDetails } from '../services/creator-details.js?v=91';
+import { recentActivityHtml } from './recent-activity.js?v=91';
+import { startLoading, finishLoading } from '../loading-state.js?v=91';
 
 const STATUS_LABELS = { partner: 'Partner', affiliate: 'Affiliate', none: 'Non-affiliate' };
 const CONTENT_LABELS = {

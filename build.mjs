@@ -9,7 +9,7 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(path.join(dist, 'assets'), { recursive: true });
 
 const entries = {
-  app: 'js/wormhole-app-v90.js',
+  app: 'js/wormhole-app-v91.js',
   version: 'js/version-check.js',
   device: 'js/device-layout.js',
   consent: 'js/storage-consent-ui.js',
@@ -55,17 +55,17 @@ for (const file of ['_headers','version.json']) await cp(path.join(root,file),pa
 
 for (const page of ['index.html','privacy.html','signal.html','sponsorship.html']) {
   let html=await readFile(path.join(root,page),'utf8');
-  html=html.replace(/<script src="js\/appearance-boot\.js\?v=90"><\/script>/,`<script type="module" src="${byEntry.appearance}"></script>`)
-    .replace(/<script type="module" src="js\/version-check\.js\?v=90"><\/script>/,`<script type="module" src="${byEntry.version}"></script>`)
-    .replace(/<script type="module" src="js\/device-layout\.js\?v=90"><\/script>/,`<script type="module" src="${byEntry.device}"></script>`)
-    .replace(/<script type="module" src="js\/storage-consent-ui\.js\?v=90"><\/script>/,`<script type="module" src="${byEntry.consent}"></script>`)
-    .replace(/<script type="module" src="js\/ui-controls\.js\?v=90"><\/script>/,`<script type="module" src="${byEntry.controls}"></script>`)
-    .replace(/<script type="module" src="js\/wormhole-app-v90\.js\?v=90"><\/script>/,`<script type="module" src="${byEntry.app}"></script>`)
-    .replace(/<script type="module" src="js\/lost-signal-game\.js\?v=90"><\/script>/,`<script type="module" src="${byEntry.signal}"></script>`)
-    .replace(/href="css\/styles\.css\?v=90"/g,`href="${byEntry.styles}"`)
-    .replace(/href="css\/mobile\.css\?v=90"/g,`href="${byEntry.mobile}"`)
-    .replace(/href="css\/signal\.css\?v=90"/g,`href="${byEntry.signalCss}"`);
+  html=html.replace(/<script src="js\/appearance-boot\.js\?v=91"><\/script>/,`<script type="module" src="${byEntry.appearance}"></script>`)
+    .replace(/<script type="module" src="js\/version-check\.js\?v=91"><\/script>/,`<script type="module" src="${byEntry.version}"></script>`)
+    .replace(/<script type="module" src="js\/device-layout\.js\?v=91"><\/script>/,`<script type="module" src="${byEntry.device}"></script>`)
+    .replace(/<script type="module" src="js\/storage-consent-ui\.js\?v=91"><\/script>/,`<script type="module" src="${byEntry.consent}"></script>`)
+    .replace(/<script type="module" src="js\/ui-controls\.js\?v=91"><\/script>/,`<script type="module" src="${byEntry.controls}"></script>`)
+    .replace(/<script type="module" src="js\/wormhole-app-v91\.js\?v=91"><\/script>/,`<script type="module" src="${byEntry.app}"></script>`)
+    .replace(/<script type="module" src="js\/lost-signal-game\.js\?v=91"><\/script>/,`<script type="module" src="${byEntry.signal}"></script>`)
+    .replace(/href="css\/styles\.css\?v=91"/g,`href="${byEntry.styles}"`)
+    .replace(/href="css\/mobile\.css\?v=91"/g,`href="${byEntry.mobile}"`)
+    .replace(/href="css\/signal\.css\?v=91"/g,`href="${byEntry.signalCss}"`);
   await writeFile(path.join(dist,page),html);
 }
-await writeFile(path.join(dist,'build-manifest.json'),JSON.stringify({version:'0.0.90',assets:byEntry},null,2));
-console.log('Built Wormhole Alpha-0.0.90 into dist/');
+await writeFile(path.join(dist,'build-manifest.json'),JSON.stringify({version:'0.0.91',assets:byEntry},null,2));
+console.log('Built Wormhole Alpha-0.0.91 into dist/');

@@ -1,0 +1,31 @@
+WORMHOLE ROAD TO D1
+
+Alpha-0.0.91 - API Gateway (THIS RELEASE)
+Move Twitch Helix data requests behind the Cloudflare Worker. No D1 storage.
+
+Alpha-0.0.92 - Server-side Authentication Boundary
+Move the OAuth code exchange/token handling toward the Worker and introduce a Wormhole session boundary. Keep D1 disabled.
+
+Alpha-0.0.93 - Normalized Creator Model
+Give Wormhole one internal creator-data shape so Twitch, TwitchTracker, and later D1 can feed the same UI/service model.
+
+Alpha-0.0.94 - Independent Matching Engine
+Separate matching from DOM rendering and API retrieval so it can be tested and eventually run server-side without rewriting the algorithm.
+
+Alpha-0.0.95 - Caching and Rate Limits
+Add safe Worker caching, request coalescing, and Twitch rate-limit awareness. Live data must retain short TTLs.
+
+Alpha-0.0.96 - Offline Matching
+Improve offline baselines using TwitchTracker averages, recent Twitch VOD/category history, and schedules without server persistence.
+
+Alpha-0.0.97 - Reliability
+Standardize timeouts, retries, unknown-vs-false states, degraded modes, and provider health handling.
+
+Alpha-0.0.98 - Security and Privacy
+Dedicated CSP/header/OAuth/input-validation/permission review before persistent data is introduced.
+
+Alpha-0.0.99 - D1 Readiness
+Add repository interfaces, proposed schema, migrations, retention/deletion rules, and a nonpersistent implementation. D1 remains disabled.
+
+Alpha-0.1.0 - D1
+Bind and deploy Cloudflare D1, implement the prepared repositories, and enable only the persistent features that have explicit data-purpose and deletion rules.

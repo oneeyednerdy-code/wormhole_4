@@ -1,5 +1,5 @@
-import { state } from '../app/state.js?v=90';
-import { logger } from '../app/logger.js?v=90';
+import { state } from '../app/state.js?v=91';
+import { logger } from '../app/logger.js?v=91';
 
 export async function attachContentClassificationLabels(streams, { signal } = {}) {
   if (!streams.length) return streams;

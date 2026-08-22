@@ -1,13 +1,14 @@
-// Shared browser request coordination for Beta-0.0.73.
+// Shared browser request coordination for Alpha-0.0.91.
 const RETRYABLE_STATUSES = new Set([500, 502, 503, 504]);
 
 export class RequestError extends Error {
-  constructor(message, { status = 0, retryAt = null, body = '' } = {}) {
+  constructor(message, { status = 0, retryAt = null, body = '', code = 'request_failed' } = {}) {
     super(message);
     this.name = 'RequestError';
     this.status = status;
     this.retryAt = retryAt;
     this.body = body;
+    this.code = code;
   }
 }
 
@@ -90,10 +91,15 @@ export class RequestManager {
             attempt += 1;
             continue;
           }
-          throw new RequestError('Request timed out.', { status: 408 });
+          throw new RequestError('Request timed out.', { status: 408, code: 'timeout' });
         }
         if (error?.name === 'AbortError' || error instanceof RequestError) throw error;
-        if (attempt >= allowedRetries) throw error;
+        if (attempt >= allowedRetries) {
+          throw new RequestError('The browser could not reach Twitch.', {
+            status: 0,
+            code: 'network',
+          });
+        }
         await wait(Math.min(500 * 2 ** attempt, 2_000), signal);
         attempt += 1;
       } finally {

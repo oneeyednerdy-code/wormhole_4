@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
-const appMain = await readFile(new URL('../js/wormhole-app-v90.js', import.meta.url), 'utf8');
+const appMain = await readFile(new URL('../js/wormhole-app-v91.js', import.meta.url), 'utf8');
 const resultsController = await readFile(new URL('../js/results/controller.js', import.meta.url), 'utf8');
 const raidController = await readFile(new URL('../js/raid/controller.js', import.meta.url), 'utf8');
 const searchController = await readFile(new URL('../js/search/controller.js', import.meta.url), 'utf8');
@@ -20,7 +20,7 @@ const headers = await readFile(new URL('../_headers', import.meta.url), 'utf8');
 const accessSetup = await readFile(new URL('../CLOUDFLARE_ACCESS_SETUP.md', import.meta.url), 'utf8');
 
 test('the login screen identifies the current release as an alpha', () => {
-  assert.match(html, /<p class="build-version">[^<]*Alpha-0\.0\.90<\/p>/);
+  assert.match(html, /<p class="build-version">[^<]*Alpha-0\.0\.91<\/p>/);
 });
 
 test('small phones use a compact accessible account menu', () => {
@@ -191,7 +191,7 @@ test('Following Only bypasses categories, keeps typed tags, and works offline', 
 
 test('branding uses the full page title, single-color logo, and ICO bookmark icon', () => {
   assert.match(html, /<title>Wormhole Networking Tool by OneEyedNerdy<\/title>/);
-  assert.match(html, /<link rel="icon" href="assets\/favicon\.ico\?v=90" sizes="any" \/>/);
+  assert.match(html, /<link rel="icon" href="assets\/favicon\.ico\?v=91" sizes="any" \/>/);
   const colors = new Set([...logo.matchAll(/#[0-9a-f]{6}/gi)].map((match) => match[0].toUpperCase()));
   assert.deepEqual([...colors], ['#8B5CF6']);
   assert.deepEqual([...favicon.subarray(0, 4)], [0, 0, 1, 0]);

@@ -6,7 +6,7 @@ globalThis.window = {
 };
 
 const { TwitchApi } = await import('../js/twitch-api.js');
-const { RequestError } = await import('../js/browser-request-v90.js');
+const { RequestError } = await import('../js/browser-request-v91.js');
 
 test('resolves an exact streamer login through Twitch users', async () => {
   let requestedUrl;
@@ -22,7 +22,7 @@ test('resolves an exact streamer login through Twitch users', async () => {
   const api = new TwitchApi('test-token');
   const user = await api.getUserByLogin('Example');
   assert.equal(user.id, 'streamer-1');
-  assert.equal(requestedUrl.pathname, '/helix/users');
+  assert.equal(requestedUrl.pathname, '/api/twitch/helix/users');
   assert.equal(requestedUrl.searchParams.get('login'), 'example');
 });
 
@@ -35,7 +35,7 @@ test('reports API failures without exposing query values or credentials', async 
   await assert.rejects(() => api.getUserByLogin('private-channel'));
   assert.deepEqual(reported, [{
     message: 'Twitch API request failed',
-    endpoint: '/helix/users',
+    endpoint: '/api/twitch/helix/users',
     method: 'GET',
     status: 503,
     failureType: 'http',
@@ -69,7 +69,7 @@ test('loads content classification labels from channel information in batches', 
   const channels = await api.getChannelInformationForUsers(ids);
 
   assert.equal(requestedUrls.length, 2);
-  assert.equal(requestedUrls[0].pathname, '/helix/channels');
+  assert.equal(requestedUrls[0].pathname, '/api/twitch/helix/channels');
   assert.equal(requestedUrls[0].searchParams.getAll('broadcaster_id').length, 100);
   assert.equal(requestedUrls[1].searchParams.getAll('broadcaster_id').length, 1);
   assert.deepEqual(channels.get('channel-1').content_classification_labels, [
@@ -110,7 +110,7 @@ test('loads and caches public chat settings with limited-concurrency results', a
   assert.equal(first.get('channel-2').subscriber_mode, true);
   assert.equal(second.get('channel-1').follower_mode_duration, 10);
   assert.equal(requestedUrls.length, 2);
-  assert.equal(requestedUrls[0].pathname, '/helix/chat/settings');
+  assert.equal(requestedUrls[0].pathname, '/api/twitch/helix/chat/settings');
 });
 
 test('collapses optional chat-settings failures into one warning and caches them briefly', async () => {
@@ -155,7 +155,7 @@ test('starts a raid and returns Twitch\'s countdown timestamp', async () => {
   const api = new TwitchApi('test-token');
   const raid = await api.startRaid('from-1', 'to-2');
   assert.equal(requestedMethod, 'POST');
-  assert.equal(requestedUrl.pathname, '/helix/raids');
+  assert.equal(requestedUrl.pathname, '/api/twitch/helix/raids');
   assert.equal(requestedUrl.searchParams.get('from_broadcaster_id'), 'from-1');
   assert.equal(requestedUrl.searchParams.get('to_broadcaster_id'), 'to-2');
   assert.equal(raid.created_at, '2026-08-17T12:00:00Z');
@@ -173,7 +173,7 @@ test('cancels the logged-in broadcaster\'s pending raid', async () => {
   const api = new TwitchApi('test-token');
   await api.cancelRaid('from-1');
   assert.equal(requestedMethod, 'DELETE');
-  assert.equal(requestedUrl.pathname, '/helix/raids');
+  assert.equal(requestedUrl.pathname, '/api/twitch/helix/raids');
   assert.equal(requestedUrl.searchParams.get('broadcaster_id'), 'from-1');
 });
 
@@ -210,7 +210,7 @@ test('followed broadcaster IDs paginate and are cached for the session', async (
   assert.deepEqual([...first], ['channel-1', 'channel-2', 'channel-3']);
   assert.equal(second, first);
   assert.equal(requestedUrls.length, 2);
-  assert.equal(requestedUrls[0].pathname, '/helix/channels/followed');
+  assert.equal(requestedUrls[0].pathname, '/api/twitch/helix/channels/followed');
   assert.equal(requestedUrls[0].searchParams.get('user_id'), 'viewer-1');
   assert.equal(requestedUrls[0].searchParams.get('first'), '100');
   assert.equal(requestedUrls[1].searchParams.get('after'), 'next-page');
@@ -241,7 +241,7 @@ test('followed live streams paginate until every live followed channel is loaded
 
   assert.deepEqual(streams.map((stream) => stream.user_id), ['live-1', 'live-2', 'live-3']);
   assert.equal(requestedUrls.length, 2);
-  assert.equal(requestedUrls[0].pathname, '/helix/streams/followed');
+  assert.equal(requestedUrls[0].pathname, '/api/twitch/helix/streams/followed');
   assert.equal(requestedUrls[0].searchParams.get('user_id'), 'viewer-3');
   assert.equal(requestedUrls[0].searchParams.get('first'), '100');
   assert.equal(requestedUrls[1].searchParams.get('after'), 'second-page');
@@ -287,7 +287,7 @@ test('follower totals use the public total and are cached per channel', async ()
   assert.equal(await api.getFollowerCount('channel-7'), 4321);
   assert.equal(await api.getFollowerCount('channel-7'), 4321);
   assert.equal(requestedUrls.length, 1);
-  assert.equal(requestedUrls[0].pathname, '/helix/channels/followers');
+  assert.equal(requestedUrls[0].pathname, '/api/twitch/helix/channels/followers');
   assert.equal(requestedUrls[0].searchParams.get('broadcaster_id'), 'channel-7');
   assert.equal(requestedUrls[0].searchParams.get('first'), '1');
 });
@@ -309,7 +309,7 @@ test('follow-back status checks whether a candidate follows the logged-in broadc
   assert.equal(await api.userFollowsBroadcaster('my-channel', 'candidate-1'), true);
   assert.equal(await api.userFollowsBroadcaster('my-channel', 'candidate-1'), true);
   assert.equal(requestedUrls.length, 1);
-  assert.equal(requestedUrls[0].pathname, '/helix/channels/followers');
+  assert.equal(requestedUrls[0].pathname, '/api/twitch/helix/channels/followers');
   assert.equal(requestedUrls[0].searchParams.get('broadcaster_id'), 'my-channel');
   assert.equal(requestedUrls[0].searchParams.get('user_id'), 'candidate-1');
   assert.equal(requestedUrls[0].searchParams.get('first'), '1');
@@ -323,12 +323,12 @@ test('activity history calls request broadcasts, clips, schedule, and profile da
     const parsed = new URL(url);
     requestedUrls.push(parsed);
     const payloads = {
-      '/helix/videos': { data: [{ id: 'vod-1', created_at: new Date().toISOString() }] },
-      '/helix/clips': { data: [{ id: 'clip-1' }] },
-      '/helix/schedule': {
+      '/api/twitch/helix/videos': { data: [{ id: 'vod-1', created_at: new Date().toISOString() }] },
+      '/api/twitch/helix/clips': { data: [{ id: 'clip-1' }] },
+      '/api/twitch/helix/schedule': {
         data: { segments: [{ id: 'segment-1', start_time: futureStart, end_time: futureEnd }] },
       },
-      '/helix/users': { data: [{ id: 'channel-9', created_at: '2020-01-01T00:00:00Z' }] },
+      '/api/twitch/helix/users': { data: [{ id: 'channel-9', created_at: '2020-01-01T00:00:00Z' }] },
     };
     return { ok: true, async json() { return payloads[parsed.pathname]; } };
   };
@@ -347,12 +347,12 @@ test('activity history calls request broadcasts, clips, schedule, and profile da
   assert.equal(profile.created_at, '2020-01-01T00:00:00Z');
   assert.deepEqual(
     requestedUrls.map((url) => url.pathname).sort(),
-    ['/helix/clips', '/helix/schedule', '/helix/users', '/helix/videos']
+    ['/api/twitch/helix/clips', '/api/twitch/helix/schedule', '/api/twitch/helix/users', '/api/twitch/helix/videos']
   );
-  const clipsUrl = requestedUrls.find((url) => url.pathname === '/helix/clips');
+  const clipsUrl = requestedUrls.find((url) => url.pathname === '/api/twitch/helix/clips');
   assert.equal(clipsUrl.searchParams.get('broadcaster_id'), 'channel-9');
   assert.ok(clipsUrl.searchParams.get('started_at'));
-  const scheduleUrl = requestedUrls.find((url) => url.pathname === '/helix/schedule');
+  const scheduleUrl = requestedUrls.find((url) => url.pathname === '/api/twitch/helix/schedule');
   assert.equal(scheduleUrl.searchParams.get('first'), '25');
 });
 
@@ -412,7 +412,7 @@ test('category search places an exact Twitch game ahead of fuzzy results', async
     return {
       ok: true,
       async json() {
-        if (parsed.pathname === '/helix/games') {
+        if (parsed.pathname === '/api/twitch/helix/games') {
           return { data: [{ id: 'exact-id', name: 'Star Wars: The Old Republic' }] };
         }
         return {
@@ -431,8 +431,8 @@ test('category search places an exact Twitch game ahead of fuzzy results', async
 
   assert.deepEqual(results.map((game) => game.id), ['exact-id', 'similar-id']);
   assert.deepEqual(requestedUrls.map((url) => url.pathname), [
-    '/helix/games',
-    '/helix/search/categories',
+    '/api/twitch/helix/games',
+    '/api/twitch/helix/search/categories',
   ]);
   assert.equal(requestedUrls[1].searchParams.get('first'), '20');
 });
@@ -471,7 +471,7 @@ test('tags-only discovery requests streams without a game category', async () =>
   const api = new TwitchApi('test-token');
   const streams = await api.getLiveStreams({ maxResults: 100 });
   assert.equal(streams[0].user_id, 'any-game');
-  assert.equal(requestedUrl.pathname, '/helix/streams');
+  assert.equal(requestedUrl.pathname, '/api/twitch/helix/streams');
   assert.equal(requestedUrl.searchParams.has('game_id'), false);
   assert.equal(requestedUrl.searchParams.get('first'), '100');
 });
@@ -484,7 +484,7 @@ test('genre resolution falls back to category search for Twitch name variations'
     return {
       ok: true,
       async json() {
-        if (parsed.pathname === '/helix/games') return { data: [] };
+        if (parsed.pathname === '/api/twitch/helix/games') return { data: [] };
         return {
           data: [{ id: 'warzone-id', name: 'Call of Duty: Warzone 2.0' }],
           pagination: {},
@@ -497,5 +497,5 @@ test('genre resolution falls back to category search for Twitch name variations'
   const result = await api.resolveGenreCategories(['Call of Duty: Warzone']);
   assert.equal(result.games[0].id, 'warzone-id');
   assert.deepEqual(result.unresolved, []);
-  assert.deepEqual(paths, ['/helix/games', '/helix/search/categories']);
+  assert.deepEqual(paths, ['/api/twitch/helix/games', '/api/twitch/helix/search/categories']);
 });

@@ -1,5 +1,5 @@
-import { TWITCH_CONFIG } from './twitch-config-v90.js?v=90';
-import { RequestError, RequestManager } from './browser-request-v90.js?v=90';
+import { TWITCH_CONFIG } from './twitch-config-v91.js?v=91';
+import { RequestError, RequestManager } from './browser-request-v91.js?v=91';
 
 const CHAT_SETTINGS_CACHE_TTL_MS = 5 * 60 * 1000;
 

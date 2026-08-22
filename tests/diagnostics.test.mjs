@@ -39,7 +39,7 @@ test('diagnostics persist only when allowed and clear cleanly', () => {
   const storage = new MemoryStorage();
   let allowed = true;
   const log = new DiagnosticsLog({ version: '0.0.88', storage, canPersist: () => allowed });
-  log.record({ area: 'twitch-api', message: 'Request failed', details: { endpoint: '/helix/users', status: 500 } });
+  log.record({ area: 'twitch-api', message: 'Request failed', details: { endpoint: '/api/twitch/helix/users', status: 500 } });
   assert.ok(storage.getItem(DIAGNOSTICS_STORAGE_KEY));
   const restored = new DiagnosticsLog({ version: '0.0.88', storage, canPersist: () => allowed });
   assert.equal(restored.entries().length, 1);

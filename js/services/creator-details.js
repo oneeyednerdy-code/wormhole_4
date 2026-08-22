@@ -1,4 +1,4 @@
-import { getTwitchTrackerSummary } from '../twitchtracker-summary.js?v=90';
+import { getTwitchTrackerSummary } from '../twitchtracker-summary.js?v=91';
 
 /**
  * Loads expensive creator details only when the UI asks for them.

@@ -7,12 +7,18 @@ import { fileURLToPath } from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const textExtensions = new Set(['.html', '.js', '.mjs', '.md', '.css', '.json']);
 const blockedPunctuation = /[\u2013\u2014\u2018\u2019\u201c\u201d\u2026]/u;
+const ignoredDirectories = new Set(['node_modules', 'dist', '.git', '.wrangler']);
+const ignoredGeneratedFiles = new Set(['package-lock.json']);
 
 async function textFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
   const nested = await Promise.all(entries.map(async (entry) => {
     const fullPath = path.join(directory, entry.name);
-    if (entry.isDirectory()) return textFiles(fullPath);
+    if (entry.isDirectory()) {
+      if (ignoredDirectories.has(entry.name)) return [];
+      return textFiles(fullPath);
+    }
+    if (ignoredGeneratedFiles.has(entry.name)) return [];
     if (textExtensions.has(path.extname(entry.name)) || entry.name === '_headers') return [fullPath];
     return [];
   }));
@@ -33,7 +39,7 @@ test('visible copy avoids common filler phrases', async () => {
     'sponsorship.html',
     'signal.html',
     'README.md',
-    'js/wormhole-app-v90.js',
+    'js/wormhole-app-v91.js',
   ];
   const blockedPhrases = /\b(seamlessly|effortlessly|game-changing|cutting-edge|more than just|actually fits|the goal is simple|designed to empower|unlock your|revolutionize)\b/i;
   for (const file of files) {
@@ -46,6 +52,6 @@ test('release text consistently uses the Alpha phase label', async () => {
   for (const file of productionFiles) {
     assert.doesNotMatch(await readFile(file, 'utf8'), new RegExp('\\b\\x62eta\\b', 'i'), `${path.relative(root, file)} contains an old phase label`);
   }
-  assert.match(await readFile(path.join(root, 'index.html'), 'utf8'), /Alpha-0\.0\.90/);
-  assert.match(await readFile(path.join(root, 'PATCH_NOTES_v90.md'), 'utf8'), /Alpha-0\.0\.90/);
+  assert.match(await readFile(path.join(root, 'index.html'), 'utf8'), /Alpha-0\.0\.91/);
+  assert.match(await readFile(path.join(root, 'PATCH_NOTES_v91.txt'), 'utf8'), /Alpha-0\.0\.91/);
 });

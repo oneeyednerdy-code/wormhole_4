@@ -1,5 +1,5 @@
-import { getSearchedTagMatch } from './tag-display.js?v=90';
-import { ViewerHistory } from './viewer-history.js?v=90';
+import { getSearchedTagMatch } from './tag-display.js?v=91';
+import { ViewerHistory } from './viewer-history.js?v=91';
 
 /** Converts followed live streams into the result-card shape without applying matching filters. */
 export function buildFollowedDirectoryMatches(streams, searchedTags = []) {

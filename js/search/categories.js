@@ -1,9 +1,9 @@
-import { state } from '../app/state.js?v=90';
-import { el } from '../app/elements.js?v=90';
-import { escapeHtml } from '../app/format.js?v=90';
-import { logger } from '../app/logger.js?v=90';
-import { startLoading, finishLoading } from '../loading-state.js?v=90';
-import { rerunIfResultsVisible, renderActiveFilters } from './filters.js?v=90';
+import { state } from '../app/state.js?v=91';
+import { el } from '../app/elements.js?v=91';
+import { escapeHtml } from '../app/format.js?v=91';
+import { logger } from '../app/logger.js?v=91';
+import { startLoading, finishLoading } from '../loading-state.js?v=91';
+import { rerunIfResultsVisible, renderActiveFilters } from './filters.js?v=91';
 
 let categorySearchDebounce = null;
 let categorySearchGeneration = 0;
